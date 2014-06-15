@@ -24,12 +24,13 @@ from mna import version
 def _parse_opt():
     """ Parse cli options. """
     optp = optparse.OptionParser(version=version.NAME + version.VERSION)
-    group = optparse.OptionGroup(optp, "Creating tasks")
     group = optparse.OptionGroup(optp, "Debug options")
     group.add_option("--debug", "-d", action="store_true", default=False,
                      help="enable debug messages")
     group.add_option("--debug-sql", action="store_true", default=False,
                      help="enable sql debug messages")
+    group.add_option("--shell", action="store_true", default=False,
+                     help="start shell")
     optp.add_option_group(group)
     return optp.parse_args()[0]
 
@@ -57,5 +58,12 @@ def run():
     # connect to databse
     from mna.model import db
     db.connect(db.find_db_file(config), options.debug_sql)
+
+    if options.shell:
+        # starting interactive shell
+        from IPython.terminal import ipapp
+        app = ipapp.TerminalIPythonApp.instance()
+        app.initialize(argv=[])
+        app.start()
 
     config.save()
