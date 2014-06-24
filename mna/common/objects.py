@@ -19,13 +19,10 @@ class BaseSource(object):
 
     name = "dummy"
 
-    def __init__(self):
+    def __init__(self, cfg):
         super(BaseSource, self).__init__()
-        self.oid = None
-        self.last_refreshed = None
-        self.initial_score = 0
-        self.group_id = None
-        self.enabled = True
+        # configuration
+        self.cfg = cfg
 
     def get_items(self):
         return []
@@ -36,9 +33,10 @@ class BaseFilter(object):
 
     name = "dummy"
 
-    def __init__(self):
+    def __init__(self, cfg):
         super(BaseFilter, self).__init__()
-        self.enabled = True
+        # configuration
+        self.cfg = cfg
 
     def filter(self, article):
         """ Process article by filter """

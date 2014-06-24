@@ -21,13 +21,9 @@ import imp
 import logging
 
 try:
-    import cjson
-    _JSON_DECODER = cjson.decode
-    _JSON_ENCODER = cjson.encode
+    import simplejson as json
 except ImportError:
     import json
-    _JSON_DECODER = json.loads
-    _JSON_ENCODER = json.dumps
 
 from mna import configuration
 from mna.lib.singleton import Singleton
@@ -128,7 +124,7 @@ class AppConfig(Singleton):
         _LOG.info('AppConfig.load_configuration_file: %r', filename)
         try:
             with open(filename, 'r') as cfile:
-                self._config.update(_JSON_DECODER(cfile.read()))
+                self._config.update(json.load(cfile))
         except StandardError:
             _LOG.exception('AppConfig.load_configuration_file error')
             return False
@@ -141,7 +137,7 @@ class AppConfig(Singleton):
         self._before_save(self._config)
         try:
             with open(self._filename, 'w') as cfile:
-                cfile.write(_JSON_ENCODER(self._config))
+                json.dump(self._config, cfile)
         except StandardError:
             _LOG.exception('AppConfig.save error')
         _LOG.debug('AppConfig.save finished')

@@ -16,10 +16,8 @@ class WebSource(objects.BaseSource):
 
     name = "Web Page Source"
 
-    def __init__(self):
-        super(WebSource, self).__init__()
-        self.url = None
-        self.xpath = None
-
     def get_items(self):
-        return []
+        url = self.cfg.conf.get("url") if self.cfg.conf else None
+        if not url:
+            return
+        return

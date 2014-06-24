@@ -15,29 +15,22 @@ __version__ = "2014-06-12"
 
 
 import logging
-import gettext
 import datetime
 
 try:
-    import cjson
-    _JSON_DECODER = cjson.decode
-    _JSON_ENCODER = cjson.encode
+    import simplejson as json
 except ImportError:
     import json
-    _JSON_DECODER = json.loads
-    _JSON_ENCODER = json.dumps
 
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-# , ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+# , Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.types import TypeDecorator, VARCHAR
-# from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy import orm  # , or_, and_
-# from sqlalchemy import select, func
+from sqlalchemy.ext.associationproxy import association_proxy
 
 _LOG = logging.getLogger(__name__)
-_ = gettext.gettext
 
 # SQLAlchemy
 Base = declarative_base()  # pylint: disable=C0103
@@ -51,7 +44,7 @@ class JSONEncodedDict(TypeDecorator):
 
         JSONEncodedDict(255)
 
-    Fron: sqlalchemy manual
+    From: sqlalchemy manual
 
     """
 
@@ -59,13 +52,16 @@ class JSONEncodedDict(TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if value is not None:
-            value = _JSON_ENCODER(value)
-
+            value = json.dumps(value)
         return value
 
     def process_result_value(self, value, dialect):
         if value is not None:
-            value = _JSON_DECODER(value)
+            try:
+                value = json.loads(value)
+            except ValueError:
+                _LOG.error("JSONEncodedDict.Invalid value to decode: %r",
+                           value)
         return value
 
 
@@ -139,6 +135,19 @@ class BaseModelMixin(object):
         """
         return (session or Session()).query(cls).filter_by(**kwargs).first()
 
+    @classmethod
+    def count(cls, session=None, **kwargs):
+        """ Count objects with given attributes.
+
+        Args:
+            session: optional sqlalchemy session
+            kwargs: query filters.
+
+        Return:
+            One object.
+        """
+        return (session or Session()).query(cls).filter_by(**kwargs).count()
+
     def __repr__(self):
         info = []
         for prop in orm.object_mapper(self).iterate_properties:
@@ -149,33 +158,6 @@ class BaseModelMixin(object):
         return "<" + self.__class__.__name__ + ' ' + ','.join(info) + ">"
 
 
-class Article(BaseModelMixin, Base):
-    """One Article object"""
-
-    __tablename__ = "articles"
-
-    oid = Column(Integer, primary_key=True)
-    score = Column(Integer, default=0)
-    updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    readed = Column(Integer, default=0)
-    title = Column(String)
-    content = Column(String)
-    # tags
-    # group_id
-    # source_id
-    # actions_group_id
-
-
-class ActionsGroup(BaseModelMixin, Base):
-    """Group of actions definition"""
-
-    __tablename__ = "actions_groups"
-
-    oid = Column(Integer, primary_key=True)
-    name = Column(String)
-    # actions
-
-
 class Group(BaseModelMixin, Base):
     """Group sources/articles"""
 
@@ -183,32 +165,106 @@ class Group(BaseModelMixin, Base):
 
     oid = Column(Integer, primary_key=True)
     name = Column(String)
-    # source_id
-    # default_actions_group_id
+    default_actions_group_id = Column(Integer, ForeignKey("actions.oid"))
 
 
-class SourceConf(BaseModelMixin, Base):
+class Source(BaseModelMixin, Base):
     """Source configuration"""
 
-    __tablename__ = "sources_conf"
+    __tablename__ = "sources"
 
     oid = Column(Integer, primary_key=True)
-    # Source name
+    # Source name (package and class)
     name = Column(String)
+    # Displayed source title
+    title = Column(String)
     last_refreshed = Column(DateTime)
+    interval = Column(Integer, default=3600)
+    next_refresh = Column(DateTime, default=datetime.datetime.utcnow,
+                          index=True)
     initial_score = Column(Integer, default=0)
-    # group_id
-    enabled = Column(Boolean, default=0)
+    enabled = Column(Boolean, default=True)
+    processing = Column(Boolean, default=False)
+    last_error = Column(String)
+    last_error_date = Column(DateTime)
     conf = Column('conf', JSONEncodedDict)
+    meta = Column(JSONEncodedDict)
+
+    group_id = Column(Integer, ForeignKey("groups.oid"))
+
+    group = orm.relationship(Group, backref=orm.backref("sources",
+                               cascade="all, delete-orphan"))
+
+    def force_refresh(self):
+        self.next_refresh = datetime.datetime.now()
+
+    @classmethod
+    def force_refresh_all(cls):
+        """ Force refresh all sources. """
+        session = Session()
+        session.query(cls).update({"next_refresh": datetime.datetime.now()})
+        session.commit()
 
 
-class FilterConf(BaseModelMixin, Base):
-    """Filter configuration"""
+class Task(BaseModelMixin, Base):
+    """Tasks (i.e. filters) configuration"""
 
-    __tablename__ = "filters_conf"
+    __tablename__ = "tasks"
 
     oid = Column(Integer, primary_key=True)
-    # Source name
+    # Filter name
     name = Column(String)
     enabled = Column(Integer, default=0)
     conf = Column('conf', JSONEncodedDict)
+
+
+class Actions(BaseModelMixin, Base):
+    """Group of task"""
+
+    __tablename__ = "actions"
+
+    oid = Column(Integer, primary_key=True)
+    name = Column(String)
+    # actions
+    actions = association_proxy("actions_tasks", "actions")
+
+
+
+class Article(BaseModelMixin, Base):
+    """One Article object"""
+
+    __tablename__ = "articles"
+
+    oid = Column(Integer, primary_key=True)
+    published = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    readed = Column(Integer, default=0)
+    title = Column(String)
+    summary = Column(String)
+    content = Column(String)
+    internal_id = Column(String, index=True)
+    link = Column(String)
+    author = Column(String)
+    meta = Column(JSONEncodedDict)
+    score = Column(Integer, default=0)
+
+    # tags
+    group_id = Column(Integer, ForeignKey("groups.oid"))
+    source_id = Column(Integer, ForeignKey("sources.oid"))
+
+
+class ActionsTasks(BaseModelMixin, Base):
+    """ Actions-Tasks connections. """
+
+    __tablename__ = "actions_tasks"
+
+    actions_id = Column(Integer, ForeignKey("actions.oid", onupdate="CASCADE",
+                                            ondelete="CASCADE"),
+                        primary_key=True)
+    task_id = Column(Integer, ForeignKey("tasks.oid", onupdate="CASCADE",
+                                         ondelete="CASCADE"),
+                     primary_key=True)
+
+    actions = orm.relationship(Actions, backref=orm.backref("actions_tasks",
+                               cascade="all, delete-orphan"))
+    task = orm.relationship(Task)

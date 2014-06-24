@@ -22,7 +22,7 @@ import sqlalchemy
 from sqlalchemy.engine import Engine
 
 from mna.model import sqls
-from mna.model import dbobjects
+from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def connect(filename, debug=False, *args, **kwargs):
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
-    dbobjects.Session.configure(bind=engine)  # pylint: disable=E1120
+    DBO.Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:
         @sqlalchemy.event.listens_for(Engine, "before_cursor_execute")
@@ -67,13 +67,21 @@ def connect(filename, debug=False, *args, **kwargs):
                        (time.time() - context.app_query_start) * 1000)
 
     _LOG.info('Database create_all START')
-    dbobjects.Base.metadata.create_all(engine)
+    DBO.Base.metadata.create_all(engine)
     _LOG.info('Database create_all COMPLETED')
     # bootstrap
     _LOG.info('Database bootstrap START')
-    # session = dbobjects.Session()
+    session = DBO.Session()
+    _bootstrap_data(session)
+    session.commit()
     _LOG.info('Database bootstrap COMPLETED')
-    return dbobjects.Session
+    _LOG.info('Database cleanup START')
+    # remove processing tag
+    session.query(DBO.Source).filter(DBO.Source.processing == 1).\
+        update({"processing": False})
+    session.commit()
+    _LOG.info('Database cleanup COMPLETED')
+    return DBO.Session
 
 
 def find_db_file(config):
@@ -100,3 +108,23 @@ def find_db_file(config):
     if not os.path.isdir(db_dirname):
         os.mkdir(db_dirname)
     return db_filename
+
+
+def _bootstrap_data(session):
+    if DBO.Group.count() == 0:
+        # create default group
+        group = DBO.Group()
+        group.name = "Default Group"
+        session.add(group)
+    if DBO.Actions.count() == 0:
+        # create empty action
+        action = DBO.Actions()
+        action.name = "No actions"
+        session.add(action)
+    if DBO.Source.count() == 0:
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Filmweb"
+        source.conf = {"url": r'http://www.filmweb.pl/rss/news'}
+        source.group_id = 1
+        session.add(source)

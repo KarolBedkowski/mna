@@ -11,7 +11,7 @@ __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-14"
 
-
+import sys
 import optparse
 import logging
 
@@ -59,11 +59,26 @@ def run():
     from mna.model import db
     db.connect(db.find_db_file(config), options.debug_sql)
 
+    # load plugins
+    from mna import plugins
+    plugins.load_plugins()
+
+#    from mna.logic import worker
+#    worker.start_workers()
+
     if options.shell:
         # starting interactive shell
         from IPython.terminal import ipapp
         app = ipapp.TerminalIPythonApp.instance()
         app.initialize(argv=[])
         app.start()
+
+    from PyQt4 import QtGui
+    from mna.gui import main_wnd
+
+    app = QtGui.QApplication(sys.argv)
+    window = main_wnd.MainWnd()
+    window.show()
+    app.exec_()
 
     config.save()

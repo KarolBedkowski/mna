@@ -10,7 +10,7 @@ __version__ = "2014-06-02"
 import pkgutil
 import logging
 
-from mna.plugins import _base as base
+from mna.common import objects
 
 _LOG = logging.getLogger(__name__)
 MODULES = {}
@@ -22,7 +22,7 @@ def load_plugins():
     if MODULES:
         return
     _LOG.info('Loading modules...')
-    _LOG.debug('Searching for standard modules...')
+    _LOG.debug('Searching for standard modules from %s... ', __path__[0])
     for modname, _ispkg in pkgutil.ImpImporter(__path__[0]).iter_modules():
         if modname.startswith('_') or modname.endswith('_support'):
             continue
@@ -30,12 +30,13 @@ def load_plugins():
             continue
         _LOG.debug('Loading module %s', modname)
         try:
-            __import__('.' + modname, fromlist=[modname])
-        except ImportError:
+            __import__(__package__ + '.' + modname, fromlist=[modname])
+        except (ImportError, ValueError):
             _LOG.exception("Load module %s error", modname)
 
-    SOURCES.update(_load_sources_from_subclass(base.BaseSource))
+    SOURCES.update(_load_sources_from_subclass(objects.BaseSource))
     _LOG.info('Modules: %s', ', '.join(sorted(MODULES.keys())))
+    _LOG.info('Sources: %s', ', '.join(sorted(SOURCES.keys())))
 
 
 def _load_sources_from_subclass(base_class):
@@ -48,14 +49,7 @@ def _load_sources_from_subclass(base_class):
                 module.endswith('_support'):
             continue
         _LOG.debug(' loading %s from %s', name, module)
-        try:
-            source_obj = source_class()
-            if name and not name.startswith('_'):
-                name = name.lower()
-                if name in MODULES:
-                    name = module + '.' + name
-                MODULES[name] = source_obj
-        except:
-            _LOG.exception('Loading %s from %s error', name, module)
-        else:
-            _load_sources_from_subclass(base_class)
+        name = module + '.' + name
+        yield (name, source_class)
+        if source_class.__subclasses__():
+            _load_sources_from_subclass(source_class)
