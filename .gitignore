@@ -29,3 +29,5 @@ tags
 info/
 docs/
 man/*.1
+mna/gui/_*_rc.py
+mna/gui/_ui_*.py
