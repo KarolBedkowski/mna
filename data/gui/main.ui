@@ -64,7 +64,7 @@
   </widget>
   <action name="actionRefresh">
    <property name="icon">
-    <iconset resource="resoources.qrc">
+    <iconset resource="resources.qrc">
      <normaloff>:/main/reload.svg</normaloff>:/main/reload.svg</iconset>
    </property>
    <property name="text">
