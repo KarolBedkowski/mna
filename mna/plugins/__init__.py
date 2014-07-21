@@ -53,3 +53,7 @@ def _load_sources_from_subclass(base_class):
         yield (name, source_class)
         if source_class.__subclasses__():
             _load_sources_from_subclass(source_class)
+
+
+class GetArticleException(Exception):
+    pass

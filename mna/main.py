@@ -64,7 +64,8 @@ def run():
     plugins.load_plugins()
 
     from mna.logic import worker
-    worker.start_workers()
+    main_worker = worker.MainWorker()
+    main_worker.start()
 
     if options.shell:
         # starting interactive shell
@@ -81,4 +82,5 @@ def run():
     window.show()
     app.exec_()
 
+    main_worker.terminate()
     config.save()
