@@ -14,27 +14,34 @@ __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-12"
 
 
-class BaseSource(object):
+class AbstractSource(object):
     """Basic source"""
 
     name = "dummy"
 
     def __init__(self, cfg):
-        super(BaseSource, self).__init__()
+        super(AbstractSource, self).__init__()
         # configuration
         self.cfg = cfg
 
     def get_items(self):
         return []
 
+    def format_item_for_view(self, item):
+        return str(item)
 
-class BaseFilter(object):
+    @classmethod
+    def get_params(cls):
+        return {}
+
+
+class AbstractFilter(object):
     """Basic Filter object"""
 
     name = "dummy"
 
     def __init__(self, cfg):
-        super(BaseFilter, self).__init__()
+        super(AbstractFilter, self).__init__()
         # configuration
         self.cfg = cfg
 

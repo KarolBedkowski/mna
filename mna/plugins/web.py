@@ -11,7 +11,7 @@ __version__ = "2014-06-03"
 from mna.common import objects
 
 
-class WebSource(objects.BaseSource):
+class WebSource(objects.AbstractSource):
     """Load article from website"""
 
     name = "Web Page Source"

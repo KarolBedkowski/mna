@@ -26,7 +26,7 @@ def _ts2datetime(tstruct):
     return None
 
 
-class RssSource(objects.BaseSource):
+class RssSource(objects.AbstractSource):
     """Rss/Atom source class. """
 
     name = "RSS/Atom Source"
@@ -43,7 +43,7 @@ class RssSource(objects.BaseSource):
             return
         initial_score = self.cfg.initial_score
         last_refreshed = self.cfg.last_refreshed
-        cntr  = 0
+        cntr = 0
         for feed in doc.get('entries') or []:
             published = _ts2datetime(feed.get('published_parsed'))
             updated = _ts2datetime(feed.get('updated_parsed'))
@@ -64,3 +64,8 @@ class RssSource(objects.BaseSource):
             yield art
             cntr += 1
         _LOG.debug("RssSource: loaded %d articles", cntr)
+
+    @classmethod
+    def get_params(cls):
+        return {'name': 'Name',
+                'url': "RSS URL"}

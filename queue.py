@@ -129,15 +129,3 @@ def _bootstrap_data(session):
         source.conf = {"url": r'http://www.filmweb.pl/rss/news'}
         source.group_id = 1
         session.add(source)
-        source = DBO.Source()
-        source.name = "mna.plugins.rss.RssSource"
-        source.title = "Lifehacker"
-        source.conf = {"url": r'http://lifehacker.com/index.xml'}
-        source.group_id = 1
-        session.add(source)
-        source = DBO.Source()
-        source.name = "mna.plugins.rss.RssSource"
-        source.title = "New Scientist"
-        source.conf = {"url": r'http://feeds.newscientist.com/science-news'}
-        source.group_id = 1
-        session.add(source)

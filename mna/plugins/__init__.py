@@ -34,7 +34,7 @@ def load_plugins():
         except (ImportError, ValueError):
             _LOG.exception("Load module %s error", modname)
 
-    SOURCES.update(_load_sources_from_subclass(objects.BaseSource))
+    SOURCES.update(_load_sources_from_subclass(objects.AbstractSource))
     _LOG.info('Modules: %s', ', '.join(sorted(MODULES.keys())))
     _LOG.info('Sources: %s', ', '.join(sorted(SOURCES.keys())))
 

@@ -63,8 +63,8 @@ def run():
     from mna import plugins
     plugins.load_plugins()
 
-#    from mna.logic import worker
-#    worker.start_workers()
+    from mna.logic import worker
+    worker.start_workers()
 
     if options.shell:
         # starting interactive shell

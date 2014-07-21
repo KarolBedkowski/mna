@@ -68,10 +68,12 @@ class JSONEncodedDict(TypeDecorator):
 class BaseModelMixin(object):
     """ Utilities method for database objects """
 
-    def save(self):
+    def save(self, commit=False):
         """ Save object into database. """
         session = Session.object_session(self) or Session()
         session.add(self)
+        if commit:
+            session.commit()
         return session
 
     def clone(self, cleanup=True):
@@ -173,6 +175,7 @@ class Source(BaseModelMixin, Base):
 
     __tablename__ = "sources"
 
+    # Database (internal) source id
     oid = Column(Integer, primary_key=True)
     # Source name (package and class)
     name = Column(String)
@@ -229,19 +232,23 @@ class Actions(BaseModelMixin, Base):
     actions = association_proxy("actions_tasks", "actions")
 
 
-
 class Article(BaseModelMixin, Base):
     """One Article object"""
 
     __tablename__ = "articles"
 
+    # database id
     oid = Column(Integer, primary_key=True)
+    # publish date
     published = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    # last update date
     updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    # article readed?
     readed = Column(Integer, default=0)
     title = Column(String)
     summary = Column(String)
     content = Column(String)
+    # internal id (hash)
     internal_id = Column(String, index=True)
     link = Column(String)
     author = Column(String)
@@ -249,8 +256,14 @@ class Article(BaseModelMixin, Base):
     score = Column(Integer, default=0)
 
     # tags
-    group_id = Column(Integer, ForeignKey("groups.oid"))
     source_id = Column(Integer, ForeignKey("sources.oid"))
+
+    source = orm.relationship(Source, backref=orm.backref("articles",
+                              cascade="all, delete-orphan"))
+
+    def compute_internal_id(self):
+        return "".join(hash(self.title), hash(self.published),
+                       hash(self.author), hash(self.source_id))
 
 
 class ActionsTasks(BaseModelMixin, Base):

@@ -11,7 +11,7 @@ __version__ = "2014-06-02"
 from mna.common import objects
 
 
-class ScoreFilter(objects.BaseFilter):
+class ScoreFilter(objects.AbstractFilter):
     """ Filter articles with too low score. """
 
     name = "Basic score filter"

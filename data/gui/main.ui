@@ -6,27 +6,49 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>841</width>
-    <height>641</height>
+    <width>910</width>
+    <height>674</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QSplitter" name="splitter_2">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QTreeView" name="treeSubscriptions"/>
+      <widget class="QTreeView" name="tree_subscriptions"/>
       <widget class="QSplitter" name="splitter">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QTableWidget" name="tableArticles"/>
-       <widget class="QWebView" name="webView"/>
+       <widget class="QTableView" name="table_articles">
+        <property name="showGrid">
+         <bool>false</bool>
+        </property>
+        <attribute name="horizontalHeaderVisible">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="horizontalHeaderCascadingSectionResizes">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>27</number>
+        </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>20</number>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>10</number>
+        </attribute>
+       </widget>
+       <widget class="QWebView" name="article_view"/>
       </widget>
      </widget>
     </item>
@@ -37,20 +59,30 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>841</width>
+     <width>910</width>
      <height>25</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuFile">
+   <widget class="QMenu" name="menu_file">
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionExit"/>
+    <addaction name="action_exit"/>
    </widget>
-   <addaction name="menuFile"/>
+   <widget class="QMenu" name="menu_add">
+    <property name="title">
+     <string>Add</string>
+    </property>
+    <addaction name="add_group_action"/>
+    <addaction name="separator"/>
+    <addaction name="add_rss_action"/>
+    <addaction name="add_web_action"/>
+   </widget>
+   <addaction name="menu_file"/>
+   <addaction name="menu_add"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="tool_bar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -60,9 +92,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionRefresh"/>
+   <addaction name="action_refresh"/>
   </widget>
-  <action name="actionRefresh">
+  <action name="action_refresh">
    <property name="icon">
     <iconset resource="resources.qrc">
      <normaloff>:/main/reload.svg</normaloff>:/main/reload.svg</iconset>
@@ -74,12 +106,27 @@
     <string>Refresh all subscriptions</string>
    </property>
   </action>
-  <action name="actionExit">
+  <action name="action_exit">
    <property name="text">
     <string>Exit</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="add_group_action">
+   <property name="text">
+    <string>Add group</string>
+   </property>
+  </action>
+  <action name="add_rss_action">
+   <property name="text">
+    <string>Add RSS</string>
+   </property>
+  </action>
+  <action name="add_web_action">
+   <property name="text">
+    <string>Add Web</string>
    </property>
   </action>
  </widget>
@@ -91,7 +138,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="resoources.qrc"/>
+  <include location="resources.qrc"/>
  </resources>
  <connections/>
 </ui>
