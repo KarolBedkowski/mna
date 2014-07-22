@@ -11,7 +11,6 @@ import logging
 import datetime
 import multiprocessing
 import time
-import random
 
 from mna.model import dbobjects as DBO
 from mna import plugins
@@ -107,7 +106,7 @@ class MainWorker(multiprocessing.Process):
         """ Start worker; run _process_sources in loop. """
         _LOG.info("Starting worker %s", self.name)
         # Random sleep before first processing
-        time.sleep(random.randrange(_LONG_SLEEP, _LONG_SLEEP * 2))
+        time.sleep(_SHORT_SLEEP * 2)
         while True:
             if not _process_sources():
                 # no task to process

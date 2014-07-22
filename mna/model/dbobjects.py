@@ -182,6 +182,7 @@ class Source(BaseModelMixin, Base):
     # Displayed source title
     title = Column(String)
     last_refreshed = Column(DateTime)
+    # Refresh interval; default=1h
     interval = Column(Integer, default=3600)
     next_refresh = Column(DateTime, default=datetime.datetime.utcnow,
                           index=True)

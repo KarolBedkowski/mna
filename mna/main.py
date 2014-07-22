@@ -63,16 +63,17 @@ def run():
     from mna import plugins
     plugins.load_plugins()
 
-    from mna.logic import worker
-    main_worker = worker.MainWorker()
-    main_worker.start()
-
     if options.shell:
         # starting interactive shell
         from IPython.terminal import ipapp
         app = ipapp.TerminalIPythonApp.instance()
         app.initialize(argv=[])
         app.start()
+        return
+
+    from mna.logic import worker
+    main_worker = worker.MainWorker()
+    main_worker.start()
 
     from PyQt4 import QtGui
     from mna.gui import main_wnd
