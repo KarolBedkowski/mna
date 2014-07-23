@@ -191,6 +191,11 @@ class Source(BaseModelMixin, Base):
     processing = Column(Boolean, default=False)
     last_error = Column(String)
     last_error_date = Column(DateTime)
+
+    max_articles_to_load = Column(Integer)
+    # number days back to load
+    max_age_to_load = Column(Integer)
+
     conf = Column('conf', JSONEncodedDict)
     meta = Column(JSONEncodedDict)
 
@@ -205,6 +210,7 @@ class Source(BaseModelMixin, Base):
     @classmethod
     def force_refresh_all(cls):
         """ Force refresh all sources. """
+        _LOG.info("Sources.force_refresh_all()")
         session = Session()
         session.query(cls).update({"next_refresh": datetime.datetime.now()})
         session.commit()
@@ -262,9 +268,11 @@ class Article(BaseModelMixin, Base):
     source = orm.relationship(Source, backref=orm.backref("articles",
                               cascade="all, delete-orphan"))
 
-    def compute_internal_id(self):
-        return "".join(hash(self.title), hash(self.published),
-                       hash(self.author), hash(self.source_id))
+    @staticmethod
+    def compute_id(link, title, author, source_id):
+        if link:
+            return link
+        return"".join(map(hash, (title, author, source_id)))
 
 
 class ActionsTasks(BaseModelMixin, Base):

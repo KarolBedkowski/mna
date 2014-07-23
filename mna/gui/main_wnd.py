@@ -7,8 +7,8 @@ This file is part of mna
 Licence: GPLv2+
 """
 
-__author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
+__author__ = u"Karol Będkowski"
+__copyright__ = u"Copyright (c) Karol Będkowski, 2014"
 __version__ = "2013-04-28"
 
 import gettext

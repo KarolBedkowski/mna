@@ -43,17 +43,12 @@ def _load_sources_from_subclass(base_class):
     for source_class in base_class.__subclasses__():
         if hasattr(source_class, 'DISABLED'):
             continue
-        name = source_class.__name__
         module = source_class.__module__
+        name = source_class.get_name()
         if name.startswith('Test') or module.endswith('_test') or \
                 module.endswith('_support'):
             continue
         _LOG.debug(' loading %s from %s', name, module)
-        name = module + '.' + name
         yield (name, source_class)
         if source_class.__subclasses__():
             _load_sources_from_subclass(source_class)
-
-
-class GetArticleException(Exception):
-    pass

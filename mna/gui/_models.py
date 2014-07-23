@@ -7,8 +7,8 @@ This file is part of mna
 Licence: GPLv2+
 """
 
-__author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
+__author__ = u"Karol Będkowski"
+__copyright__ = u"Copyright (c) Karol Będkowski, 2014"
 __version__ = "2013-04-28"
 
 
@@ -87,6 +87,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.refresh()
 
     def refresh(self):
+        """ Refresh whole tree model from database. """
         self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
         self.root.clear()
         session = DBO.Session()
@@ -102,11 +103,15 @@ class TreeModel(QtCore.QAbstractItemModel):
     def update(self, oid):
         """ Update group by `oid` and its subtree
 
-        :param oid: id group to update
+        Arguments:
+            oid: id group to update
         """
         session = DBO.Session()
         self.root.update(oid, session)
         session.close()
+
+    def update_source(self, group_oid, source_oid):
+        pass
 
     def data(self, index, role):
         """Returns the data stored under the given role for the item referred

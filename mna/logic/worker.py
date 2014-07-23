@@ -3,8 +3,8 @@
 
 """ Worker """
 
-__author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
+__author__ = u"Karol Będkowski"
+__copyright__ = u"Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-15"
 
 import logging
@@ -14,6 +14,7 @@ import time
 
 from mna.model import dbobjects as DBO
 from mna import plugins
+from mna.common import objects
 
 
 _LOG = logging.getLogger(__name__)
@@ -23,10 +24,14 @@ _WORKERS = 2  # number of background workers
 
 
 def worker(task):
-    """ Worker - process one source.
+    """ Worker - process one source and store result in database.
 
-    :param task: source to process
-    :return: number of loaded article."""
+    Arguments:
+        task: source to process
+
+    Return:
+        number of loaded articles.
+    """
     _p_name = multiprocessing.current_process().name
     session = DBO.Session()
     source_cfg = session.merge(task)
@@ -46,8 +51,9 @@ def worker(task):
         for article in source.get_items():
             cnt += 1
             article.source_id = source_cfg.oid
+            # TODO: filtrowanie artykułów
             session.add(article)
-    except plugins.GetArticleException, err:
+    except objects.GetArticleException, err:
         # some processing error occurred
         _LOG.exception("%s: Load articles from %s/%s error: %r",
                        _p_name, source_cfg.name, source_cfg.title, err)
@@ -80,7 +86,7 @@ def _on_error(session, source_cfg, error_msg):
 
 
 def _process_sources():
-    """ Process all sources with next_refresh date in past """
+    """ Process all sources with `next_refresh` date in past """
     _LOG.info("MainWorker: start processing")
     session = DBO.Session()
     now = datetime.datetime.now()

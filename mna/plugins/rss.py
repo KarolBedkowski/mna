@@ -34,16 +34,22 @@ class RssSource(objects.AbstractSource):
     def get_items(self):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
-            return
+            return []
         _LOG.info("RssSource.get_items from %r", url)
         doc = feedparser.parse(url)
         if not doc or doc.get('status') >= 400:
             _LOG.error("RssSource: error getting items from %s, %r, %r",
                        url, doc, self.cfg)
-            return
+            raise objects.GetArticleException("Get rss feed error: %r" %
+                                              doc.get('status'))
         initial_score = self.cfg.initial_score
         last_refreshed = self.cfg.last_refreshed
-        cntr = 0
+        # if max_age_to_load defined - set limit last_refreshed
+        if self.cfg.max_age_to_load:
+            last_refreshed = max(last_refreshed,
+                    datetime.datetime.now() - datetime.timedelta(
+                    days=self.cfg.max_age_to_load))
+        articles = []
         for feed in doc.get('entries') or []:
             published = _ts2datetime(feed.get('published_parsed'))
             updated = _ts2datetime(feed.get('updated_parsed'))
@@ -51,9 +57,20 @@ class RssSource(objects.AbstractSource):
             if last_refreshed and updated < last_refreshed:
                 continue
 
-            # TODO: dodać sprawdzanie po id
-            art = DBO.Article()
-            art.internal_id = feed.get('id')
+            internal_id = feed.get('id') or \
+                    DBO.Article.compute_id(feed.get('link'),
+                                           feed.get('title'),
+                                           feed.get('author'),
+                                           self.__class__.get_name())
+            art = DBO.Article.get(internal_id=internal_id)
+            if art:
+                _LOG.debug("Article already in db: %r", internal_id)
+                if art.updated > updated:
+                    _LOG.debug("Article is not updated, skipping")
+                    continue
+
+            art = art or DBO.Article()
+            art.internal_id = internal_id
             art.content = feed.get('value')
             art.summary = feed.get('summary')
             art.score = initial_score
@@ -61,9 +78,13 @@ class RssSource(objects.AbstractSource):
             art.updated = updated
             art.published = published or datetime.datetime.now()
             art.link = feed.get('link')
-            yield art
-            cntr += 1
-        _LOG.debug("RssSource: loaded %d articles", cntr)
+            articles.append(art)
+        _LOG.debug("RssSource: loaded %d articles", len(articles))
+        # Limit number articles to load
+        if (self.cfg.max_articles_to_load and
+            len(articles) > self.cfg.max_articles_to_load):
+            articles = articles[-self.cfg.max_articles_to_load:]
+        return articles
 
     @classmethod
     def get_params(cls):
