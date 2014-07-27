@@ -48,11 +48,11 @@ def worker(task):
     source = source_cls(source_cfg)
     cnt = 0
     try:
-        for article in source.get_items():
+        for article in source.get_items(session):
             cnt += 1
             article.source_id = source_cfg.oid
             # TODO: filtrowanie artykułów
-            session.add(article)
+            # session.merge(article)
     except objects.GetArticleException, err:
         # some processing error occurred
         _LOG.exception("%s: Load articles from %s/%s error: %r",
@@ -95,7 +95,9 @@ def _process_sources():
                          DBO.Source.next_refresh < now)
     query = query.order_by(DBO.Source.next_refresh)
     tasks = list(query)
+    session.expunge_all()
     session.flush()
+    session.close()
     _LOG.debug("MainWorker: processing %d sources", len(tasks))
     loaded_articles = 0
     if len(tasks) > 0:

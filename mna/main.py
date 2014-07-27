@@ -73,7 +73,7 @@ def run():
 
     from mna.logic import worker
     main_worker = worker.MainWorker()
-    main_worker.start()
+#    main_worker.start()
 
     from PyQt4 import QtGui
     from mna.gui import main_wnd

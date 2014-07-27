@@ -14,7 +14,7 @@ __version__ = "2013-04-28"
 
 import logging
 
-from PyQt4 import QtCore
+from PyQt4 import QtCore, QtGui
 
 from mna.model import dbobjects as DBO
 
@@ -180,11 +180,13 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 
 class ListItem(object):
-    def __init__(self, title=None, oid=None, readed=None, updated=None):
+    def __init__(self, title=None, oid=None, readed=None, updated=None,
+                 source=None):
         self.title = title
         self.oid = oid
         self.readed = readed
         self.updated = updated
+        self.source = source
 
     def __str__(self):
         return self.title
@@ -196,7 +198,7 @@ class ListItem(object):
 
 class ListModel(QtCore.QAbstractTableModel):
 
-    _HEADERS = ("Readed", "Title", "Date")
+    _HEADERS = ("Source", "Title", "Date")
 
     def __init__(self, parent=None):
         super(ListModel, self).__init__(parent)
@@ -204,7 +206,8 @@ class ListModel(QtCore.QAbstractTableModel):
 
     def set_items(self, items):
         self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
-        self.items = [ListItem(item.title, item.oid, item.readed, item.updated)
+        self.items = [ListItem(item.title, item.oid, item.readed, item.updated,
+                               item.source.title)
                       for item in items]
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
@@ -213,9 +216,6 @@ class ListModel(QtCore.QAbstractTableModel):
 
     def columnCount(self, parent):
         return 3
-
-    def flags(self, index):
-        return QtCore.Qt.ItemIsSelectable
 
     def headerData(self, col, orientation, role):
         if orientation == QtCore.Qt.Horizontal and \
@@ -230,11 +230,17 @@ class ListModel(QtCore.QAbstractTableModel):
             row = self.items[index.row()]
             col = index.column()
             if col == 0:
-                return QtCore.QVariant(row.readed)
+                return QtCore.QVariant(row.source)
             elif col == 1:
                 return QtCore.QVariant(row.title)
             elif col == 2:
-                return QtCore.QVariant(row.updated)
+                return QtCore.QVariant(unicode(row.updated))
+        elif role == QtCore.Qt.FontRole:
+            row = self.items[index.row()]
+            if not row.readed:
+                font = QtGui.QFont()
+                font.setBold(True)
+                return font
         return QtCore.QVariant()
 
     def node_from_index(self, index):

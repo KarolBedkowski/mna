@@ -31,7 +31,7 @@ class RssSource(objects.AbstractSource):
 
     name = "RSS/Atom Source"
 
-    def get_items(self):
+    def get_items(self, session=None):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
             return []
@@ -62,7 +62,7 @@ class RssSource(objects.AbstractSource):
                                            feed.get('title'),
                                            feed.get('author'),
                                            self.__class__.get_name())
-            art = DBO.Article.get(internal_id=internal_id)
+            art = DBO.Article.get(session=session, internal_id=internal_id)
             if art:
                 _LOG.debug("Article already in db: %r", internal_id)
                 if art.updated > updated:

@@ -26,8 +26,20 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QTableView" name="table_articles">
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SingleSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
         <property name="showGrid">
          <bool>false</bool>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
         </property>
         <attribute name="horizontalHeaderVisible">
          <bool>true</bool>
@@ -41,6 +53,9 @@
         <attribute name="verticalHeaderVisible">
          <bool>false</bool>
         </attribute>
+        <attribute name="verticalHeaderCascadingSectionResizes">
+         <bool>true</bool>
+        </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
          <number>20</number>
         </attribute>
@@ -48,7 +63,11 @@
          <number>10</number>
         </attribute>
        </widget>
-       <widget class="QWebView" name="article_view"/>
+       <widget class="QWebView" name="article_view">
+        <property name="renderHints">
+         <set>QPainter::Antialiasing|QPainter::HighQualityAntialiasing|QPainter::SmoothPixmapTransform|QPainter::TextAntialiasing</set>
+        </property>
+       </widget>
       </widget>
      </widget>
     </item>
