@@ -23,7 +23,7 @@ from mna.gui import add_group_dialog
 from mna.gui import add_rss_dialog
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
-from mna.logic import groups
+from mna.logic import groups, sources
 from mna.common import objects
 from mna import plugins
 
@@ -63,13 +63,17 @@ class MainWnd(QtGui.QMainWindow):
         sel_model = self.table_articles.selectionModel()
         sel_model.currentChanged.connect(self._on_table_articles_clicked)
         sel_model.selectionChanged.connect(self._on_table_articles_clicked)
+        self.mark_all_read_action.triggered.\
+                connect(self._on_mark_all_read_action)
         objects.MESSENGER.source_updated.connect(self._on_source_updated)
 
     def _on_action_refresh(self):
         DBO.Source.force_refresh_all()
 
     def _on_tree_clicked(self, index):
-        """ Handle group/source selection. """
+        """ Handle group/source selection.
+            TODO: handle group selection
+        """
         node = self._tree_model.node_from_index(index)
         assert node.oid
         articles = []
@@ -91,7 +95,8 @@ class MainWnd(QtGui.QMainWindow):
             source = DBO.Source.get(oid=article.source_id)
             self._current_source = source
             self._current_source_obj = plugins.SOURCES.get(source.name)
-        presenter = self._current_source_obj.presenter(self._current_source_obj)
+        presenter = self._current_source_obj.\
+                presenter(self._current_source_obj)
         content = presenter.to_gui(article)
         self.article_view.setHtml(content)
         article.readed = 1
@@ -118,5 +123,23 @@ class MainWnd(QtGui.QMainWindow):
         self._tree_model.refresh()
 
     def _on_source_updated(self, name, source_id, group_id):
-        _LOG.debug("Source updated %s, %r", name, source_id, group_id)
+        """ Handle  source update event. """
+        _LOG.debug("Source updated %s, %r, %r", name, source_id, group_id)
         self._tree_model.update_source(source_id, group_id)
+
+        # refresh article list when updated source is showed
+        if self._current_source and source_id == self._current_source.oid:
+            source = DBO.Source.get(oid=self._current_source.oid)
+            articles = source.articles
+            self._list_model.set_items(articles)
+            self.article_view.update()
+
+    def _on_mark_all_read_action(self):
+        """ Mark all articles in current group or source read.
+        TODO: mark by group
+        """
+        if self._current_source:
+            if sources.mark_source_read(self._current_source.oid) > 0:
+                objects.MESSENGER.emit_updated(self._current_source.name,
+                                               self._current_source.oid,
+                                               self._current_source.group_id)

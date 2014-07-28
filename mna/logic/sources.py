@@ -19,6 +19,17 @@ def add_source(clazz, params):
     :return: DBO.Group object if success."""
     # TODO check name uniques
     group = DBO.Group()
-    group.name = n
+    group.name = params.get('name')
     group.save(True)
     return group
+
+
+def mark_source_read(source_id):
+    """ Mark all article from source read """
+    session = DBO.Session()
+    cnt = session.query(DBO.Article).\
+            filter(DBO.Article.source_id == source_id,
+                   DBO.Article.readed == 0).\
+            update({'readed': 1})
+    session.commit()
+    return cnt

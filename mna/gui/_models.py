@@ -226,9 +226,10 @@ class ListModel(QtCore.QAbstractTableModel):
         self.items = []
 
     def set_items(self, items):
+        _LOG.debug("ListModel.set_items(len=%d)", len(items))
         self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
-        self.items = [ListItem(item.title, item.oid, item.readed, item.updated,
-                               item.source.title)
+        self.items = [ListItem(item.title, item.oid, item.readed,
+                               item.updated, item.source.title)
                       for item in items]
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
@@ -238,7 +239,8 @@ class ListModel(QtCore.QAbstractTableModel):
                 itm.title = item.title
                 itm.readed = item.readed
                 itm.updated = item.updated
-                break
+                return True
+        return False
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self.items)

@@ -97,8 +97,15 @@
     <addaction name="add_rss_action"/>
     <addaction name="add_web_action"/>
    </widget>
+   <widget class="QMenu" name="menuArticles">
+    <property name="title">
+     <string>Articles</string>
+    </property>
+    <addaction name="mark_all_read_action"/>
+   </widget>
    <addaction name="menu_file"/>
    <addaction name="menu_add"/>
+   <addaction name="menuArticles"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="tool_bar">
@@ -146,6 +153,14 @@
   <action name="add_web_action">
    <property name="text">
     <string>Add Web</string>
+   </property>
+  </action>
+  <action name="mark_all_read_action">
+   <property name="text">
+    <string>Mark &amp;all read</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+A</string>
    </property>
   </action>
  </widget>
