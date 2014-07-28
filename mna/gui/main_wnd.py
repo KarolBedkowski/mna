@@ -24,6 +24,7 @@ from mna.gui import add_rss_dialog
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
 from mna.logic import groups
+from mna.common import objects
 from mna import plugins
 
 _ = gettext.gettext
@@ -53,8 +54,8 @@ class MainWnd(QtGui.QMainWindow):
     def _bind(self):
         self.action_refresh.triggered.connect(self._on_action_refresh)
         self.tree_subscriptions.clicked.connect(self._on_tree_clicked)
-        self.table_articles.selectionModel().selectionChanged.connect(
-                self._on_table_articles_clicked)
+        self.table_articles.selectionModel().\
+                selectionChanged.connect(self._on_table_articles_clicked)
         self.add_group_action.triggered.connect(self._on_add_group_action)
         self.add_rss_action.triggered.connect(self._on_add_rss_action)
         self.article_view.linkClicked.connect(self._on_article_view_link)
@@ -62,10 +63,10 @@ class MainWnd(QtGui.QMainWindow):
         sel_model = self.table_articles.selectionModel()
         sel_model.currentChanged.connect(self._on_table_articles_clicked)
         sel_model.selectionChanged.connect(self._on_table_articles_clicked)
+        objects.MESSENGER.source_updated.connect(self._on_source_updated)
 
     def _on_action_refresh(self):
         DBO.Source.force_refresh_all()
-        self._tree_model.refresh()
 
     def _on_tree_clicked(self, index):
         """ Handle group/source selection. """
@@ -73,7 +74,7 @@ class MainWnd(QtGui.QMainWindow):
         assert node.oid
         articles = []
         self._current_source = None
-        if node.kind == _models.TreeNode.KIND_SOURCE:
+        if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
             articles = source.articles
             self._current_source = source
@@ -95,6 +96,9 @@ class MainWnd(QtGui.QMainWindow):
         self.article_view.setHtml(content)
         article.readed = 1
         article.save(True)
+        self._list_model.update_item(article)
+        self._tree_model.update_source(article.source_id,
+                                       self._current_source.group_id)
 
     def _on_add_group_action(self):
         dlg = add_group_dialog.AddGroupDialog(self)
@@ -112,3 +116,7 @@ class MainWnd(QtGui.QMainWindow):
 
     def _refresh_tree(self):
         self._tree_model.refresh()
+
+    def _on_source_updated(self, name, source_id, group_id):
+        _LOG.debug("Source updated %s, %r", name, source_id, group_id)
+        self._tree_model.update_source(source_id, group_id)

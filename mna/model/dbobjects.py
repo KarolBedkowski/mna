@@ -27,14 +27,17 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 # , Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.types import TypeDecorator, VARCHAR
-from sqlalchemy import orm  # , or_, and_
+from sqlalchemy import orm, and_
+from sqlalchemy import select, func
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import scoped_session
 
 _LOG = logging.getLogger(__name__)
 
 # SQLAlchemy
 Base = declarative_base()  # pylint: disable=C0103
 Session = orm.sessionmaker()  # pylint: disable=C0103
+
 
 
 class JSONEncodedDict(TypeDecorator):
@@ -214,6 +217,14 @@ class Source(BaseModelMixin, Base):
         session = Session()
         session.query(cls).update({"next_refresh": datetime.datetime.now()})
         session.commit()
+
+    @property
+    def unreaded(self):
+        cnt = orm.object_session(self).\
+                scalar(select([func.count(Article.oid)]).\
+                       where(and_(Article.source_id == self.oid,
+                                  Article.readed == 0)))
+        return cnt
 
 
 class Task(BaseModelMixin, Base):

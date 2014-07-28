@@ -13,6 +13,19 @@ __author__ = u"Karol Będkowski"
 __copyright__ = u"Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-12"
 
+from PyQt4 import QtCore
+
+
+class _Messenger(QtCore.QObject):
+
+    source_updated = QtCore.pyqtSignal(str, int, int, name="updateSource")
+
+    def emit_updated(self, source_name, source_id, group_id):
+        self.source_updated.emit(source_name, source_id, group_id)
+
+
+MESSENGER = _Messenger()
+
 
 class SimplePresenter(object):
     """Base class for all presenters - converters `Article` content to html
@@ -84,7 +97,9 @@ class AbstractSource(object):
     def __init__(self, cfg):
         super(AbstractSource, self).__init__()
         # configuration
+        self.oid = cfg.oid
         self.cfg = cfg
+        self.group_id = cfg.group_id
 
     def get_items(self):
         return []
@@ -99,6 +114,9 @@ class AbstractSource(object):
     @classmethod
     def get_params(cls):
         return {}
+
+    def emit_updated(self):
+        MESSENGER.source_updated.emit(self.get_name(), self.oid, self.group_id)
 
 
 class AbstractFilter(object):

@@ -71,14 +71,16 @@ def run():
         app.start()
         return
 
+    from PyQt4 import QtGui
+    app = QtGui.QApplication(sys.argv)
+
     from mna.logic import worker
     main_worker = worker.MainWorker()
-#    main_worker.start()
+    main_worker.start()
 
-    from PyQt4 import QtGui
+
     from mna.gui import main_wnd
 
-    app = QtGui.QApplication(sys.argv)
     window = main_wnd.MainWnd()
     window.show()
     app.exec_()

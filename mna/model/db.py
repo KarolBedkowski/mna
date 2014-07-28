@@ -20,6 +20,7 @@ import logging
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
+from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls
 from mna.model import dbobjects as DBO
@@ -46,10 +47,15 @@ def connect(filename, debug=False, *args, **kwargs):
         Sqlalchemy Session class
     """
     _LOG.info('connect %r', (filename, args, kwargs))
-    args = {'detect_types': sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES}
-    engine = sqlalchemy.create_engine("sqlite:///" + filename, echo=debug,
-                                      connect_args=args, native_datetime=True,
-                                      isolation_level='SERIALIZABLE')
+    args = {'detect_types': sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+            'check_same_thread': False}
+    engine = sqlalchemy.create_engine("sqlite:///" + filename,
+                                      echo=debug,
+                                      connect_args=args,
+                                      native_datetime=True,
+                                      isolation_level='SERIALIZABLE',
+                                      # poolclass=SingletonThreadPool
+                                      )
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
@@ -117,6 +123,9 @@ def _bootstrap_data(session):
         group = DBO.Group()
         group.name = "Default Group"
         session.add(group)
+        group = DBO.Group()
+        group.name = "OSS"
+        session.add(group)
     if DBO.Actions.count() == 0:
         # create empty action
         action = DBO.Actions()
@@ -140,4 +149,22 @@ def _bootstrap_data(session):
         source.title = "New Scientist"
         source.conf = {"url": r'http://feeds.newscientist.com/science-news'}
         source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Make"
+        source.conf = {"url": r'http://feeds.feedburner.com/makezineonline'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Cnet"
+        source.conf = {"url": r'http://www.cnet.com/rss/all/'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "LinuxToday"
+        source.conf = {"url": r'http://linuxtoday.com/backend/biglt.rss'}
+        source.group_id = 2
         session.add(source)

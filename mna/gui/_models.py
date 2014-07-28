@@ -22,14 +22,10 @@ _LOG = logging.getLogger(__name__)
 
 
 class TreeNode(object):
-    KIND_GROUP = 0
-    KIND_SOURCE = 1
-
-    def __init__(self, parent, caption=None, kind=0, oid=None, unread=0):
+    def __init__(self, parent, caption=None, oid=None, unread=0):
         self.clear()
         self.parent = parent
         self.caption = caption
-        self.kind = kind
         self.oid = oid
         self.unread = unread
 
@@ -40,34 +36,27 @@ class TreeNode(object):
         return self.caption
 
     def __repr__(self):
-        return "<TreeNode %s; %r, %r>" % (self.caption, self.kind, self.oid) + \
+        return "<%s %s; %r>" % (self.__class__.__name__,
+                                self.caption, self.oid) + \
             "\n".join(" - " + repr(child) for child in self.children) + "</>"
 
     def clear(self):
         self.children = []
 
-    def _update_self(self, session):
-        """ Update me. """
-        if self.kind == TreeNode.KIND_GROUP:
-            item = DBO.Group.get(session=session, oid=self.oid)
-            self.caption = item.name
-        else:
-            item = DBO.Source.get(session=session, oid=self.oid)
-            self.caption = item.title
+    def get_unreaded_count(self):
+        """ Get count of unreaded articles in subtree. """
+        return self.unread
 
-    def update(self, oid, session):
-        """ Update node or find children and update when found.
+    def update(self, session=None, recursive=False):
+        pass
 
-        :param oid: id object to update
-        """
-        if self.oid == oid:
-            self._update_self(session)
-            return True
-        for node in self.children:
-            if node.update(oid, session):
-                self._update_self(session)
-                return True
-        return False
+    def get_child(self, oid):
+        for child in self.children:
+            if child.oid == oid:
+                return child
+        _LOG.error("TreeNode.get_child(oid=%r) not found in %r",
+                   oid, self)
+        return None
 
     def child_at_row(self, row):
         """The row-th child of this node."""
@@ -76,6 +65,37 @@ class TreeNode(object):
     def row(self):
         """The position of this node in the parent's list of children."""
         return self.parent.children.index(self) if self.parent else 0
+
+
+class GroupTreeNode(TreeNode):
+    """ Group node """
+    def __init__(self, parent, group):
+        super(GroupTreeNode, self).__init__(parent, group.name, group.oid)
+
+    def update(self, session=None, recursive=False):
+        """ Update node or find children and update when found.
+
+        :param oid: id object to update
+        """
+        group = DBO.Group.get(session=session, oid=self.oid)
+        self.caption = group.name
+        if recursive:
+            for child in self.children:
+                child.update(session, recursive)
+        self.unread = sum(child.get_unreaded_count()
+                          for child in self.children)
+
+
+class SourceTreeNode(TreeNode):
+    """ Group node """
+    def __init__(self, parent, source):
+        super(SourceTreeNode, self).__init__(parent, source.title, source.oid,
+                                             source.unreaded)
+
+    def update(self, session=None, _recursive=False):
+        item = DBO.Source.get(session=session, oid=self.oid)
+        self.caption = item.title
+        self.unread = item.unreaded
 
 
 class TreeModel(QtCore.QAbstractItemModel):
@@ -92,26 +112,27 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.root.clear()
         session = DBO.Session()
         for group in list(DBO.Group.all(session=session)):
-            obj = TreeNode(None, group.name, TreeNode.KIND_GROUP, group.oid)
-            for source in group.sources:
-                src = TreeNode(obj, source.title, TreeNode.KIND_SOURCE,
-                               source.oid)
-                obj.children.append(src)
+            obj = GroupTreeNode(None, group)
+            obj.children.extend(SourceTreeNode(obj, source)
+                                for source in group.sources)
+            obj.update(session)
             self.root.children.append(obj)
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
-    def update(self, oid):
-        """ Update group by `oid` and its subtree
+    def update_group(self, group_id, session=None):
+        child = self.root.get_child(group_id)
+        if child:
+            child.update(session, True)
 
-        Arguments:
-            oid: id group to update
-        """
-        session = DBO.Session()
-        self.root.update(oid, session)
-        session.close()
-
-    def update_source(self, group_oid, source_oid):
-        pass
+    def update_source(self, source_id, group_id, session=None):
+        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        group = self.root.get_child(group_id)
+        assert group is not None
+        source = group.get_child(source_id)
+        assert source is not None
+        source.update(session, False)
+        group.update(session, False)
+        self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def data(self, index, role):
         """Returns the data stored under the given role for the item referred
@@ -121,7 +142,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         if role == QtCore.Qt.DisplayRole:
             node = self.node_from_index(index)
             if index.column() == 1:
-                return QtCore.QVariant(str(1))
+                return QtCore.QVariant(str(node.unread))
             return QtCore.QVariant(str(node))
         return QtCore.QVariant()
 
@@ -210,6 +231,14 @@ class ListModel(QtCore.QAbstractTableModel):
                                item.source.title)
                       for item in items]
         self.emit(QtCore.SIGNAL("layoutChanged()"))
+
+    def update_item(self, item):
+        for itm in self.items:
+            if itm.oid == item.oid:
+                itm.title = item.title
+                itm.readed = item.readed
+                itm.updated = item.updated
+                break
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self.items)
