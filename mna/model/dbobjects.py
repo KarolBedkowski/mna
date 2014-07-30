@@ -217,22 +217,22 @@ class Source(BaseModelMixin, Base):
         session.commit()
 
     @property
-    def unreaded(self):
+    def unread(self):
         cnt = orm.object_session(self).\
                 scalar(select([func.count(Article.oid)]).
                        where(and_(Article.source_id == self.oid,
-                                  Article.readed == 0)))
+                                  Article.read == 0)))
         return cnt
 
     def get_articles(self, unread_only=False):
         """ Get list articles for source. If `unread_only` filter articles by
-            `readed` flag.
+            `read` flag.
         """
         articles = orm.object_session(self).\
                     query(Article).\
                     filter(Article.source_id == self.oid)
         if unread_only:
-            articles = articles.filter(Article.readed == 0)
+            articles = articles.filter(Article.read == 0)
         return list(articles)
 
 
@@ -270,8 +270,8 @@ class Article(BaseModelMixin, Base):
     published = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     # last update date
     updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    # article readed?
-    readed = Column(Integer, default=0)
+    # article read?
+    read = Column(Integer, default=0)
     title = Column(String)
     summary = Column(String)
     content = Column(String)

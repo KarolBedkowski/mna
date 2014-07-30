@@ -102,7 +102,7 @@ class MainWnd(QtGui.QMainWindow):
                 presenter(self._current_source_obj)
         content = presenter.to_gui(article)
         self.article_view.setHtml(content)
-        article.readed = 1
+        article.read = 1
         article.save(True)
         self._list_model.update_item(article)
         self._tree_model.update_source(article.source_id,

@@ -43,8 +43,8 @@ class TreeNode(object):
     def clear(self):
         self.children = []
 
-    def get_unreaded_count(self):
-        """ Get count of unreaded articles in subtree. """
+    def get_unread_count(self):
+        """ Get count of unread articles in subtree. """
         return self.unread
 
     def update(self, session=None, recursive=False):
@@ -82,7 +82,7 @@ class GroupTreeNode(TreeNode):
         if recursive:
             for child in self.children:
                 child.update(session, recursive)
-        self.unread = sum(child.get_unreaded_count()
+        self.unread = sum(child.get_unread_count()
                           for child in self.children)
 
 
@@ -90,12 +90,12 @@ class SourceTreeNode(TreeNode):
     """ Group node """
     def __init__(self, parent, source):
         super(SourceTreeNode, self).__init__(parent, source.title, source.oid,
-                                             source.unreaded)
+                                             source.unread)
 
     def update(self, session=None, _recursive=False):
         item = DBO.Source.get(session=session, oid=self.oid)
         self.caption = item.title
-        self.unread = item.unreaded
+        self.unread = item.unread
 
 
 class TreeModel(QtCore.QAbstractItemModel):
@@ -207,11 +207,11 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 
 class ListItem(object):
-    def __init__(self, title=None, oid=None, readed=None, updated=None,
+    def __init__(self, title=None, oid=None, read=None, updated=None,
                  source=None):
         self.title = title
         self.oid = oid
-        self.readed = readed
+        self.read = read
         self.updated = updated
         self.source = source
 
@@ -220,7 +220,7 @@ class ListItem(object):
 
     def __repr__(self):
         return "<ListItem %r; %r, %r, %r>" % (self.title, self.oid,
-                                              self.readed, self.updated)
+                                              self.read, self.updated)
 
 
 class ListModel(QtCore.QAbstractTableModel):
@@ -234,7 +234,7 @@ class ListModel(QtCore.QAbstractTableModel):
     def set_items(self, items):
         _LOG.debug("ListModel.set_items(len=%d)", len(items))
         self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
-        self.items = [ListItem(item.title, item.oid, item.readed,
+        self.items = [ListItem(item.title, item.oid, item.read,
                                item.updated, item.source.title)
                       for item in items]
         self.emit(QtCore.SIGNAL("layoutChanged()"))
@@ -243,7 +243,7 @@ class ListModel(QtCore.QAbstractTableModel):
         for itm in self.items:
             if itm.oid == item.oid:
                 itm.title = item.title
-                itm.readed = item.readed
+                itm.read = item.read
                 itm.updated = item.updated
                 return True
         return False
@@ -274,7 +274,7 @@ class ListModel(QtCore.QAbstractTableModel):
                 return QtCore.QVariant(unicode(row.updated))
         elif role == QtCore.Qt.FontRole:
             row = self.items[index.row()]
-            if not row.readed:
+            if not row.read:
                 font = QtGui.QFont()
                 font.setBold(True)
                 return font

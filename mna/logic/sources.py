@@ -29,7 +29,7 @@ def mark_source_read(source_id):
     session = DBO.Session()
     cnt = session.query(DBO.Article).\
             filter(DBO.Article.source_id == source_id,
-                   DBO.Article.readed == 0).\
-            update({'readed': 1})
+                   DBO.Article.read == 0).\
+            update({'read': 1})
     session.commit()
     return cnt
