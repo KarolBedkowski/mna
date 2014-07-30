@@ -144,6 +144,12 @@ class TreeModel(QtCore.QAbstractItemModel):
             if index.column() == 1:
                 return QtCore.QVariant(str(node.unread))
             return QtCore.QVariant(str(node))
+        elif role == QtCore.Qt.FontRole:
+            node = self.node_from_index(index)
+            if node.unread:
+                font = QtGui.QFont()
+                font.setBold(True)
+                return font
         return QtCore.QVariant()
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
