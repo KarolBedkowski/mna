@@ -224,6 +224,17 @@ class Source(BaseModelMixin, Base):
                                   Article.readed == 0)))
         return cnt
 
+    def get_articles(self, unread_only=False):
+        """ Get list articles for source. If `unread_only` filter articles by
+            `readed` flag.
+        """
+        articles = orm.object_session(self).\
+                    query(Article).\
+                    filter(Article.source_id == self.oid)
+        if unread_only:
+            articles = articles.filter(Article.readed == 0)
+        return list(articles)
+
 
 class Task(BaseModelMixin, Base):
     """Tasks (i.e. filters) configuration"""

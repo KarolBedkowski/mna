@@ -67,6 +67,8 @@ class MainWnd(QtGui.QMainWindow):
                 connect(self._on_mark_all_read_action)
         objects.MESSENGER.source_updated.connect(self._on_source_updated)
 
+        self.show_unread_action.triggered.connect(self._on_show_unread_action)
+
     def _on_action_refresh(self):
         DBO.Source.force_refresh_all()
 
@@ -80,7 +82,8 @@ class MainWnd(QtGui.QMainWindow):
         self._current_source = None
         if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
-            articles = source.articles
+            unread_only = self.show_unread_action.isChecked()
+            articles = source.get_articles(unread_only)
             self._current_source = source
         self._list_model.set_items(articles)
         self.table_articles.resizeColumnsToContents()
@@ -130,7 +133,8 @@ class MainWnd(QtGui.QMainWindow):
         # refresh article list when updated source is showed
         if self._current_source and source_id == self._current_source.oid:
             source = DBO.Source.get(oid=self._current_source.oid)
-            articles = source.articles
+            unread_only = self.show_unread_action.isChecked()
+            articles = source.get_articles(unread_only)
             self._list_model.set_items(articles)
             self.article_view.update()
 
@@ -143,3 +147,7 @@ class MainWnd(QtGui.QMainWindow):
                 objects.MESSENGER.emit_updated(self._current_source.name,
                                                self._current_source.oid,
                                                self._current_source.group_id)
+
+    def _on_show_unread_action(self):
+        # TODO: refresh list
+        pass

@@ -102,6 +102,7 @@
      <string>Articles</string>
     </property>
     <addaction name="mark_all_read_action"/>
+    <addaction name="show_unread_action"/>
    </widget>
    <addaction name="menu_file"/>
    <addaction name="menu_add"/>
@@ -161,6 +162,17 @@
    </property>
    <property name="shortcut">
     <string>Alt+A</string>
+   </property>
+  </action>
+  <action name="show_unread_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show unread only</string>
    </property>
   </action>
  </widget>
