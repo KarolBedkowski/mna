@@ -224,7 +224,7 @@ class Source(BaseModelMixin, Base):
                                   Article.read == 0)))
         return cnt
 
-    def get_articles(self, unread_only=False):
+    def get_articles(self, unread_only=False, sorting=None):
         """ Get list articles for source. If `unread_only` filter articles by
             `read` flag.
         """
@@ -233,6 +233,10 @@ class Source(BaseModelMixin, Base):
                     filter(Article.source_id == self.oid)
         if unread_only:
             articles = articles.filter(Article.read == 0)
+        if sorting:
+            articles = articles.order_by(sorting)
+        else:
+            articles = articles.order_by("updated")
         return list(articles)
 
 
