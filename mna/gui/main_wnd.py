@@ -44,8 +44,7 @@ class MainWnd(QtGui.QMainWindow):
         self._list_model = _models.ListModel()
         self.tree_subscriptions.setModel(self._tree_model)
         self.table_articles.setModel(self._list_model)
-        self._current_source = None
-        self._current_source_obj = None
+        self._last_presenter = (None, None)
         # handle links
         self.article_view.page().setLinkDelegationPolicy(
             QtWebKit.QWebPage.DelegateAllLinks)
@@ -66,47 +65,45 @@ class MainWnd(QtGui.QMainWindow):
         self.mark_all_read_action.triggered.\
                 connect(self._on_mark_all_read_action)
         objects.MESSENGER.source_updated.connect(self._on_source_updated)
+        objects.MESSENGER.group_updated.connect(self._on_group_updated)
 
         self.show_unread_action.triggered.connect(self._on_show_unread_action)
+
+    @property
+    def selected_tree_item(self):
+        model = self.tree_subscriptions.selectionModel()
+        index = model.currentIndex()
+        item = self._tree_model.node_from_index(index)
+        return item
 
     def _on_action_refresh(self):
         DBO.Source.force_refresh_all()
 
     def _on_tree_clicked(self, index):
-        """ Handle group/source selection.
-            TODO: handle group selection
-        """
+        """ Handle group/source selection."""
         node = self._tree_model.node_from_index(index)
         assert node.oid
-        articles = []
-        self._current_source = None
-        if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
-            unread_only = self.show_unread_action.isChecked()
-            articles = source.get_articles(unread_only)
-            self._current_source = source
-        self._list_model.set_items(articles)
-        self.table_articles.resizeColumnsToContents()
+        self._show_articles(node)
 
     def _on_table_articles_clicked(self, index):
         """ Handle article selection -  show article in HtmlView. """
         index = self.table_articles.selectionModel().currentIndex()
         item = self._list_model.node_from_index(index)
         article = DBO.Article.get(oid=item.oid)
-        if (self._current_source_obj is None or
-                self._current_source.oid != article.oid):
-            source = DBO.Source.get(oid=article.source_id)
-            self._current_source = source
-            self._current_source_obj = plugins.SOURCES.get(source.name)
-        presenter = self._current_source_obj.\
-                presenter(self._current_source_obj)
+        if self._last_presenter[0] == article.source_id:
+            presenter = self._last_presenter[1]
+        else:
+            source_cfg = DBO.Source.get(oid=article.source_id)
+            source = plugins.SOURCES.get(source_cfg.name)
+            presenter = source.presenter(source)
+            self._last_presenter = (article.source_id, presenter)
         content = presenter.to_gui(article)
         self.article_view.setHtml(content)
         article.read = 1
         article.save(True)
         self._list_model.update_item(article)
         self._tree_model.update_source(article.source_id,
-                                       self._current_source.group_id)
+                                       article.source.group_id)
 
     def _on_add_group_action(self):
         dlg = add_group_dialog.AddGroupDialog(self)
@@ -128,26 +125,71 @@ class MainWnd(QtGui.QMainWindow):
     def _on_source_updated(self, name, source_id, group_id):
         """ Handle  source update event. """
         _LOG.debug("Source updated %s, %r, %r", name, source_id, group_id)
+        if not source_id or not group_id:
+            return
+
         self._tree_model.update_source(source_id, group_id)
 
         # refresh article list when updated source is showed
-        if self._current_source and source_id == self._current_source.oid:
-            source = DBO.Source.get(oid=self._current_source.oid)
-            unread_only = self.show_unread_action.isChecked()
-            articles = source.get_articles(unread_only)
-            self._list_model.set_items(articles)
-            self.article_view.update()
+        node = self.selected_tree_item
+        if node is None:
+            return
+        if isinstance(node, _models.SourceTreeNode) and source_id == node.oid:
+            self._show_articles(node)
+        elif isinstance(node, _models.GroupTreeNode) and group_id == node.oid:
+            self._show_articles(node)
+
+    def _on_group_updated(self, group_id):
+        """ Handle group update event. """
+        _LOG.debug("Group updated %r", group_id)
+        self._tree_model.update_group(group_id)
+        node = self.selected_tree_item
+        if node is None:
+            return
+        if isinstance(node, _models.GroupTreeNode) and \
+                group_id == node.oid:
+            self._show_articles(node)
 
     def _on_mark_all_read_action(self):
-        """ Mark all articles in current group or source read.
-        TODO: mark by group
-        """
-        if self._current_source:
-            if sources.mark_source_read(self._current_source.oid) > 0:
-                objects.MESSENGER.emit_updated(self._current_source.name,
-                                               self._current_source.oid,
-                                               self._current_source.group_id)
+        """ Mark all articles in current group or source read. """
+        sources_to_mark = []
+        node = self.selected_tree_item
+        if node is None:
+            return
+        if isinstance(node, _models.SourceTreeNode):
+            sources_to_mark = [(node.oid, node.parent.oid)]
+        elif isinstance(node, _models.GroupTreeNode):
+            sources_to_mark = [(child.oid, node.oid)
+                               for child
+                               in node.children]
+        else:
+            raise RuntimeError("invalid object type %r", node)
+        updated, src_updated = sources.mark_source_read([src[0]
+                                                         for src
+                                                         in sources_to_mark])
+        # when updated - emit signals for refresh tree/list
+        if updated > 0:
+            for source_oid, group_oid in sources_to_mark:
+                # send signals only for real updated sources
+                if src_updated[source_oid] > 0:
+                    objects.MESSENGER.emit_updated(str(source_oid),
+                                                   source_oid,
+                                                   group_oid)
+            objects.MESSENGER.emit_group_updated(sources_to_mark[0][1])
 
     def _on_show_unread_action(self):
-        # TODO: refresh list
-        pass
+        node = self.selected_tree_item
+        self._show_articles(node)
+
+    def _show_articles(self, node):
+        _LOG.debug("MainWnd._show_articles(%r(oid=%r))", type(node), node.oid)
+        unread_only = self.show_unread_action.isChecked()
+        if isinstance(node, _models.SourceTreeNode):
+            source = DBO.Source.get(oid=node.oid)
+        elif isinstance(node, _models.GroupTreeNode):
+            source = DBO.Group.get(oid=node.oid)
+        else:
+            raise RuntimeError("invalid tree item: %r", node)
+        articles = source.get_articles(unread_only)
+        self._list_model.set_items(articles)
+        self.table_articles.resizeColumnsToContents()

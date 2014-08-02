@@ -170,6 +170,28 @@ class Group(BaseModelMixin, Base):
     name = Column(String)
     default_actions_group_id = Column(Integer, ForeignKey("actions.oid"))
 
+    def get_articles(self, unread_only=False, sorting=None):
+        """ Get list articles for all sources in current group.
+
+        Args:
+            unread_only (bool): filter articles by read flag
+            sorting (str): name of column to sort; default - "updated"
+
+        Return:
+            list of Article objects
+        """
+        session = orm.object_session(self) or Session()
+        articles = session.query(Article).\
+                    join(Article.source).\
+                    filter(Source.group_id == self.oid)
+        if unread_only:
+            articles = articles.filter(Article.read == 0)
+        if sorting:
+            articles = articles.order_by(sorting)
+        else:
+            articles = articles.order_by("updated")
+        return list(articles)
+
 
 class Source(BaseModelMixin, Base):
     """Source configuration"""
@@ -228,8 +250,8 @@ class Source(BaseModelMixin, Base):
         """ Get list articles for source. If `unread_only` filter articles by
             `read` flag.
         """
-        articles = orm.object_session(self).\
-                    query(Article).\
+        session = orm.object_session(self) or Session()
+        articles = session.query(Article).\
                     filter(Article.source_id == self.oid)
         if unread_only:
             articles = articles.filter(Article.read == 0)

@@ -8,7 +8,12 @@ __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-15"
 
 
+import logging
+
 from mna.model import dbobjects as DBO
+
+
+_LOG = logging.getLogger(__name__)
 
 
 def add_source(clazz, params):
@@ -24,12 +29,28 @@ def add_source(clazz, params):
     return group
 
 
-def mark_source_read(source_id):
-    """ Mark all article from source read """
+def mark_source_read(source_ids, read=True):
+    """ Mark all article from source(s) read.
+
+    Args:
+            source_ids (int/[int]): one or list source id to update
+            read (bool): mark articles read/unread
+    Return:
+        (total updated articles, map[source_id] -> number of updated articles)
+    """
+    if not isinstance(source_ids, (list, tuple)):
+        source_ids = [source_ids]
+    cnt = 0
+    results = {}
     session = DBO.Session()
-    cnt = session.query(DBO.Article).\
-            filter(DBO.Article.source_id == source_id,
-                   DBO.Article.read == 0).\
-            update({'read': 1})
+    for sid in source_ids:
+        _LOG.debug("mark_source_read(%r, %r)", sid, read)
+        s_cnt = session.query(DBO.Article).\
+                filter(DBO.Article.source_id == sid,
+                       DBO.Article.read == (0 if read else 1)).\
+                update({'read': (1 if read else 0)})
+        cnt += s_cnt
+        results[sid] = s_cnt
     session.commit()
-    return cnt
+    _LOG.debug("mark_source_read -> %r", cnt)
+    return cnt, results

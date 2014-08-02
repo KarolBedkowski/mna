@@ -19,9 +19,13 @@ from PyQt4 import QtCore
 class _Messenger(QtCore.QObject):
 
     source_updated = QtCore.pyqtSignal(str, int, int, name="updateSource")
+    group_updated = QtCore.pyqtSignal(int, name="updateGroup")
 
     def emit_updated(self, source_name, source_id, group_id):
         self.source_updated.emit(source_name, source_id, group_id)
+
+    def emit_group_updated(self, group_id):
+        self.group_updated.emit(group_id)
 
 
 MESSENGER = _Messenger()
