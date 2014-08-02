@@ -49,8 +49,9 @@ def connect(filename, debug=False, *args, **kwargs):
     _LOG.info('connect %r', (filename, args, kwargs))
     args = {'detect_types': sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
             'check_same_thread': False}
+
     engine = sqlalchemy.create_engine("sqlite:///" + filename,
-                                      echo=debug,
+                                      echo=False,
                                       connect_args=args,
                                       native_datetime=True,
                                       isolation_level='SERIALIZABLE',
