@@ -80,6 +80,17 @@ class BaseModelMixin(object):
             session.commit()
         return session
 
+    def delete(self, commit=False, session=None):
+        """ Delete object from database. """
+        if session:
+            session.merge(self)
+        else:
+            session = Session.object_session(self) or Session()
+            session.delete(self)
+        if commit:
+            session.commit()
+        return session
+
     def clone(self, cleanup=True):
         """ Clone current object.
 

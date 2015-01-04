@@ -59,3 +59,11 @@ def mark_source_read(source_ids, read=True):
 def save_source(source):
     _LOG.info("save_source %r", source)
     source.save(True)
+
+
+def delete_source(source):
+    """ Delete `source`. """
+    _LOG.info("delete_source %r", source)
+    source.delete(True)
+    _LOG.info("delete_source done")
+    return True

@@ -103,6 +103,8 @@ class WindowMain(QtGui.QMainWindow):
         menu = QtGui.QMenu()
         menu.addAction(self.tr("Edit")).triggered.\
                 connect(self._on_tree_menu_edit)
+        menu.addAction(self.tr("Delete")).triggered.\
+                connect(self._on_tree_menu_delete)
 
         menu.exec_(self._ui.tree_subscriptions.viewport().mapToGlobal(position))
 
@@ -127,6 +129,36 @@ class WindowMain(QtGui.QMainWindow):
             dlg = dialog_edit_group.DialogEditGroup(self, group)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 objects.MESSENGER.emit_group_updated(group.oid)
+        else:
+            raise RuntimeError("invalid object type %r", node)
+
+    def _on_tree_menu_delete(self):
+        model = self._ui.tree_subscriptions.selectionModel()
+        index = model.currentIndex()
+        node = self._tree_model.node_from_index(index)
+        if node is None:
+            return
+        if QtGui.QMessageBox.question(self, self.tr("Delete"),
+                                      self.tr("Delete selected item?"),
+                                      QtGui.QMessageBox.Yes,
+                                      QtGui.QMessageBox.No) \
+                == QtGui.QMessageBox.No:
+            return
+
+        model.clearSelection()
+#        parent = index.parent()
+#        if parent and parent.isValid():
+#            model.select(parent)
+
+        if isinstance(node, _models.SourceTreeNode):
+            source = DBO.Source.get(oid=node.oid)
+            group_id = source.group_id
+            if sources.delete_source(source):
+                self._refresh_tree()
+        elif isinstance(node, _models.GroupTreeNode):
+            group = DBO.Group.get(oid=node.oid)
+            if groups.delete_group(group):
+                self._refresh_tree()
         else:
             raise RuntimeError("invalid object type %r", node)
 

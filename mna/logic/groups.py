@@ -39,3 +39,11 @@ def save_group(group):
         raise GroupSaveError("duplicated name")
     group.save(commit=True, session=session)
     _LOG.info("save_group done")
+
+
+def delete_group(group):
+    """ Delete `group`. """
+    _LOG.info("delete_group %r", group)
+    group.delete(True)
+    _LOG.info("delete_group done")
+    return True
