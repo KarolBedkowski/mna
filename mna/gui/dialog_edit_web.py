@@ -73,6 +73,13 @@ class DialogEditWeb(QtGui.QDialog):
             group_idx = self._ui.c_group.findData(source.group_id)
             self._ui.c_group.setCurrentIndex(group_idx)
         self._ui.e_interval.setValue((source.interval or 3600) / 60)
+        self._ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
+                                               or 0))
+        scan_part = source.conf.get("mode") == "part"
+        self._ui.rb_scan_page.setChecked(not scan_part)
+        self._ui.rb_scan_page.toggled.emit(not scan_part)
+        self._ui.rb_scan_parts.setChecked(scan_part)
+        self._ui.rb_scan_parts.toggled.emit(scan_part)
 
     def _from_window(self):
         source = self._source
@@ -83,4 +90,9 @@ class DialogEditWeb(QtGui.QDialog):
         group_id = self._ui.c_group.itemData(group_idx).toInt()[0]
         source.group_id = group_id
         source.interval = self._ui.e_interval.value() * 60
+        source.conf["similarity"] = self._ui.sb_similarity_ratio.value()
+        if self._ui.rb_scan_page.isChecked():
+            source.conf["mode"] == "page"
+        else:
+            source.conf["mode"] == "part"
         return True

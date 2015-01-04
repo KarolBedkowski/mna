@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'data/gui/dialog_edit_rss.ui'
 #
-# Created: Sun Jan  4 15:23:28 2015
+# Created: Sun Jan  4 22:51:29 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_DialogAddRss(object):
     def setupUi(self, DialogAddRss):
         DialogAddRss.setObjectName(_fromUtf8("DialogAddRss"))
-        DialogAddRss.resize(475, 167)
+        DialogAddRss.resize(664, 264)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
@@ -78,6 +78,7 @@ class Ui_DialogAddRss(object):
         self.horizontalLayout.addWidget(self.add_btn)
         self.horizontalLayout.setStretch(0, 1)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
+        self.verticalLayout_2.setStretch(0, 1)
 
         self.retranslateUi(DialogAddRss)
         QtCore.QMetaObject.connectSlotsByName(DialogAddRss)

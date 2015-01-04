@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'data/gui/dialog_edit_group.ui'
 #
-# Created: Sun Jan  4 15:23:28 2015
+# Created: Sun Jan  4 22:51:29 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
