@@ -15,12 +15,14 @@ import gettext
 import logging
 import webbrowser
 
-from PyQt4 import QtGui, uic, QtWebKit
+from PyQt4 import QtGui, QtWebKit, QtCore
 
 from mna.gui import _models
-from mna.gui import _resources_rc
-from mna.gui import add_group_dialog
-from mna.gui import add_rss_dialog
+from mna.gui import resources_rc
+from mna.gui import ui_window_main
+from mna.gui import dialog_edit_group
+from mna.gui import dialog_edit_rss
+from mna.gui import dialog_edit_web
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
@@ -30,48 +32,58 @@ from mna import plugins
 _ = gettext.gettext
 _LOG = logging.getLogger(__name__)
 
-assert _resources_rc
+assert resources_rc
 
 
-class MainWnd(QtGui.QMainWindow):
+class WindowMain(QtGui.QMainWindow):
     """ Main Window class. """
 
-    def __init__(self, _parent=None):
-        super(MainWnd, self).__init__()
+    def __init__(self, parent=None):
+        QtGui.QMainWindow.__init__(self, parent)
         self._appconfig = AppConfig()
-        uic.loadUi(self._appconfig.get_data_file("gui/main.ui"), self)
+        self._ui = ui_window_main.Ui_WindowMain()
+        self._ui.setupUi(self)
+        # setup
         self._tree_model = _models.TreeModel()
         self._list_model = _models.ListModel()
-        self.tree_subscriptions.setModel(self._tree_model)
-        self.table_articles.setModel(self._list_model)
-        self._last_presenter = (None, None)
+        self._ui.tree_subscriptions.setModel(self._tree_model)
+        self._ui.table_articles.setModel(self._list_model)
+        self._ui.tree_subscriptions.\
+                setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self._ui.tree_subscriptions.customContextMenuRequested.\
+                connect(self._on_tree_popupmenu)
+
+        self._last_presenter = (None, None)#
+
         # handle links
-        self.article_view.page().setLinkDelegationPolicy(
+        self._ui.article_view.page().setLinkDelegationPolicy(
             QtWebKit.QWebPage.DelegateAllLinks)
         self._bind()
 
     def _bind(self):
-        self.action_refresh.triggered.connect(self._on_action_refresh)
-        self.tree_subscriptions.clicked.connect(self._on_tree_clicked)
-        self.table_articles.selectionModel().\
+        self._ui.action_refresh.triggered.connect(self._on_action_refresh)
+        self._ui.tree_subscriptions.clicked.connect(self._on_tree_clicked)
+        self._ui.table_articles.selectionModel().\
                 selectionChanged.connect(self._on_table_articles_clicked)
-        self.add_group_action.triggered.connect(self._on_add_group_action)
-        self.add_rss_action.triggered.connect(self._on_add_rss_action)
-        self.article_view.linkClicked.connect(self._on_article_view_link)
+        self._ui.add_group_action.triggered.connect(self._on_add_group_action)
+        self._ui.add_rss_action.triggered.connect(self._on_add_rss_action)
+        self._ui.add_web_action.triggered.connect(self._on_add_web_action)
+        self._ui.article_view.linkClicked.connect(self._on_article_view_link)
         # handle article list selection changes
-        sel_model = self.table_articles.selectionModel()
+        sel_model = self._ui.table_articles.selectionModel()
         sel_model.currentChanged.connect(self._on_table_articles_clicked)
         sel_model.selectionChanged.connect(self._on_table_articles_clicked)
-        self.mark_all_read_action.triggered.\
+        self._ui.mark_all_read_action.triggered.\
                 connect(self._on_mark_all_read_action)
         objects.MESSENGER.source_updated.connect(self._on_source_updated)
         objects.MESSENGER.group_updated.connect(self._on_group_updated)
 
-        self.show_unread_action.triggered.connect(self._on_show_unread_action)
+        self._ui.show_unread_action.triggered.\
+                connect(self._on_show_unread_action)
 
     @property
     def selected_tree_item(self):
-        model = self.tree_subscriptions.selectionModel()
+        model = self._ui.tree_subscriptions.selectionModel()
         index = model.currentIndex()
         item = self._tree_model.node_from_index(index)
         return item
@@ -85,9 +97,42 @@ class MainWnd(QtGui.QMainWindow):
         assert node.oid
         self._show_articles(node)
 
+    def _on_tree_popupmenu(self, position):
+        #indexes = self._ui.tree_subscriptions.selectedIndexes()
+        #selected = self.selected_tree_item
+        menu = QtGui.QMenu()
+        menu.addAction(self.tr("Edit")).triggered.\
+                connect(self._on_tree_menu_edit)
+
+        menu.exec_(self._ui.tree_subscriptions.viewport().mapToGlobal(position))
+
+    def _on_tree_menu_edit(self):
+        node = self.selected_tree_item
+        if node is None:
+            return
+        if isinstance(node, _models.SourceTreeNode):
+            source = DBO.Source.get(oid=node.oid)
+            if source.name == "mna.plugins.rss.RssSource":
+                dlg = dialog_edit_rss.DialogEditRss(self, source)
+            elif source.name == "mna.plugins.web.WebSource":
+                dlg = dialog_edit_web.DialogEditWeb(self, source)
+            else:
+                raise RuntimeError("unsupported edit for %r %r", source.name,
+                                   node)
+            if dlg.exec_() == QtGui.QDialog.Accepted:
+                objects.MESSENGER.emit_source_updated(source.oid,
+                                                      source.group_id)
+        elif isinstance(node, _models.GroupTreeNode):
+            group = DBO.Group.get(oid=node.oid)
+            dlg = dialog_edit_group.DialogEditGroup(self, group)
+            if dlg.exec_() == QtGui.QDialog.Accepted:
+                objects.MESSENGER.emit_group_updated(group.oid)
+        else:
+            raise RuntimeError("invalid object type %r", node)
+
     def _on_table_articles_clicked(self, index):
         """ Handle article selection -  show article in HtmlView. """
-        index = self.table_articles.selectionModel().currentIndex()
+        index = self._ui.table_articles.selectionModel().currentIndex()
         item = self._list_model.node_from_index(index)
         article = DBO.Article.get(oid=item.oid)
         if self._last_presenter[0] == article.source_id:
@@ -98,7 +143,7 @@ class MainWnd(QtGui.QMainWindow):
             presenter = source.presenter(source)
             self._last_presenter = (article.source_id, presenter)
         content = presenter.to_gui(article)
-        self.article_view.setHtml(content)
+        self._ui.article_view.setHtml(content)
         article.read = 1
         article.save(True)
         self._list_model.update_item(article)
@@ -106,15 +151,19 @@ class MainWnd(QtGui.QMainWindow):
                                        article.source.group_id)
 
     def _on_add_group_action(self):
-        dlg = add_group_dialog.AddGroupDialog(self)
+        dlg = dialog_edit_group.DialogEditGroup(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
-            if groups.add_group(dlg.get_text()):
-                self._refresh_tree()
+            self._refresh_tree()
 
     def _on_add_rss_action(self):
-        dlg = add_rss_dialog.AddRssDialog(self)
+        dlg = dialog_edit_rss.DialogEditRss(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
-            pass
+            self._refresh_tree()
+
+    def _on_add_web_action(self):
+        dlg = dialog_edit_web.DialogEditWeb(self)
+        if dlg.exec_() == QtGui.QDialog.Accepted:
+            self._refresh_tree()
 
     def _on_article_view_link(self, url):
         webbrowser.open(unicode(url.toString()))
@@ -122,9 +171,10 @@ class MainWnd(QtGui.QMainWindow):
     def _refresh_tree(self):
         self._tree_model.refresh()
 
-    def _on_source_updated(self, name, source_id, group_id):
+    @QtCore.pyqtSlot(int, int)
+    def _on_source_updated(self, source_id, group_id):
         """ Handle  source update event. """
-        _LOG.debug("Source updated %s, %r, %r", name, source_id, group_id)
+        _LOG.debug("Source updated %r, %r", source_id, group_id)
         if not source_id or not group_id:
             return
 
@@ -139,6 +189,7 @@ class MainWnd(QtGui.QMainWindow):
         elif isinstance(node, _models.GroupTreeNode) and group_id == node.oid:
             self._show_articles(node)
 
+    @QtCore.pyqtSlot(int)
     def _on_group_updated(self, group_id):
         """ Handle group update event. """
         _LOG.debug("Group updated %r", group_id)
@@ -172,9 +223,8 @@ class MainWnd(QtGui.QMainWindow):
             for source_oid, group_oid in sources_to_mark:
                 # send signals only for real updated sources
                 if src_updated[source_oid] > 0:
-                    objects.MESSENGER.emit_updated(str(source_oid),
-                                                   source_oid,
-                                                   group_oid)
+                    objects.MESSENGER.emit_source_updated(source_oid,
+                                                          group_oid)
             objects.MESSENGER.emit_group_updated(sources_to_mark[0][1])
 
     def _on_show_unread_action(self):
@@ -182,8 +232,9 @@ class MainWnd(QtGui.QMainWindow):
         self._show_articles(node)
 
     def _show_articles(self, node):
-        _LOG.debug("MainWnd._show_articles(%r(oid=%r))", type(node), node.oid)
-        unread_only = self.show_unread_action.isChecked()
+        _LOG.debug("WindowMain._show_articles(%r(oid=%r))", type(node),
+                   node.oid)
+        unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
         elif isinstance(node, _models.GroupTreeNode):
@@ -192,4 +243,4 @@ class MainWnd(QtGui.QMainWindow):
             raise RuntimeError("invalid tree item: %r", node)
         articles = source.get_articles(unread_only)
         self._list_model.set_items(articles)
-        self.table_articles.resizeColumnsToContents()
+        self._ui.table_articles.resizeColumnsToContents()

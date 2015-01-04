@@ -69,10 +69,13 @@ class JSONEncodedDict(TypeDecorator):
 class BaseModelMixin(object):
     """ Utilities method for database objects """
 
-    def save(self, commit=False):
+    def save(self, commit=False, session=None):
         """ Save object into database. """
-        session = Session.object_session(self) or Session()
-        session.add(self)
+        if session:
+            session.merge(self)
+        else:
+            session = Session.object_session(self) or Session()
+            session.add(self)
         if commit:
             session.commit()
         return session
@@ -191,6 +194,9 @@ class Group(BaseModelMixin, Base):
         else:
             articles = articles.order_by("updated")
         return list(articles)
+
+    def is_valid(self):
+        return bool(self.name)
 
 
 class Source(BaseModelMixin, Base):

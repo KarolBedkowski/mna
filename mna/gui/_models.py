@@ -120,9 +120,11 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def update_group(self, group_id, session=None):
+        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
         child = self.root.get_child(group_id)
-        if child:
+        if child is not None:
             child.update(session, True)
+        self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def update_source(self, source_id, group_id, session=None):
         self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
@@ -197,6 +199,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def parent(self, child):
         """The parent index of a given index."""
+        if not child.isValid():
+            return QtCore.QModelIndex()
         node = self.node_from_index(child)
         if node is None:
             return QtCore.QModelIndex()

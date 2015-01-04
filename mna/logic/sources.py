@@ -54,3 +54,8 @@ def mark_source_read(source_ids, read=True):
     session.commit()
     _LOG.debug("mark_source_read -> %r", cnt)
     return cnt, results
+
+
+def save_source(source):
+    _LOG.info("save_source %r", source)
+    source.save(True)

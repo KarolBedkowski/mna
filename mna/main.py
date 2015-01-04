@@ -78,10 +78,9 @@ def run():
     main_worker = worker.MainWorker()
     main_worker.start()
 
+    from mna.gui import window_main
 
-    from mna.gui import main_wnd
-
-    window = main_wnd.MainWnd()
+    window = window_main.WindowMain()
     window.show()
     app.exec_()
 

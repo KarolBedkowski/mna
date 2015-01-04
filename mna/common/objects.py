@@ -18,13 +18,24 @@ from PyQt4 import QtCore
 
 class _Messenger(QtCore.QObject):
 
-    source_updated = QtCore.pyqtSignal(str, int, int, name="updateSource")
+    source_updated = QtCore.pyqtSignal(int, int, name="updateSource")
     group_updated = QtCore.pyqtSignal(int, name="updateGroup")
 
-    def emit_updated(self, source_name, source_id, group_id):
-        self.source_updated.emit(source_name, source_id, group_id)
+    def emit_source_updated(self, source_id, group_id):
+        """ Send source updated message.
+
+        Args:
+            source_id (int): updated source id
+            group_id (int): updated source group_id
+        """
+        self.source_updated.emit(source_id, group_id)
 
     def emit_group_updated(self, group_id):
+        """ Send group of sources updated message.
+
+        Args:
+            group_id (int): updated group id
+        """
         self.group_updated.emit(group_id)
 
 
@@ -66,7 +77,7 @@ class SimplePresenter(object):
         if article.title:
             result.append("<h1>")
             if article.link:
-                result.append('<a href="' + article.link + '">"')
+                result.append('<a href="' + article.link + '">')
             result.append(article.title)
             if article.link:
                 result.append('</a>')
@@ -120,7 +131,7 @@ class AbstractSource(object):
         return {}
 
     def emit_updated(self):
-        MESSENGER.source_updated.emit(self.get_name(), self.oid, self.group_id)
+        MESSENGER.emit_source_updated(self.oid, self.group_id)
 
 
 class AbstractFilter(object):
