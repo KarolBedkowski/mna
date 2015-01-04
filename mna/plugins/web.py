@@ -12,7 +12,7 @@ import hashlib
 import time
 import datetime
 import logging
-from HTMLParser import HTMLParser
+import itertools
 
 from lxml import etree
 
@@ -33,6 +33,9 @@ def download_page(url):
         conn = urllib2.urlopen(url)
         info = dict(conn.headers)
         info['_url'] = url
+        info['_encoding'] = conn.headers.getencoding()
+        if info['_encoding'] == '7bit':
+            info['_encoding'] = None
         modified = conn.headers.getdate('last-modified') or \
                 conn.headers.getdate('last-modified')
         info['_last_modified'] = \
@@ -47,11 +50,17 @@ def download_page(url):
 
 def get_page_part(info, page, selector):
     """ Find all elements of `page` by `selector` xpath expression. """
-    if info.get('content_type') == 'text/html':
-        parser = etree.HTMLParser(encoding='UTF-8')
+    content_type = info.get('content-type')
+    if content_type and content_type.startswith('text/html'):
+        parser = etree.HTMLParser(encoding='UTF-8', remove_blank_text=True,
+                                  remove_comments=True, remove_pis=True)
     else:
         parser = etree.XMLParser(recover=True, encoding='UTF-8')
     tree = etree.fromstring(page, parser)
+    for elem in itertools.chain(tree.xpath("//comment()"),
+                                tree.xpath("//script"),
+                                tree.xpath("//style")):
+        elem.getparent().remove(elem)
     return (etree.tostring(elem).strip() for elem in tree.xpath(selector))
 
 
@@ -61,23 +70,28 @@ def create_checksum(data):
     return md5.hexdigest().lower()
 
 
-class TagStripper(HTMLParser):
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.reset()
-        self.fed = []
+def get_title(html, encoding):
+    parser = etree.HTMLParser(encoding=encoding, remove_blank_text=True,
+                              remove_comments=True, remove_pis=True)
+    # try to find title
+    tree = etree.fromstring(html, parser)
+    print etree.tostring(tree)
+    for tag in ('//head/title', '//h1', '//h2'):
+        titles = tree.xpath(tag)
+        print tag, titles
+        if titles:
+            title = titles[0].text.strip()
+            print tag, title
+            if title:
+                return title
 
-    def handle_data(self, d):
-        self.fed.append(d)
-
-    def get_data(self):
-        return ''.join(self.fed)
-
-
-def strip_html_tags(html):
-    stripper = TagStripper()
-    stripper.feed(html)
-    return stripper.get_data()
+    # title not found, use page text
+    html = etree.tostring(tree, encoding='UTF-8', method="text")
+    title = unicode(html.replace('\n', ' ').replace('\t', ' ').
+                   replace('\r', ' ').strip(), 'UTF-8')
+    if len(title) > 100:
+        title = title[:97] + "..."
+    return title
 
 
 class WebSource(objects.AbstractSource):
@@ -110,12 +124,8 @@ class WebSource(objects.AbstractSource):
                       last_refreshed)
             return []
 
-        parts = []
-        selector = self.cfg.conf.get('xpath')
-        if selector:
-            parts = list(get_page_part(info, page, selector))
-        else:
-            parts = [page]
+        selector = self.cfg.conf.get('xpath') or '//html'
+        parts = list(get_page_part(info, page, selector))
 
         if not parts:
             return []
@@ -128,9 +138,10 @@ class WebSource(objects.AbstractSource):
                 continue
 
             checksum = create_checksum(part)
-            art = DBO.Article.get(session=session, internal_id=checksum)
+            art = DBO.Article.get(session=session, internal_id=checksum,
+                                  source_id=self.cfg.oid)
             if art:
-                _LOG.debug("Article already in db - skipping: %r", checksum)
+                # _LOG.debug("Article already in db - skipping: %r", checksum)
                 continue
 
             art = art or DBO.Article()
@@ -138,9 +149,7 @@ class WebSource(objects.AbstractSource):
             art.content = part
             art.summary = None
             art.score = initial_score
-            art.title = strip_html_tags(part)
-            if len(art.title) > 100:
-                art.title = art.title[:97] + "..."
+            art.title = get_title(part, info['_encoding'])
             art.updated = now
             art.published = page_modification
             art.link = url
