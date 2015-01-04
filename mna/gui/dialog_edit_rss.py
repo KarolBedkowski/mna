@@ -71,7 +71,7 @@ class DialogEditRss(QtGui.QDialog):
         if source.group_id:
             group_idx = self._ui.c_group.findData(source.group_id)
             self._ui.c_group.setCurrentIndex(group_idx)
-        self._ui.e_interval.setValue(source.interval or 3600)
+        self._ui.e_interval.setValue((source.interval or 3600) / 60)
 
     def _from_window(self):
         self._source.title = unicode(self._ui.e_title.text())
@@ -79,5 +79,5 @@ class DialogEditRss(QtGui.QDialog):
         group_idx = self._ui.c_group.currentIndex()
         group_id = self._ui.c_group.itemData(group_idx).toInt()[0]
         self._source.group_id = group_id
-        self._source.interval = self._ui.e_interval.value()
+        self._source.interval = self._ui.e_interval.value() * 60
         return True
