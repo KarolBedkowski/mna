@@ -59,6 +59,7 @@ def mark_source_read(source_ids, read=True):
 def save_source(source):
     _LOG.info("save_source %r", source)
     source.save(True)
+    _LOG.info("save_source done")
 
 
 def delete_source(source):

@@ -92,7 +92,7 @@ class DialogEditWeb(QtGui.QDialog):
         source.interval = self._ui.e_interval.value() * 60
         source.conf["similarity"] = self._ui.sb_similarity_ratio.value()
         if self._ui.rb_scan_page.isChecked():
-            source.conf["mode"] == "page"
+            source.conf["mode"] = "page"
         else:
-            source.conf["mode"] == "part"
+            source.conf["mode"] = "part"
         return True
