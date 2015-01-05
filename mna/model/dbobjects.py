@@ -17,53 +17,20 @@ __version__ = "2014-06-12"
 import logging
 import datetime
 
-try:
-    import simplejson as json
-except ImportError:
-    import json
-
-
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 # , Index
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.types import TypeDecorator, VARCHAR
 from sqlalchemy import orm, and_
 from sqlalchemy import select, func
 from sqlalchemy.ext.associationproxy import association_proxy
+
+from mna.model import jsonobj
 
 _LOG = logging.getLogger(__name__)
 
 # SQLAlchemy
 Base = declarative_base()  # pylint: disable=C0103
 Session = orm.sessionmaker()  # pylint: disable=C0103
-
-
-class JSONEncodedDict(TypeDecorator):
-    """Represents an immutable structure as a json-encoded string.
-
-    Usage::
-
-        JSONEncodedDict(255)
-
-    From: sqlalchemy manual
-
-    """
-
-    impl = VARCHAR
-
-    def process_bind_param(self, value, dialect):
-        if value is not None:
-            value = json.dumps(value)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            try:
-                value = json.loads(value)
-            except ValueError:
-                _LOG.error("JSONEncodedDict.Invalid value to decode: %r",
-                           value)
-        return value
 
 
 class BaseModelMixin(object):
@@ -236,8 +203,8 @@ class Source(BaseModelMixin, Base):
     # number days back to load
     max_age_to_load = Column(Integer)
 
-    conf = Column('conf', JSONEncodedDict)
-    meta = Column(JSONEncodedDict)
+    conf = Column('conf', jsonobj.JSONEncodedDict)
+    meta = Column(jsonobj.JSONEncodedDict)
 
     group_id = Column(Integer, ForeignKey("groups.oid"))
 
@@ -288,7 +255,7 @@ class Task(BaseModelMixin, Base):
     # Filter name
     name = Column(String)
     enabled = Column(Integer, default=0)
-    conf = Column('conf', JSONEncodedDict)
+    conf = Column('conf', jsonobj.JSONEncodedDict)
 
 
 class Actions(BaseModelMixin, Base):
@@ -322,7 +289,7 @@ class Article(BaseModelMixin, Base):
     internal_id = Column(String, index=True)
     link = Column(String)
     author = Column(String)
-    meta = Column(JSONEncodedDict)
+    meta = Column(jsonobj.JSONEncodedDict)
     score = Column(Integer, default=0)
 
     # tags
