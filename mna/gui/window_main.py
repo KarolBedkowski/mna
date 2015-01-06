@@ -23,6 +23,7 @@ from mna.gui import ui_window_main
 from mna.gui import dialog_edit_group
 from mna.gui import dialog_edit_rss
 from mna.gui import dialog_edit_web
+from mna.gui import dialog_source_info
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
@@ -53,7 +54,7 @@ class WindowMain(QtGui.QMainWindow):
         self._ui.tree_subscriptions.customContextMenuRequested.\
                 connect(self._on_tree_popupmenu)
 
-        self._last_presenter = (None, None)#
+        self._last_presenter = (None, None)
 
         # handle links
         self._ui.article_view.page().setLinkDelegationPolicy(
@@ -98,15 +99,18 @@ class WindowMain(QtGui.QMainWindow):
         self._show_articles(node)
 
     def _on_tree_popupmenu(self, position):
-        #indexes = self._ui.tree_subscriptions.selectedIndexes()
-        #selected = self.selected_tree_item
+        selected = self.selected_tree_item
         menu = QtGui.QMenu()
         menu.addAction(self.tr("Edit")).triggered.\
                 connect(self._on_tree_menu_edit)
         menu.addAction(self.tr("Delete")).triggered.\
                 connect(self._on_tree_menu_delete)
+        if isinstance(selected, _models.SourceTreeNode):
+            menu.addAction(self.tr("Info")).triggered.\
+                    connect(self._on_tree_menu_info)
 
-        menu.exec_(self._ui.tree_subscriptions.viewport().mapToGlobal(position))
+        menu.exec_(self._ui.tree_subscriptions.viewport().
+                   mapToGlobal(position))
 
     def _on_tree_menu_edit(self):
         node = self.selected_tree_item
@@ -152,7 +156,6 @@ class WindowMain(QtGui.QMainWindow):
 
         if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
-            group_id = source.group_id
             if sources.delete_source(source):
                 self._refresh_tree()
         elif isinstance(node, _models.GroupTreeNode):
@@ -161,6 +164,16 @@ class WindowMain(QtGui.QMainWindow):
                 self._refresh_tree()
         else:
             raise RuntimeError("invalid object type %r", node)
+
+    def _on_tree_menu_info(self):
+        model = self._ui.tree_subscriptions.selectionModel()
+        index = model.currentIndex()
+        node = self._tree_model.node_from_index(index)
+        if node is None or not isinstance(node, _models.SourceTreeNode):
+            return
+        source = DBO.Source.get(oid=node.oid)
+        dlg = dialog_source_info.DialogSourceInfo(self, source)
+        dlg.exec_()
 
     def _on_table_articles_clicked(self, index):
         """ Handle article selection -  show article in HtmlView. """

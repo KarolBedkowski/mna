@@ -264,6 +264,14 @@ class Source(BaseModelMixin, Base):
         if commit:
             session.commit()
 
+    def get_logs(self):
+        """  Find logs for `source_id` """
+        session = orm.object_session(self) or Session()
+        article = session.query(SourceLog).\
+            filter(SourceLog.source_id == self.oid).\
+            order_by(SourceLog.date.desc()).all()
+        return article
+
 
 class Task(BaseModelMixin, Base):
     """Tasks (i.e. filters) configuration"""
@@ -354,5 +362,5 @@ class SourceLog(BaseModelMixin, Base):
 
     source_id = Column(Integer, ForeignKey("sources.oid"))
     source = orm.relationship(Source,
-                              backref=orm.backref("sources_log",
+                              backref=orm.backref("source_log",
                                                   cascade="all, delete-orphan"))
