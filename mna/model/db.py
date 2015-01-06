@@ -17,6 +17,7 @@ import os
 import time
 import sqlite3
 import logging
+import datetime
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
@@ -86,7 +87,11 @@ def connect(filename, debug=False, *args, **kwargs):
     _LOG.info('Database cleanup START')
     # remove processing tag
     session.query(DBO.Source).filter(DBO.Source.processing == 1).\
-        update({"processing": False})
+            update({"processing": False})
+    # delete old logs
+    log_del_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    session.query(DBO.SourceLog).filter(DBO.SourceLog.date < log_del_date).\
+            delete()
     session.commit()
     _LOG.info('Database cleanup COMPLETED')
     return DBO.Session
