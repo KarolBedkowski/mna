@@ -130,11 +130,13 @@ class WebSource(objects.AbstractSource):
         if not url:
             return []
 
-        _LOG.info("WebSourc.get_items from %r - %r", url, self.cfg.conf)
+        _LOG.info("WebSource.get_items from %r - %r", url, self.cfg.conf)
 
         try:
             info, page = download_page(url)
         except LoadPageError, err:
+            self.cfg.add_to_log('error',
+                                "Error loading page: " + str(err))
             raise objects.GetArticleException("Get web page error: %s" % err)
 
         last_refreshed = self.cfg.last_refreshed
@@ -146,6 +148,8 @@ class WebSource(objects.AbstractSource):
 
         page_modification = info.get('_last-modified')
         if page_modification and page_modification < last_refreshed:
+            self.cfg.add_to_log('info',
+                                "Page not modified according to header")
             _LOG.info("No page %s modification since %s", self.cfg.title,
                       last_refreshed)
             return []
@@ -164,11 +168,18 @@ class WebSource(objects.AbstractSource):
         articles = filter(None, articles)
 
         _LOG.debug("WebSource: loaded %d articles", len(articles))
+        if not articles:
+            self.cfg.add_to_log('info', "Not found new articles")
+            return []
+        self.cfg.add_to_log('info', "Found %d new articles" % len(articles))
         # Limit number articles to load
         if self.cfg.max_articles_to_load and \
                 len(articles) > self.cfg.max_articles_to_load:
             _LOG.debug("WebSource: loaded >max_articles - truncating")
             articles = articles[-self.cfg.max_articles_to_load:]
+            self.cfg.add_to_log('info',
+                                "Loaded only %d articles because of limit." %
+                                len(articles))
         return articles
 
     def _process_page(self, page, info, session):

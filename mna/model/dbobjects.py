@@ -254,6 +254,24 @@ class Source(BaseModelMixin, Base):
             order_by(Article.updated.desc()).first()
         return article
 
+    def add_to_log(self, category, message, commit=False):
+        session = orm.object_session(self)
+        log = SourceLog()
+        log.source_id = self.oid
+        log.category = category
+        log.message = message
+        session.add(log)
+        if commit:
+            session.commit()
+
+    def get_logs(self):
+        """  Find logs for `source_id` """
+        session = orm.object_session(self) or Session()
+        article = session.query(SourceLog).\
+            filter(SourceLog.source_id == self.oid).\
+            order_by(SourceLog.date.desc()).all()
+        return article
+
 
 class Task(BaseModelMixin, Base):
     """Tasks (i.e. filters) configuration"""
@@ -329,3 +347,20 @@ class ActionsTasks(BaseModelMixin, Base):
     actions = orm.relationship(Actions, backref=orm.backref("actions_tasks",
                                cascade="all, delete-orphan"))
     task = orm.relationship(Task)
+
+
+class SourceLog(BaseModelMixin, Base):
+    """One log entry for source"""
+
+    __tablename__ = "sources_log"
+
+    # database id
+    oid = Column(Integer, primary_key=True)
+    date = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    category = Column(String)
+    message = Column(String)
+
+    source_id = Column(Integer, ForeignKey("sources.oid"))
+    source = orm.relationship(Source,
+                              backref=orm.backref("source_log",
+                                                  cascade="all, delete-orphan"))

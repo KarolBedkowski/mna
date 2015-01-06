@@ -38,6 +38,8 @@ class RssSource(objects.AbstractSource):
         _LOG.info("RssSource.get_items from %r", url)
         doc = feedparser.parse(url)
         if not doc or doc.get('status') >= 400:
+            self.cfg.add_to_log('error', "Error loading RSS feed: " +
+                                doc.get('status'))
             _LOG.error("RssSource: error getting items from %s, %r, %r",
                        url, doc, self.cfg)
             raise objects.GetArticleException("Get rss feed error: %r" %
@@ -79,11 +81,18 @@ class RssSource(objects.AbstractSource):
             art.published = published or datetime.datetime.now()
             art.link = feed.get('link')
             articles.append(art)
+
         _LOG.debug("RssSource: loaded %d articles", len(articles))
+        if not articles:
+            self.cfg.add_to_log('info', "Not found new articles")
+            return []
         # Limit number articles to load
         if (self.cfg.max_articles_to_load and
-            len(articles) > self.cfg.max_articles_to_load):
+                len(articles) > self.cfg.max_articles_to_load):
             articles = articles[-self.cfg.max_articles_to_load:]
+            self.cfg.add_to_log('info',
+                                "Loaded only %d articles because of limit." %
+                                len(articles))
         return articles
 
     @classmethod
