@@ -71,9 +71,6 @@ class WindowMain(QtGui.QMainWindow):
         self._ui.add_web_action.triggered.connect(self._on_add_web_action)
         self._ui.article_view.linkClicked.connect(self._on_article_view_link)
         # handle article list selection changes
-        sel_model = self._ui.table_articles.selectionModel()
-        sel_model.currentChanged.connect(self._on_table_articles_clicked)
-        sel_model.selectionChanged.connect(self._on_table_articles_clicked)
         self._ui.mark_all_read_action.triggered.\
                 connect(self._on_mark_all_read_action)
         objects.MESSENGER.source_updated.connect(self._on_source_updated)
@@ -179,6 +176,7 @@ class WindowMain(QtGui.QMainWindow):
         """ Handle article selection -  show article in HtmlView. """
         index = self._ui.table_articles.selectionModel().currentIndex()
         item = self._list_model.node_from_index(index)
+        _LOG.debug("_on_table_articles_clicked %r", item.oid)
         article = DBO.Article.get(oid=item.oid)
         if self._last_presenter[0] == article.source_id:
             presenter = self._last_presenter[1]
@@ -188,6 +186,7 @@ class WindowMain(QtGui.QMainWindow):
             presenter = source.presenter(source)
             self._last_presenter = (article.source_id, presenter)
         content = presenter.to_gui(article)
+        #print repr(article.content)
         self._ui.article_view.setHtml(content)
         article.read = 1
         article.save(True)
