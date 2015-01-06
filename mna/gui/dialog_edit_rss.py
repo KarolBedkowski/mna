@@ -16,6 +16,7 @@ import logging
 
 from PyQt4 import QtGui
 
+from mna.gui import _validators
 from mna.gui import resources_rc
 from mna.gui import ui_dialog_edit_rss
 from mna.model import dbobjects as DBO
@@ -59,6 +60,13 @@ class DialogEditRss(QtGui.QDialog):
         self.close()
 
     def _on_btn_add(self):
+        try:
+            self._validate()
+        except _validators.ValidationError, err:
+            QtGui.QMessageBox.information(self, self.tr("Validation error"),
+                                          self.tr("Please correct field ") +
+                                          str(err))
+            return
         if self._from_window():
             sources.save_source(self._source)
             self.accept()
@@ -81,3 +89,9 @@ class DialogEditRss(QtGui.QDialog):
         self._source.group_id = group_id
         self._source.interval = self._ui.e_interval.value() * 60
         return True
+
+    def _validate(self):
+        _validators.validate_empty_string(self._ui.e_title,
+                                          "title")
+        _validators.validate_empty_string(self._ui.e_url,
+                                          "URL")

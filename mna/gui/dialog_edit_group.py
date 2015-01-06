@@ -15,6 +15,7 @@ import logging
 
 from PyQt4 import QtGui
 
+from mna.gui import _validators
 from mna.gui import resources_rc
 from mna.gui import ui_dialog_edit_group
 from mna.logic import groups
@@ -49,13 +50,29 @@ class DialogEditGroup(QtGui.QDialog):
         self.close()
 
     def _on_btn_add(self):
+        try:
+            self._validate()
+        except _validators.ValidationError, err:
+            QtGui.QMessageBox.information(self, self.tr("Validation error"),
+                                          self.tr("Please correct field ") +
+                                          str(err))
+            return
         self._from_window()
-        if self._group.is_valid():
+        try:
             groups.save_group(self._group)
-            self.accept()
+        except groups.GroupSaveError, err:
+            QtGui.QMessageBox.information(self, self.tr("Validation error"),
+                                          self.tr("Error saving group: ") +
+                                          unicode(err))
+            return
+        self.accept()
 
     def _to_window(self):
         self._ui.name_edit.setText(self._group.name or '')
 
     def _from_window(self):
         self._group.name = unicode(self._ui.name_edit.text()).strip()
+
+    def _validate(self):
+        _validators.validate_empty_string(self._ui.name_edit,
+                                          "name")
