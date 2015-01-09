@@ -92,8 +92,7 @@ def get_title(html, encoding):
 
 
 def articles_similarity(art1, art2):
-    matcher = difflib.SequenceMatcher(None, art1, art2)
-    return matcher.ratio()
+    return difflib.SequenceMatcher(None, art1, art2).ratio()
 
 
 def accept_part(session, source_id, checksum):
@@ -157,13 +156,11 @@ class WebSource(objects.AbstractSource):
         articles = []
         selector_xpath = self.cfg.conf.get('xpath')
         if self.cfg.conf.get("mode") == "part" and selector_xpath:
-            parts = get_page_part(info, page, selector_xpath)
             articles = (self._process_part(part, info, session)
-                        for part in parts)
+                        for part in get_page_part(info, page, selector_xpath))
         else:
-            parts = list(get_page_part(info, page, "//html"))
             articles = (self._process_page(part, info, session)
-                        for part in parts)
+                        for part in get_page_part(info, page, "//html"))
 
         articles = filter(None, articles)
 
@@ -183,16 +180,16 @@ class WebSource(objects.AbstractSource):
         return articles
 
     def _process_page(self, page, info, session):
-        if not accept_page(page, session, self.cfg.oid,
-                           self.cfg.conf.get('similarity') or 1):
-            return None
-        return self._create_article(page, info)
+        if accept_page(page, session, self.cfg.oid,
+                       self.cfg.conf.get('similarity') or 1):
+            return self._create_article(page, info)
+        return None
 
     def _process_part(self, part, info, session):
         checksum = create_checksum(part)
-        if not accept_part(session, self.cfg.oid, checksum):
-            return None
-        return self._create_article(part, info, checksum)
+        if accept_part(session, self.cfg.oid, checksum):
+            return self._create_article(part, info, checksum)
+        return None
 
     def _create_article(self, part, info, checksum=None):
         art = DBO.Article()
