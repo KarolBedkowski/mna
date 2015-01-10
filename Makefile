@@ -43,4 +43,4 @@ $(PLUGINS_DIR)/%_ui.py : $(PLUGINS_DIR)/%.ui
 clean :
 	$(RM) $(COMPILED_UI) $(COMPILED_RESOURCES)
 	$(RM) $(PLUGIN_COMPILED_UI) $(PLUGIN_COMPILED_UI_COMPILED_RESOURCES)
-	find $(RESOURCE_DIR) -type f \( -name '*.pyc' -or -name '*.pyo' \) -delete
+	find . -type f \( -name '*.pyc' -or -name '*.pyo' \) -delete
