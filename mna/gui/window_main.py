@@ -205,7 +205,9 @@ class WindowMain(QtGui.QMainWindow):
             self._refresh_tree()
 
     def _on_add_web_action(self):
-        dlg = dialog_edit_web.DialogEditWeb(self)
+        from mna.gui import wzd_add_src
+        dlg = wzd_add_src.WzdAddSrc(self)
+#        dlg = dialog_edit_web.DialogEditWeb(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
             self._refresh_tree()
 
