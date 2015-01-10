@@ -18,8 +18,8 @@ from PyQt4 import QtGui
 from mna.gui import resources_rc
 from mna.gui import ui_wzd_add_src
 from mna import plugins
-from mna.gui import ui_frm_edit_main
-from mna.gui import ui_frm_edit_web
+from mna.gui import ui_frm_sett_main
+from mna.gui import ui_frm_sett_web
 from mna.gui import _validators
 from mna.model import dbobjects as DBO
 from mna.logic import sources
@@ -29,10 +29,10 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class FrmEditMain(QtGui.QFrame):
+class FrmSettMain(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_edit_main.Ui_FrameEditMain()
+        self.ui = ui_frm_sett_main.Ui_FrmSettMain()
         self.ui.setupUi(self)
         self._setup()
 
@@ -54,10 +54,10 @@ class FrmEditMain(QtGui.QFrame):
         source.group_id = group_id
 
 
-class FrmEditWeb(QtGui.QFrame):
+class FrmSettWeb(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_edit_web.Ui_FrameEditWeb()
+        self.ui = ui_frm_sett_web.Ui_FrmSettWeb()
         self.ui.setupUi(self)
 
     def validate(self):
@@ -97,7 +97,7 @@ class WzdAddSrc(QtGui.QWizard):
         for name, source_cls in plugins.SOURCES.iteritems():
             self._ui.cb_source_type.addItem(source_cls.name, name)
 
-        self._frm_edit_main = FrmEditMain(self)
+        self._frm_edit_main = FrmSettMain(self)
         self._ui.l_main_opt.addWidget(self._frm_edit_main)
 
     def _bind(self):
@@ -121,7 +121,7 @@ class WzdAddSrc(QtGui.QWizard):
             # create new frame
             src_opt_frame = None
             if src == 'mna.plugins.web.WebSource':
-                src_opt_frame = FrmEditWeb(self)
+                src_opt_frame = FrmSettWeb(self)
             else:
                 src_opt_frame = QtGui.QLabel("No options", self)
             self._ui.l_src_opt.addWidget(src_opt_frame)

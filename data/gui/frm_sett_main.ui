@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>FrameEditMain</class>
- <widget class="QFrame" name="FrameEditMain">
+ <class>FrmSettMain</class>
+ <widget class="QFrame" name="FrmSettMain">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>491</width>
-    <height>138</height>
+    <width>477</width>
+    <height>86</height>
    </rect>
   </property>
   <property name="windowTitle">
