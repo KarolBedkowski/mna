@@ -31,3 +31,6 @@ docs/
 man/*.1
 mna/gui/*_rc.py
 mna/gui/ui_*.py
+*_ui.py?
+*_rc.py?
+
