@@ -33,6 +33,7 @@ _LOG = logging.getLogger(__name__)
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")
     cursor.close()
 
 
@@ -93,6 +94,13 @@ def connect(filename, debug=False, *args, **kwargs):
     session.query(DBO.SourceLog).filter(DBO.SourceLog.date < log_del_date).\
             delete()
     session.commit()
+
+    freelist_count = session.execute("PRAGMA freelist_count").fetchone()[0]
+    page_count = session.execute("PRAGMA page_count").fetchone()[0]
+    print freelist_count, page_count
+    if freelist_count > 0.20 * page_count:
+        _LOG.debug('Database vacuum')
+        session.execute('PRAGMA incremental_vacuum(%d)' % (freelist_count / 2))
     _LOG.info('Database cleanup COMPLETED')
     return DBO.Session
 

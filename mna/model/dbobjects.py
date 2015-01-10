@@ -17,8 +17,8 @@ __version__ = "2014-06-12"
 import logging
 import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
-# , Index
+from sqlalchemy import (Column, Integer, String, DateTime, Boolean,
+                        ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm, and_
 from sqlalchemy import select, func
@@ -330,6 +330,11 @@ class Article(BaseModelMixin, Base):
         if link:
             return link
         return"".join(map(hash, (title, author, source_id)))
+
+
+Index('idx_articles_chs', Article.source_id, Article.internal_id, Article.oid)
+Index('idx_articles_read', Article.source_id, Article.read, Article.updated,
+      Article.oid)
 
 
 class ActionsTasks(BaseModelMixin, Base):

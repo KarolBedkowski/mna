@@ -85,7 +85,8 @@ class RssSource(objects.AbstractSource):
                                        feed.get('title'),
                                        feed.get('author'),
                                        self.__class__.get_name())
-        art = DBO.Article.get(session=session, internal_id=internal_id)
+        art = DBO.Article.get(session=session, source_id=self.cfg.oid,
+                              internal_id=internal_id)
         if art:
             _LOG.debug("Article already in db: %r", internal_id)
             if art.updated > updated:
