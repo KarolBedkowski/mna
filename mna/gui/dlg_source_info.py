@@ -16,7 +16,7 @@ import logging
 from PyQt4 import QtGui, QtCore
 
 from mna.gui import resources_rc
-from mna.gui import ui_dialog_source_info
+from mna.gui import dlg_source_info_ui
 
 _LOG = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class DlgSourceInfo(QtGui.QDialog):
     def __init__(self, parent, source):
         _LOG.info("DlgSourceInfo.init: %r", source)
         QtGui.QDialog.__init__(self, parent)
-        self._ui = ui_dialog_source_info.Ui_DialogSourceInfo()
+        self._ui = dlg_source_info_ui.Ui_DialogSourceInfo()
         self._ui.setupUi(self)
         self._setup(source)
         self._bind()

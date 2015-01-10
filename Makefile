@@ -8,7 +8,7 @@ RESOURCES = $(wildcard ${RESOURCE_DIR}/*.qrc)
 PYUIC = pyuic4
 PYRCC = pyrcc4
 
-COMPILED_UI = $(UI_FILES:$(RESOURCE_DIR)/%.ui=$(COMPILED_DIR)/ui_%.py)
+COMPILED_UI = $(UI_FILES:$(RESOURCE_DIR)/%.ui=$(COMPILED_DIR)/%_ui.py)
 COMPILED_RESOURCES = $(RESOURCES:$(RESOURCE_DIR)/%.qrc=$(COMPILED_DIR)/%_rc.py)
 
 PLUGIN_RESOURCES = $(shell find $(PLUGINS_DIR) -type f -name '*.qrc')
@@ -24,7 +24,7 @@ resources : $(COMPILED_RESOURCES)
 
 ui : $(COMPILED_UI)
 
-$(COMPILED_DIR)/ui_%.py : $(RESOURCE_DIR)/%.ui
+$(COMPILED_DIR)/%_ui.py : $(RESOURCE_DIR)/%.ui
 	$(PYUIC) $< -o $@
 
 $(COMPILED_DIR)/%_rc.py : $(RESOURCE_DIR)/%.qrc

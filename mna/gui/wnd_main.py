@@ -19,7 +19,7 @@ from PyQt4 import QtGui, QtWebKit, QtCore
 
 from mna.gui import _models
 from mna.gui import resources_rc
-from mna.gui import ui_wnd_main
+from mna.gui import wnd_main_ui
 from mna.gui import dlg_edit_group
 from mna.gui import dlg_source_edit
 from mna.gui import dlg_source_info
@@ -41,7 +41,7 @@ class WndMain(QtGui.QMainWindow):
     def __init__(self, parent=None):
         QtGui.QMainWindow.__init__(self, parent)
         self._appconfig = AppConfig()
-        self._ui = ui_wnd_main.Ui_WndMain()
+        self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
         # setup
         self._tree_model = _models.TreeModel()

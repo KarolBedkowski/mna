@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mna/plugins/frm_sett_web.ui'
 #
-# Created: Sat Jan 10 22:12:56 2015
+# Created: Sat Jan 10 22:20:31 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!

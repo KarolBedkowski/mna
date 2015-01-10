@@ -17,7 +17,7 @@ from PyQt4 import QtGui
 
 from mna.gui import _validators
 from mna.gui import resources_rc
-from mna.gui import ui_dialog_edit_group
+from mna.gui import dlg_edit_group_ui
 from mna.logic import groups
 from mna.model import dbobjects as DBO
 
@@ -31,7 +31,7 @@ class DlgEditGroup(QtGui.QDialog):
 
     def __init__(self, parent=None, group=None):
         QtGui.QDialog.__init__(self, parent)
-        self._ui = ui_dialog_edit_group. Ui_DialogAddGroup()
+        self._ui = dlg_edit_group_ui. Ui_DialogAddGroup()
         self._ui.setupUi(self)
         self._bind()
         if group:

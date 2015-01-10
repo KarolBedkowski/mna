@@ -16,7 +16,7 @@ import logging
 from PyQt4 import QtGui
 
 from mna.gui import resources_rc
-from mna.gui import ui_dlg_source_edit
+from mna.gui import dlg_source_edit_ui
 from mna.gui import frm_sett_main
 from mna.logic import sources
 from mna import plugins
@@ -32,7 +32,7 @@ class DlgSourceEdit(QtGui.QDialog):
     def __init__(self, parent=None, source=None):
         _LOG.info("DlgSourceEdit.init: %r", source)
         QtGui.QDialog.__init__(self, parent)
-        self._ui = ui_dlg_source_edit.Ui_DlgSourceEdit()
+        self._ui = dlg_source_edit_ui.Ui_DlgSourceEdit()
         self._ui.setupUi(self)
         self._source = source
         self._setup(source)

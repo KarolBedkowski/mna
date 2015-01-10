@@ -16,7 +16,7 @@ import logging
 from PyQt4 import QtGui
 
 from mna.gui import resources_rc
-from mna.gui import ui_wzd_add_src
+from mna.gui import wzd_add_src_ui
 from mna import plugins
 from mna.gui import frm_sett_main
 from mna.model import dbobjects as DBO
@@ -32,7 +32,7 @@ class WzdAddSrc(QtGui.QWizard):
 
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
-        self._ui = ui_wzd_add_src.Ui_WizardAddSource()
+        self._ui = wzd_add_src_ui.Ui_WizardAddSource()
         self._ui.setupUi(self)
         self._setup()
         self._bind()
