@@ -67,8 +67,7 @@ class WindowMain(QtGui.QMainWindow):
         self._ui.table_articles.selectionModel().\
                 selectionChanged.connect(self._on_table_articles_clicked)
         self._ui.add_group_action.triggered.connect(self._on_add_group_action)
-        self._ui.add_rss_action.triggered.connect(self._on_add_rss_action)
-        self._ui.add_web_action.triggered.connect(self._on_add_web_action)
+        self._ui.add_src_action.triggered.connect(self._on_add_src_action)
         self._ui.article_view.linkClicked.connect(self._on_article_view_link)
         # handle article list selection changes
         self._ui.mark_all_read_action.triggered.\
@@ -199,15 +198,9 @@ class WindowMain(QtGui.QMainWindow):
         if dlg.exec_() == QtGui.QDialog.Accepted:
             self._refresh_tree()
 
-    def _on_add_rss_action(self):
-        dlg = dialog_edit_rss.DialogEditRss(self)
-        if dlg.exec_() == QtGui.QDialog.Accepted:
-            self._refresh_tree()
-
-    def _on_add_web_action(self):
+    def _on_add_src_action(self):
         from mna.gui import wzd_add_src
         dlg = wzd_add_src.WzdAddSrc(self)
-#        dlg = dialog_edit_web.DialogEditWeb(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
             self._refresh_tree()
 
