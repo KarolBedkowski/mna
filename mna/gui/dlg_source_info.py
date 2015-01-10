@@ -23,11 +23,11 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class DialogSourceInfo(QtGui.QDialog):
+class DlgSourceInfo(QtGui.QDialog):
     """ Main Window class. """
 
     def __init__(self, parent, source):
-        _LOG.info("DialogSourceInfo.init: %r", source)
+        _LOG.info("DlgSourceInfo.init: %r", source)
         QtGui.QDialog.__init__(self, parent)
         self._ui = ui_dialog_source_info.Ui_DialogSourceInfo()
         self._ui.setupUi(self)

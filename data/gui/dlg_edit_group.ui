@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>DialogAddGroup</class>
- <widget class="QDialog" name="DialogAddGroup">
+ <class>DlgEditGroup</class>
+ <widget class="QDialog" name="DlgEditGroup">
   <property name="geometry">
    <rect>
     <x>0</x>

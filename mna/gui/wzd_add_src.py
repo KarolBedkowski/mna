@@ -19,7 +19,6 @@ from mna.gui import resources_rc
 from mna.gui import ui_wzd_add_src
 from mna import plugins
 from mna.gui import frm_sett_main
-from mna.gui import _validators
 from mna.model import dbobjects as DBO
 from mna.logic import sources
 

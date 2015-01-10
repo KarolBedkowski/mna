@@ -26,7 +26,7 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class DialogEditGroup(QtGui.QDialog):
+class DlgEditGroup(QtGui.QDialog):
     """ Main Window class. """
 
     def __init__(self, parent=None, group=None):
