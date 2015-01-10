@@ -20,7 +20,7 @@ from PyQt4 import QtGui
 
 from mna.common import objects
 from mna.model import dbobjects as DBO
-from mna.gui import ui_frm_sett_web
+from mna.plugins import frm_sett_web_ui
 from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ def accept_page(page, session, source_id, threshold):
 class FrmSettWeb(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_sett_web.Ui_FrmSettWeb()
+        self.ui = frm_sett_web_ui.Ui_FrmSettWeb()
         self.ui.setupUi(self)
 
     def validate(self):

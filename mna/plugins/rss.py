@@ -16,7 +16,7 @@ from PyQt4 import QtGui
 
 from mna.common import objects
 from mna.model import dbobjects as DBO
-from mna.gui import ui_frm_sett_rss
+from mna.plugins import frm_sett_rss_ui
 from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def _ts2datetime(tstruct):
 class FrmSettRss(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_sett_rss.Ui_FrmSettRss()
+        self.ui = frm_sett_rss_ui.Ui_FrmSettRss()
         self.ui.setupUi(self)
 
     def validate(self):
