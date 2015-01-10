@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>WindowMain</class>
- <widget class="QMainWindow" name="WindowMain">
+ <class>WndMain</class>
+ <widget class="QMainWindow" name="WndMain">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -90,8 +90,7 @@
     </property>
     <addaction name="add_group_action"/>
     <addaction name="separator"/>
-    <addaction name="add_rss_action"/>
-    <addaction name="add_web_action"/>
+    <addaction name="add_src_action"/>
    </widget>
    <widget class="QMenu" name="menuArticles">
     <property name="title">
@@ -101,8 +100,8 @@
     <addaction name="show_unread_action"/>
    </widget>
    <addaction name="menu_file"/>
-   <addaction name="menu_add"/>
    <addaction name="menuArticles"/>
+   <addaction name="menu_add"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="tool_bar">
@@ -147,9 +146,9 @@
     <string>Add RSS</string>
    </property>
   </action>
-  <action name="add_web_action">
+  <action name="add_src_action">
    <property name="text">
-    <string>Add Web</string>
+    <string>Add Source</string>
    </property>
   </action>
   <action name="mark_all_read_action">

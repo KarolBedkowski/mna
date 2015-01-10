@@ -48,6 +48,8 @@ class SimplePresenter(object):
     """
     # Human readable name
     name = "Abstract presenter"
+    # subclass of QFrame
+    conf_panel_class = None
 
     def __init__(self, source=None):
         """ Constructor

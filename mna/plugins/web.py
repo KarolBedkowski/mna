@@ -16,10 +16,12 @@ import itertools
 import difflib
 
 from lxml import etree
+from PyQt4 import QtGui
 
 from mna.common import objects
 from mna.model import dbobjects as DBO
-
+from mna.plugins import frm_sett_web_ui
+from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
 
@@ -119,10 +121,49 @@ def accept_page(page, session, source_id, threshold):
     return True
 
 
+class FrmSettWeb(QtGui.QFrame):
+    def __init__(self, parent=None):
+        QtGui.QFrame.__init__(self, parent)
+        self.ui = frm_sett_web_ui.Ui_FrmSettWeb()
+        self.ui.setupUi(self)
+
+    def validate(self):
+        try:
+            _validators.validate_empty_string(self.ui.e_url, 'URL')
+            if self.ui.rb_scan_parts.isChecked():
+                _validators.validate_empty_string(self.ui.e_xpath, 'Xpath')
+        except _validators.ValidationError:
+            return False
+        return True
+
+    def from_window(self, source):
+        source.conf["url"] = unicode(self.ui.e_url.text())
+        source.conf["xpath"] = unicode(self.ui.e_xpath.toPlainText())
+        source.conf["similarity"] = \
+            self.ui.sb_similarity_ratio.value() / 100.0
+        if self.ui.rb_scan_page.isChecked():
+            source.conf["mode"] = "page"
+        else:
+            source.conf["mode"] = "part"
+        return True
+
+    def to_window(self, source):
+        self.ui.e_url.setText(source.conf.get("url") or "")
+        self.ui.e_xpath.setPlainText(source.conf.get("xpath") or "")
+        self.ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
+                                             or 0.5) * 100.0)
+        scan_part = source.conf.get("mode") == "part"
+        self.ui.rb_scan_page.setChecked(not scan_part)
+        self.ui.rb_scan_page.toggled.emit(not scan_part)
+        self.ui.rb_scan_parts.setChecked(scan_part)
+        self.ui.rb_scan_parts.toggled.emit(scan_part)
+
+
 class WebSource(objects.AbstractSource):
     """Load article from website"""
 
     name = "Web Page Source"
+    conf_panel_class = FrmSettWeb
 
     def get_items(self, session=None):
         url = self.cfg.conf.get("url") if self.cfg.conf else None

@@ -19,11 +19,10 @@ from PyQt4 import QtGui, QtWebKit, QtCore
 
 from mna.gui import _models
 from mna.gui import resources_rc
-from mna.gui import ui_window_main
-from mna.gui import dialog_edit_group
-from mna.gui import dialog_edit_rss
-from mna.gui import dialog_edit_web
-from mna.gui import dialog_source_info
+from mna.gui import wnd_main_ui
+from mna.gui import dlg_edit_group
+from mna.gui import dlg_source_edit
+from mna.gui import dlg_source_info
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
@@ -36,13 +35,13 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class WindowMain(QtGui.QMainWindow):
+class WndMain(QtGui.QMainWindow):
     """ Main Window class. """
 
     def __init__(self, parent=None):
         QtGui.QMainWindow.__init__(self, parent)
         self._appconfig = AppConfig()
-        self._ui = ui_window_main.Ui_WindowMain()
+        self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
         # setup
         self._tree_model = _models.TreeModel()
@@ -67,8 +66,7 @@ class WindowMain(QtGui.QMainWindow):
         self._ui.table_articles.selectionModel().\
                 selectionChanged.connect(self._on_table_articles_clicked)
         self._ui.add_group_action.triggered.connect(self._on_add_group_action)
-        self._ui.add_rss_action.triggered.connect(self._on_add_rss_action)
-        self._ui.add_web_action.triggered.connect(self._on_add_web_action)
+        self._ui.add_src_action.triggered.connect(self._on_add_src_action)
         self._ui.article_view.linkClicked.connect(self._on_article_view_link)
         # handle article list selection changes
         self._ui.mark_all_read_action.triggered.\
@@ -115,19 +113,13 @@ class WindowMain(QtGui.QMainWindow):
             return
         if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
-            if source.name == "mna.plugins.rss.RssSource":
-                dlg = dialog_edit_rss.DialogEditRss(self, source)
-            elif source.name == "mna.plugins.web.WebSource":
-                dlg = dialog_edit_web.DialogEditWeb(self, source)
-            else:
-                raise RuntimeError("unsupported edit for %r %r", source.name,
-                                   node)
+            dlg = dlg_source_edit.DlgSourceEdit(self, source)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 objects.MESSENGER.emit_source_updated(source.oid,
                                                       source.group_id)
         elif isinstance(node, _models.GroupTreeNode):
             group = DBO.Group.get(oid=node.oid)
-            dlg = dialog_edit_group.DialogEditGroup(self, group)
+            dlg = dlg_edit_group.DlgEditGroup(self, group)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 objects.MESSENGER.emit_group_updated(group.oid)
         else:
@@ -169,7 +161,7 @@ class WindowMain(QtGui.QMainWindow):
         if node is None or not isinstance(node, _models.SourceTreeNode):
             return
         source = DBO.Source.get(oid=node.oid)
-        dlg = dialog_source_info.DialogSourceInfo(self, source)
+        dlg = dlg_source_info.DlgSourceInfo(self, source)
         dlg.exec_()
 
     def _on_table_articles_clicked(self, index):
@@ -195,17 +187,13 @@ class WindowMain(QtGui.QMainWindow):
                                        article.source.group_id)
 
     def _on_add_group_action(self):
-        dlg = dialog_edit_group.DialogEditGroup(self)
+        dlg = dlg_edit_group.DlgEditGroup(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
             self._refresh_tree()
 
-    def _on_add_rss_action(self):
-        dlg = dialog_edit_rss.DialogEditRss(self)
-        if dlg.exec_() == QtGui.QDialog.Accepted:
-            self._refresh_tree()
-
-    def _on_add_web_action(self):
-        dlg = dialog_edit_web.DialogEditWeb(self)
+    def _on_add_src_action(self):
+        from mna.gui import wzd_add_src
+        dlg = wzd_add_src.WzdAddSrc(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
             self._refresh_tree()
 
@@ -276,7 +264,7 @@ class WindowMain(QtGui.QMainWindow):
         self._show_articles(node)
 
     def _show_articles(self, node):
-        _LOG.debug("WindowMain._show_articles(%r(oid=%r))", type(node),
+        _LOG.debug("WndMain._show_articles(%r(oid=%r))", type(node),
                    node.oid)
         unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):

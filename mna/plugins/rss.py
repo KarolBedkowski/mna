@@ -12,9 +12,12 @@ import time
 import datetime
 
 import feedparser
+from PyQt4 import QtGui
 
 from mna.common import objects
 from mna.model import dbobjects as DBO
+from mna.plugins import frm_sett_rss_ui
+from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
 
@@ -26,10 +29,32 @@ def _ts2datetime(tstruct):
     return None
 
 
+class FrmSettRss(QtGui.QFrame):
+    def __init__(self, parent=None):
+        QtGui.QFrame.__init__(self, parent)
+        self.ui = frm_sett_rss_ui.Ui_FrmSettRss()
+        self.ui.setupUi(self)
+
+    def validate(self):
+        try:
+            _validators.validate_empty_string(self.ui.e_url, 'URL')
+        except _validators.ValidationError:
+            return False
+        return True
+
+    def from_window(self, source):
+        source.conf["url"] = unicode(self.ui.e_url.text())
+        return True
+
+    def to_window(self, source):
+        self.ui.e_url.setText(source.conf.get("url") or "")
+
+
 class RssSource(objects.AbstractSource):
     """Rss/Atom source class. """
 
     name = "RSS/Atom Source"
+    conf_panel_class = FrmSettRss
 
     def get_items(self, session=None):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
