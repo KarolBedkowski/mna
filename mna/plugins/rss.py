@@ -44,6 +44,10 @@ class FrmSettRss(QtGui.QFrame):
 
     def from_window(self, source):
         source.conf["url"] = unicode(self.ui.e_url.text())
+        return True
+
+    def to_window(self, source):
+        self.ui.e_url.setText(source.conf.get("url") or "")
 
 
 class RssSource(objects.AbstractSource):

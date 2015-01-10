@@ -45,3 +45,10 @@ class FrmSettMain(QtGui.QFrame):
         group_idx = self.ui.c_group.currentIndex()
         group_id = self.ui.c_group.itemData(group_idx).toInt()[0]
         source.group_id = group_id
+        return True
+
+    def to_window(self, source):
+        self.ui.e_title.setText(source.title or "")
+        if source.group_id:
+            group_idx = self.ui.c_group.findData(source.group_id)
+            self.ui.c_group.setCurrentIndex(group_idx)

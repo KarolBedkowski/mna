@@ -145,6 +145,18 @@ class FrmSettWeb(QtGui.QFrame):
             source.conf["mode"] = "page"
         else:
             source.conf["mode"] = "part"
+        return True
+
+    def to_window(self, source):
+        self.ui.e_url.setText(source.conf.get("url") or "")
+        self.ui.e_xpath.setPlainText(source.conf.get("xpath") or "")
+        self.ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
+                                             or 0.5) * 100.0)
+        scan_part = source.conf.get("mode") == "part"
+        self.ui.rb_scan_page.setChecked(not scan_part)
+        self.ui.rb_scan_page.toggled.emit(not scan_part)
+        self.ui.rb_scan_parts.setChecked(scan_part)
+        self.ui.rb_scan_parts.toggled.emit(scan_part)
 
 
 class WebSource(objects.AbstractSource):

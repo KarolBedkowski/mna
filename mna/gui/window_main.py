@@ -21,8 +21,7 @@ from mna.gui import _models
 from mna.gui import resources_rc
 from mna.gui import ui_window_main
 from mna.gui import dialog_edit_group
-from mna.gui import dialog_edit_rss
-from mna.gui import dialog_edit_web
+from mna.gui import dlg_source_edit
 from mna.gui import dialog_source_info
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
@@ -114,13 +113,7 @@ class WindowMain(QtGui.QMainWindow):
             return
         if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
-            if source.name == "mna.plugins.rss.RssSource":
-                dlg = dialog_edit_rss.DialogEditRss(self, source)
-            elif source.name == "mna.plugins.web.WebSource":
-                dlg = dialog_edit_web.DialogEditWeb(self, source)
-            else:
-                raise RuntimeError("unsupported edit for %r %r", source.name,
-                                   node)
+            dlg = dlg_source_edit.DlgSourceEdit(self, source)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 objects.MESSENGER.emit_source_updated(source.oid,
                                                       source.group_id)

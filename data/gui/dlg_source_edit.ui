@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>DlgSourceEdit</class>
+ <widget class="QDialog" name="DlgSourceEdit">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -25,14 +25,7 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QFrame" name="frame">
-         <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
-         </property>
-        </widget>
+        <layout class="QVBoxLayout" name="l_main_opt"/>
        </item>
       </layout>
      </widget>
@@ -42,14 +35,7 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
-        <widget class="QFrame" name="frame_2">
-         <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
-         </property>
-        </widget>
+        <layout class="QVBoxLayout" name="l_src_opt"/>
        </item>
       </layout>
      </widget>
@@ -114,7 +100,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>DlgSourceEdit</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -130,7 +116,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>DlgSourceEdit</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
