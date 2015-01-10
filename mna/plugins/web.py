@@ -16,10 +16,12 @@ import itertools
 import difflib
 
 from lxml import etree
+from PyQt4 import QtGui
 
 from mna.common import objects
 from mna.model import dbobjects as DBO
-
+from mna.gui import ui_frm_sett_web
+from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
 
@@ -119,10 +121,37 @@ def accept_page(page, session, source_id, threshold):
     return True
 
 
+class FrmSettWeb(QtGui.QFrame):
+    def __init__(self, parent=None):
+        QtGui.QFrame.__init__(self, parent)
+        self.ui = ui_frm_sett_web.Ui_FrmSettWeb()
+        self.ui.setupUi(self)
+
+    def validate(self):
+        try:
+            _validators.validate_empty_string(self.ui.e_url, 'URL')
+            if self.ui.rb_scan_parts.isChecked():
+                _validators.validate_empty_string(self.ui.e_xpath, 'Xpath')
+        except _validators.ValidationError:
+            return False
+        return True
+
+    def from_window(self, source):
+        source.conf["url"] = unicode(self.ui.e_url.text())
+        source.conf["xpath"] = unicode(self.ui.e_xpath.toPlainText())
+        source.conf["similarity"] = \
+            self.ui.sb_similarity_ratio.value() / 100.0
+        if self.ui.rb_scan_page.isChecked():
+            source.conf["mode"] = "page"
+        else:
+            source.conf["mode"] = "part"
+
+
 class WebSource(objects.AbstractSource):
     """Load article from website"""
 
     name = "Web Page Source"
+    conf_panel_class = FrmSettWeb
 
     def get_items(self, session=None):
         url = self.cfg.conf.get("url") if self.cfg.conf else None

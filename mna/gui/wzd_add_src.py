@@ -19,8 +19,6 @@ from mna.gui import resources_rc
 from mna.gui import ui_wzd_add_src
 from mna import plugins
 from mna.gui import ui_frm_sett_main
-from mna.gui import ui_frm_sett_web
-from mna.gui import ui_frm_sett_rss
 from mna.gui import _validators
 from mna.model import dbobjects as DBO
 from mna.logic import sources
@@ -53,49 +51,6 @@ class FrmSettMain(QtGui.QFrame):
         group_idx = self.ui.c_group.currentIndex()
         group_id = self.ui.c_group.itemData(group_idx).toInt()[0]
         source.group_id = group_id
-
-
-class FrmSettRss(QtGui.QFrame):
-    def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_sett_rss.Ui_FrmSettRss()
-        self.ui.setupUi(self)
-
-    def validate(self):
-        try:
-            _validators.validate_empty_string(self.ui.e_url, 'URL')
-        except _validators.ValidationError:
-            return False
-        return True
-
-    def from_window(self, source):
-        source.conf["url"] = unicode(self.ui.e_url.text())
-
-
-class FrmSettWeb(QtGui.QFrame):
-    def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_sett_web.Ui_FrmSettWeb()
-        self.ui.setupUi(self)
-
-    def validate(self):
-        try:
-            _validators.validate_empty_string(self.ui.e_url, 'URL')
-            if self.ui.rb_scan_parts.isChecked():
-                _validators.validate_empty_string(self.ui.e_xpath, 'Xpath')
-        except _validators.ValidationError:
-            return False
-        return True
-
-    def from_window(self, source):
-        source.conf["url"] = unicode(self.ui.e_url.text())
-        source.conf["xpath"] = unicode(self.ui.e_xpath.toPlainText())
-        source.conf["similarity"] = \
-            self.ui.sb_similarity_ratio.value() / 100.0
-        if self.ui.rb_scan_page.isChecked():
-            source.conf["mode"] = "page"
-        else:
-            source.conf["mode"] = "part"
 
 
 class WzdAddSrc(QtGui.QWizard):
@@ -138,10 +93,9 @@ class WzdAddSrc(QtGui.QWizard):
                 wdg.destroy()
             # create new frame
             src_opt_frame = None
-            if src == 'mna.plugins.web.WebSource':
-                src_opt_frame = FrmSettWeb(self)
-            elif src == 'mna.plugins.rss.RssSource':
-                src_opt_frame = FrmSettRss(self)
+            src_cls = plugins.SOURCES[src]
+            if hasattr(src_cls, 'conf_panel_class'):
+                src_opt_frame = src_cls.conf_panel_class(self)
             else:
                 src_opt_frame = QtGui.QLabel("No options", self)
             self._ui.l_src_opt.addWidget(src_opt_frame)
