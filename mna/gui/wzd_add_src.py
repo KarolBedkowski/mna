@@ -18,7 +18,7 @@ from PyQt4 import QtGui
 from mna.gui import resources_rc
 from mna.gui import ui_wzd_add_src
 from mna import plugins
-from mna.gui import ui_frm_sett_main
+from mna.gui import frm_sett_main
 from mna.gui import _validators
 from mna.model import dbobjects as DBO
 from mna.logic import sources
@@ -26,31 +26,6 @@ from mna.logic import sources
 _LOG = logging.getLogger(__name__)
 
 assert resources_rc
-
-
-class FrmSettMain(QtGui.QFrame):
-    def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
-        self.ui = ui_frm_sett_main.Ui_FrmSettMain()
-        self.ui.setupUi(self)
-        self._setup()
-
-    def _setup(self):
-        for group in DBO.Group.all():
-            self.ui.c_group.addItem(group.name, group.oid)
-
-    def validate(self):
-        try:
-            _validators.validate_empty_string(self.ui.e_title, 'Title')
-        except _validators.ValidationError:
-            return False
-        return True
-
-    def from_window(self, source):
-        source.title = unicode(self.ui.e_title.text())
-        group_idx = self.ui.c_group.currentIndex()
-        group_id = self.ui.c_group.itemData(group_idx).toInt()[0]
-        source.group_id = group_id
 
 
 class WzdAddSrc(QtGui.QWizard):
@@ -70,7 +45,7 @@ class WzdAddSrc(QtGui.QWizard):
         for name, source_cls in plugins.SOURCES.iteritems():
             self._ui.cb_source_type.addItem(source_cls.name, name)
 
-        self._frm_edit_main = FrmSettMain(self)
+        self._frm_edit_main = frm_sett_main.FrmSettMain(self)
         self._ui.l_main_opt.addWidget(self._frm_edit_main)
 
     def _bind(self):
