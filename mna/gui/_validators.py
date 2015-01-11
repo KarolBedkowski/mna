@@ -29,8 +29,13 @@ class ValidationError(RuntimeError):
 
 def validate_empty_string(widget, title):
     """ Check widget for empty string. """
-    assert hasattr(widget, "text"), "Invalid widget %r, %r" % (widget, title)
-    if not unicode(widget.text()).strip():
+    if hasattr(widget, "text"):
+        value = widget.text()
+    elif hasattr(widget, "toPlainText"):
+        value = widget.toPlainText()
+    else:
+        raise RuntimeError("Invalid widget %r, %r" % (widget, title))
+    if not unicode(value).strip():
         widget.setFocus()
         raise ValidationError(title)
     return True
