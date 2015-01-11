@@ -65,6 +65,9 @@ class DlgSourceEdit(QtGui.QDialog):
         if hasattr(self._curr_src_frame, 'to_window'):
             self._curr_src_frame.to_window(source)
         self._ui.e_interval.setValue((source.interval or 3600) / 60)
+        self._ui.sb_art_keep_num.setValue(source.num_articles_to_keep or 0)
+        self._ui.sb_art_keep_age.setValue(source.age_articles_to_keep or 0)
+        self._ui.gb_delete_art.setChecked(bool(source.delete_old_articles))
 
     def _from_window(self):
         source = self._source
@@ -74,6 +77,9 @@ class DlgSourceEdit(QtGui.QDialog):
             if not self._curr_src_frame.from_window(source):
                 return False
         source.interval = self._ui.e_interval.value() * 60
+        source.num_articles_to_keep = self._ui.sb_art_keep_num.value()
+        source.age_articles_to_keep = self._ui.sb_art_keep_age.value()
+        source.delete_old_articles = self._ui.gb_delete_art.isChecked()
         return True
 
     def _validate(self):

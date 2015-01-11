@@ -85,4 +85,9 @@ def run():
     app.exec_()
 
     main_worker.terminate()
+
+    # cleanup
+    from mna.logic import sources
+    sources.delete_old_articles()
+
     config.save()

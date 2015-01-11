@@ -203,6 +203,11 @@ class Source(BaseModelMixin, Base):
     # number days back to load
     max_age_to_load = Column(Integer)
 
+    # delete old articles
+    delete_old_articles = Column(Boolean, default=True)
+    num_articles_to_keep = Column(Integer, default=0)
+    age_articles_to_keep = Column(Integer, default=0)
+
     conf = Column('conf', jsonobj.JSONEncodedDict)
     meta = Column(jsonobj.JSONEncodedDict)
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>603</width>
-    <height>282</height>
+    <height>407</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -43,7 +43,7 @@
       <attribute name="title">
        <string>Additional</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_4">
+      <layout class="QVBoxLayout" name="verticalLayout_4" stretch="0,1">
        <item>
         <widget class="QGroupBox" name="groupBox">
          <property name="sizePolicy">
@@ -62,17 +62,109 @@
           <item row="0" column="0">
            <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Update interval [min]:</string>
+             <string>Update interval:</string>
             </property>
            </widget>
           </item>
           <item row="0" column="1">
            <widget class="QSpinBox" name="e_interval">
+            <property name="suffix">
+             <string> min</string>
+            </property>
             <property name="maximum">
              <number>50000</number>
             </property>
             <property name="singleStep">
              <number>5</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label">
+            <property name="locale">
+             <locale language="C" country="AnyCountry"/>
+            </property>
+            <property name="text">
+             <string>Max articles to load:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="sb_max_art_load">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;(0 for application default; -1 - load all)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="minimum">
+             <number>-1</number>
+            </property>
+            <property name="maximum">
+             <number>99999</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Max articles age:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="sb_max_age_load">
+            <property name="toolTip">
+             <string>(0 for application default; -1 - load all)</string>
+            </property>
+            <property name="suffix">
+             <string> days</string>
+            </property>
+            <property name="minimum">
+             <number>-1</number>
+            </property>
+            <property name="maximum">
+             <number>9999</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="gb_delete_art">
+         <property name="title">
+          <string>Delete old articles</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <layout class="QFormLayout" name="formLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Keep only :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="sb_art_keep_num">
+            <property name="toolTip">
+             <string>(0 for application default; -1 - keep all)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Delete older than:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="sb_art_keep_age">
+            <property name="toolTip">
+             <string>(0 for application default; -1 - keep all)</string>
+            </property>
+            <property name="suffix">
+             <string> days</string>
             </property>
            </widget>
           </item>
