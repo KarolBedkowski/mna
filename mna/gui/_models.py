@@ -229,7 +229,7 @@ class ListItem(object):
 
 class ListModel(QtCore.QAbstractTableModel):
 
-    _HEADERS = ("Source", "Title", "Date")
+    _HEADERS = ("R.", "Source", "Title", "Date")
 
     def __init__(self, parent=None):
         super(ListModel, self).__init__(parent)
@@ -256,7 +256,7 @@ class ListModel(QtCore.QAbstractTableModel):
         return len(self.items)
 
     def columnCount(self, parent):
-        return 3
+        return 4
 
     def headerData(self, col, orientation, role):
         if orientation == QtCore.Qt.Horizontal and \
@@ -271,11 +271,13 @@ class ListModel(QtCore.QAbstractTableModel):
             row = self.items[index.row()]
             col = index.column()
             if col == 0:
-                return QtCore.QVariant(row.source)
+                return QtCore.QVariant(u"✔" if row.read else "")
             elif col == 1:
-                return QtCore.QVariant(row.title)
+                return QtCore.QVariant(row.source)
             elif col == 2:
-                return QtCore.QVariant(unicode(row.updated))
+                return QtCore.QVariant(row.title)
+            elif col == 3:
+                return QtCore.QDateTime(row.updated)
         elif role == QtCore.Qt.FontRole:
             row = self.items[index.row()]
             if not row.read:

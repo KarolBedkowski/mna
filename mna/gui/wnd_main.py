@@ -46,8 +46,12 @@ class WndMain(QtGui.QMainWindow):
         # setup
         self._tree_model = _models.TreeModel()
         self._list_model = _models.ListModel()
+        self._list_model_proxy = QtGui.QSortFilterProxyModel(self)
+        self._list_model_proxy.setDynamicSortFilter(True)
+        self._list_model_proxy.setSourceModel(self._list_model)
         self._ui.tree_subscriptions.setModel(self._tree_model)
-        self._ui.table_articles.setModel(self._list_model)
+        self._ui.table_articles.setModel(self._list_model_proxy)
+        self._ui.table_articles.setSortingEnabled(True)
         self._ui.tree_subscriptions.\
                 setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self._ui.tree_subscriptions.customContextMenuRequested.\
