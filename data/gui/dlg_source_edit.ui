@@ -149,6 +149,9 @@
             <property name="toolTip">
              <string>(0 for application default; -1 - keep all)</string>
             </property>
+            <property name="maximum">
+             <number>99999</number>
+            </property>
            </widget>
           </item>
           <item row="1" column="0">
@@ -165,6 +168,9 @@
             </property>
             <property name="suffix">
              <string> days</string>
+            </property>
+            <property name="maximum">
+             <number>9999</number>
             </property>
            </widget>
           </item>

@@ -119,10 +119,12 @@ def delete_old_articles():
 
     for src in srcs:
         keep = src.num_articles_to_keep or keep_num
-        del_date = datetime.datetime.now() - datetime.timedelta(days=keep)
-        min_oid = session.query(func.min(DBO.Article.oid)).\
+        sel_min_stmt = session.query(DBO.Article.oid).\
                 filter(DBO.Article.source_id == src.oid).\
-                order_by(DBO.Article.updated.desc()).limit(keep).scalar()
+                order_by(DBO.Article.updated.desc()).\
+                limit(keep).subquery()
+        min_oid = session.query(func.min(sel_min_stmt.c.oid)).\
+                scalar()
         if min_oid > 0:
             arts = session.query(DBO.Article).\
                     filter(DBO.Article.source_id == src.oid,
