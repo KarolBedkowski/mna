@@ -199,9 +199,9 @@ class Source(BaseModelMixin, Base):
     last_error = Column(String)
     last_error_date = Column(DateTime)
 
-    max_articles_to_load = Column(Integer)
+    max_articles_to_load = Column(Integer, default=0)
     # number days back to load
-    max_age_to_load = Column(Integer)
+    max_age_to_load = Column(Integer, default=0)
 
     # delete old articles
     delete_old_articles = Column(Boolean, default=True)

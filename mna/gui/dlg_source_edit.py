@@ -68,6 +68,8 @@ class DlgSourceEdit(QtGui.QDialog):
         self._ui.sb_art_keep_num.setValue(source.num_articles_to_keep or 0)
         self._ui.sb_art_keep_age.setValue(source.age_articles_to_keep or 0)
         self._ui.gb_delete_art.setChecked(bool(source.delete_old_articles))
+        self._ui.sb_max_art_load.setValue(source.max_articles_to_load or 0)
+        self._ui.sb_max_age_load.setValue(source.max_age_to_load or 0)
 
     def _from_window(self):
         source = self._source
@@ -80,6 +82,8 @@ class DlgSourceEdit(QtGui.QDialog):
         source.num_articles_to_keep = self._ui.sb_art_keep_num.value()
         source.age_articles_to_keep = self._ui.sb_art_keep_age.value()
         source.delete_old_articles = self._ui.gb_delete_art.isChecked()
+        source.max_articles_to_load = self._ui.sb_max_art_load.value()
+        source.max_age_to_load = self._ui.sb_max_age_load.value()
         return True
 
     def _validate(self):

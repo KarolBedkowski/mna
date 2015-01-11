@@ -165,7 +165,7 @@ class WebSource(objects.AbstractSource):
     name = "Web Page Source"
     conf_panel_class = FrmSettWeb
 
-    def get_items(self, session=None):
+    def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
             return []
@@ -179,19 +179,7 @@ class WebSource(objects.AbstractSource):
                                 "Error loading page: " + str(err))
             raise objects.GetArticleException("Get web page error: %s" % err)
 
-        last_refreshed = self.cfg.last_refreshed
-        # if max_age_to_load defined - set limit last_refreshed
-        if self.cfg.max_age_to_load:
-            offset = datetime.datetime.now() - \
-                    datetime.timedelta(days=self.cfg.max_age_to_load)
-            last_refreshed = max(last_refreshed, offset)
-
-        page_modification = info.get('_last-modified')
-        if page_modification and page_modification < last_refreshed:
-            self.cfg.add_to_log('info',
-                                "Page not modified according to header")
-            _LOG.info("No page %s modification since %s", self.cfg.title,
-                      last_refreshed)
+        if not self.is_page_updated(info, max_age_load):
             return []
 
         articles = []
@@ -211,13 +199,7 @@ class WebSource(objects.AbstractSource):
             return []
         self.cfg.add_to_log('info', "Found %d new articles" % len(articles))
         # Limit number articles to load
-        if self.cfg.max_articles_to_load and \
-                len(articles) > self.cfg.max_articles_to_load:
-            _LOG.debug("WebSource: loaded >max_articles - truncating")
-            articles = articles[-self.cfg.max_articles_to_load:]
-            self.cfg.add_to_log('info',
-                                "Loaded only %d articles because of limit." %
-                                len(articles))
+        articles = self._limit_articles(articles, max_load)
         return articles
 
     def _process_page(self, page, info, session):
@@ -243,6 +225,37 @@ class WebSource(objects.AbstractSource):
         art.published = info.get('_last-modified')
         art.link = self.cfg.conf.get('url')
         return art
+
+    def _limit_articles(self, articles, max_load):
+        if self.cfg.max_articles_to_load > 0 or \
+                (self.cfg.max_articles_to_load == 0 and max_load > 0):
+            max_articles_to_load = self.cfg.max_articles_to_load or max_load
+            if len(articles) > max_articles_to_load:
+                _LOG.debug("WebSource: loaded >max_articles - truncating")
+                articles = articles[-max_articles_to_load:]
+                self.cfg.add_to_log('info',
+                                    "Loaded only %d articles (limit)." %
+                                    len(articles))
+        return articles
+
+    def is_page_updated(self, info, max_age_load):
+        last_refreshed = self.cfg.last_refreshed
+        # if max_age_to_load defined - set limit last_refreshed
+        if self.cfg.max_age_to_load > 0 or (self.cfg.max_age_to_load == 0
+                                            and max_age_load > 0):
+            max_age_to_load = self.cfg.max_age_to_load or max_age_load
+            offset = datetime.datetime.now() - \
+                    datetime.timedelta(days=max_age_to_load)
+            last_refreshed = max(last_refreshed, offset)
+
+        page_modification = info.get('_last-modified')
+        if page_modification and page_modification < last_refreshed:
+            self.cfg.add_to_log('info',
+                                "Page not modified according to header")
+            _LOG.info("No page %s modification since %s", self.cfg.title,
+                      last_refreshed)
+            return False
+        return True
 
     @classmethod
     def get_params(cls):

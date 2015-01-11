@@ -118,7 +118,7 @@ class AbstractSource(object):
         self.cfg = cfg
         self.group_id = cfg.group_id
 
-    def get_items(self, session=None):
+    def get_items(self, session=None, max_load=-1, max_age_load=-1):
         return []
 
     def format_item_for_view(self, item):

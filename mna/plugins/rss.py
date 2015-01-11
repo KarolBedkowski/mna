@@ -56,7 +56,7 @@ class RssSource(objects.AbstractSource):
     name = "RSS/Atom Source"
     conf_panel_class = FrmSettRss
 
-    def get_items(self, session=None):
+    def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
             return []
@@ -72,15 +72,17 @@ class RssSource(objects.AbstractSource):
                                               doc.get('status'))
 
         last_refreshed = self.cfg.last_refreshed
-        # if max_age_to_load defined - set limit last_refreshed
-        if self.cfg.max_age_to_load:
+        if self.cfg.max_articles_to_load > 0 or \
+                (self.cfg.max_articles_to_load == 0 and max_load > 0):
+            max_age_to_load = self.cfg.max_age_to_load or max_age_load
+            # if max_age_to_load defined - set limit last_refreshed
             last_refreshed = \
                     max(last_refreshed,
                         datetime.datetime.now() -
-                        datetime.timedelta(days=self.cfg.max_age_to_load))
+                        datetime.timedelta(days=max_age_to_load))
 
         articles = filter(None,
-                          (self._create_article(feed, session)
+                          (self._create_article(feed, session, last_refreshed)
                            for feed in doc.get('entries') or []))
 
         _LOG.debug("RssSource: loaded %d articles", len(articles))
@@ -89,19 +91,21 @@ class RssSource(objects.AbstractSource):
             return []
 
         # Limit number articles to load
-        if (self.cfg.max_articles_to_load and
-                len(articles) > self.cfg.max_articles_to_load):
-            articles = articles[-self.cfg.max_articles_to_load:]
-            self.cfg.add_to_log('info',
-                                "Loaded only %d articles because of limit." %
-                                len(articles))
+        if self.cfg.max_articles_to_load > 0 or \
+                (self.cfg.max_articles_to_load == 0 and max_load > 0):
+            max_articles_to_load = self.cfg.max_articles_to_load or max_load
+            if len(articles) > max_articles_to_load:
+                _LOG.debug("WebSource: loaded >max_articles - truncating")
+                articles = articles[-max_articles_to_load:]
+                self.cfg.add_to_log('info',
+                                    "Loaded only %d articles (limit)." %
+                                    len(articles))
         return articles
 
-    def _create_article(self, feed, session):
+    def _create_article(self, feed, session, last_refreshed):
         published = _ts2datetime(feed.get('published_parsed'))
         updated = _ts2datetime(feed.get('updated_parsed'))
         updated = updated or published or datetime.datetime.now()
-        last_refreshed = self.cfg.last_refreshed
         if last_refreshed and updated < last_refreshed:
             return None
 
