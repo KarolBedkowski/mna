@@ -63,6 +63,7 @@ class WndMain(QtGui.QMainWindow):
         self._ui.article_view.page().setLinkDelegationPolicy(
             QtWebKit.QWebPage.DelegateAllLinks)
         self._bind()
+        self._set_window_pos_size()
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
@@ -80,6 +81,10 @@ class WndMain(QtGui.QMainWindow):
 
         self._ui.show_unread_action.triggered.\
                 connect(self._on_show_unread_action)
+
+    def closeEvent(self, event):
+        self._save_window_pos_size()
+        event.accept()
 
     @property
     def selected_tree_item(self):
@@ -280,3 +285,23 @@ class WndMain(QtGui.QMainWindow):
         articles = source.get_articles(unread_only)
         self._list_model.set_items(articles)
         self._ui.table_articles.resizeColumnsToContents()
+
+    def _set_window_pos_size(self):
+        appcfg = self._appconfig
+        width = appcfg.get('wnd_main.width')
+        height = appcfg.get('wnd_main.hright')
+        if width and height:
+            self.resize(width, height)
+        sp1 = appcfg.get('wnd_main.splitter1')
+        if sp1:
+            self._ui.splitter.setSizes(sp1)
+        sp2 = appcfg.get('wnd_main.splitter2')
+        if sp2:
+            self._ui.splitter_2.setSizes(sp2)
+
+    def _save_window_pos_size(self):
+        appcfg = self._appconfig
+        appcfg['wnd_main.width'] = self.width()
+        appcfg['wnd_main.height'] = self.height()
+        appcfg['wnd_main.splitter1'] = self._ui.splitter.sizes()
+        appcfg['wnd_main.splitter2'] = self._ui.splitter_2.sizes()
