@@ -108,7 +108,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def refresh(self):
         """ Refresh whole tree model from database. """
-        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.layoutAboutToBeChanged.emit()
         self.root.clear()
         session = DBO.Session()
         for group in list(DBO.Group.all(session=session)):
@@ -117,24 +117,24 @@ class TreeModel(QtCore.QAbstractItemModel):
                                 for source in group.sources)
             obj.update(session)
             self.root.children.append(obj)
-        self.emit(QtCore.SIGNAL("layoutChanged()"))
+        self.layoutChanged.emit()
 
     def update_group(self, group_id, session=None):
-        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.layoutAboutToBeChanged.emit()
         child = self.root.get_child(group_id)
         if child is not None:
             child.update(session, True)
-        self.emit(QtCore.SIGNAL("layoutChanged()"))
+        self.layoutChanged.emit()
 
     def update_source(self, source_id, group_id, session=None):
-        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.layoutAboutToBeChanged.emit()
         group = self.root.get_child(group_id)
         assert group is not None
         source = group.get_child(source_id)
         assert source is not None
         source.update(session, False)
         group.update(session, False)
-        self.emit(QtCore.SIGNAL("layoutChanged()"))
+        self.layoutChanged.emit()
 
     def data(self, index, role):
         """Returns the data stored under the given role for the item referred
@@ -237,18 +237,19 @@ class ListModel(QtCore.QAbstractTableModel):
 
     def set_items(self, items):
         _LOG.debug("ListModel.set_items(len=%d)", len(items))
-        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.layoutAboutToBeChanged.emit()
         self.items = [ListItem(item.title, item.oid, item.read,
                                item.updated, item.source.title)
                       for item in items]
-        self.emit(QtCore.SIGNAL("layoutChanged()"))
+        self.layoutChanged.emit()
 
     def update_item(self, item):
-        for itm in self.items:
+        for row, itm in enumerate(self.items):
             if itm.oid == item.oid:
                 itm.title = item.title
                 itm.read = item.read
                 itm.updated = item.updated
+                self.dataChanged.emit(self.index(row, 0), self.index(row, 3))
                 return True
         return False
 

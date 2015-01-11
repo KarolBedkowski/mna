@@ -30,7 +30,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
+         <enum>QAbstractItemView::ExtendedSelection</enum>
         </property>
         <property name="selectionBehavior">
          <enum>QAbstractItemView::SelectRows</enum>
@@ -89,7 +89,6 @@
      <string>Add</string>
     </property>
     <addaction name="add_group_action"/>
-    <addaction name="separator"/>
     <addaction name="add_src_action"/>
    </widget>
    <widget class="QMenu" name="menuArticles">
@@ -97,6 +96,8 @@
      <string>Articles</string>
     </property>
     <addaction name="mark_all_read_action"/>
+    <addaction name="action_toggle_selected_articles_read"/>
+    <addaction name="separator"/>
     <addaction name="show_unread_action"/>
    </widget>
    <addaction name="menu_file"/>
@@ -168,6 +169,14 @@
    </property>
    <property name="text">
     <string>Show unread only</string>
+   </property>
+  </action>
+  <action name="action_toggle_selected_articles_read">
+   <property name="text">
+    <string>Toggle selected articles read</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+R</string>
    </property>
   </action>
  </widget>

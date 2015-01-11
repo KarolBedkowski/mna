@@ -67,6 +67,8 @@ class WndMain(QtGui.QMainWindow):
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
+        self._ui.action_toggle_selected_articles_read.triggered.\
+                connect(self._on_toggle_read_action)
         self._ui.tree_subscriptions.clicked.connect(self._on_tree_clicked)
         self._ui.table_articles.selectionModel().\
                 selectionChanged.connect(self._on_table_articles_clicked)
@@ -267,6 +269,24 @@ class WndMain(QtGui.QMainWindow):
                     objects.MESSENGER.emit_source_updated(source_oid,
                                                           group_oid)
             objects.MESSENGER.emit_group_updated(sources_to_mark[0][1])
+
+    def _on_toggle_read_action(self):
+        """ Toggle selected articles read. """
+        rows = self._ui.table_articles.selectionModel().selectedRows()
+        articles = [self._list_model.node_from_index(index).oid
+                    for index in rows]
+        if not articles:
+            return
+        toggled = list(sources.toggle_articles_read(articles))
+        # when updated - emit signals for refresh tree/list
+        if not toggled:
+            return
+        updated_sources = {}
+        for article in toggled:
+            self._list_model.update_item(article)
+            updated_sources[article.source_id] = article.source.group_id
+        for source_id, group_id in updated_sources.iteritems():
+            self._tree_model.update_source(source_id, group_id)
 
     def _on_show_unread_action(self):
         node = self.selected_tree_item

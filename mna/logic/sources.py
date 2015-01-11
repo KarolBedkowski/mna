@@ -123,8 +123,7 @@ def delete_old_articles():
                 filter(DBO.Article.source_id == src.oid).\
                 order_by(DBO.Article.updated.desc()).\
                 limit(keep).subquery()
-        min_oid = session.query(func.min(sel_min_stmt.c.oid)).\
-                scalar()
+        min_oid = session.query(func.min(sel_min_stmt.c.oid)).scalar()
         if min_oid > 0:
             arts = session.query(DBO.Article).\
                     filter(DBO.Article.source_id == src.oid,
@@ -135,3 +134,21 @@ def delete_old_articles():
 
     session.commit()
     _LOG.info("delete_old_articles FINISHED")
+
+
+def toggle_articles_read(articles_oid):
+    """ Toggle given by `articles_oid`  articles read flag.
+    Generate changed `Article` object.
+    """
+    sess = DBO.Session()
+    # get status of first articles
+    art1 = DBO.Article.get(session=sess, oid=articles_oid[0])
+    read = art1.read = not art1.read
+    yield art1
+    for art_oid in articles_oid[1:]:
+        art = DBO.Article.get(session=sess, oid=art_oid)
+        if art.read != read:
+            art.read = read
+            yield art
+
+    sess.commit()
