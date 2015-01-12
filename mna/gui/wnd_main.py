@@ -23,6 +23,8 @@ from mna.gui import wnd_main_ui
 from mna.gui import dlg_edit_group
 from mna.gui import dlg_source_edit
 from mna.gui import dlg_source_info
+from mna.gui import dlg_preferences
+from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
@@ -69,6 +71,8 @@ class WndMain(QtGui.QMainWindow):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
         self._ui.action_toggle_selected_articles_read.triggered.\
                 connect(self._on_toggle_read_action)
+        self._ui.action_preferences.triggered.\
+                connect(self._on_action_preferences)
         self._ui.tree_subscriptions.clicked.connect(self._on_tree_clicked)
         self._ui.table_articles.selectionModel().\
                 selectionChanged.connect(self._on_table_articles_clicked)
@@ -202,7 +206,6 @@ class WndMain(QtGui.QMainWindow):
             self._refresh_tree()
 
     def _on_add_src_action(self):
-        from mna.gui import wzd_add_src
         dlg = wzd_add_src.WzdAddSrc(self)
         if dlg.exec_() == QtGui.QDialog.Accepted:
             self._refresh_tree()
@@ -285,6 +288,10 @@ class WndMain(QtGui.QMainWindow):
             updated_sources[article.source_id] = article.source.group_id
         for source_id, group_id in updated_sources.iteritems():
             self._tree_model.update_source(source_id, group_id)
+
+    def _on_action_preferences(self):
+        dlg = dlg_preferences.DlgPreferences(self)
+        dlg.exec_()
 
     def _on_show_unread_action(self):
         node = self.selected_tree_item

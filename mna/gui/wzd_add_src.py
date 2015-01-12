@@ -21,6 +21,7 @@ from mna import plugins
 from mna.gui import frm_sett_main
 from mna.model import dbobjects as DBO
 from mna.logic import sources
+from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ class WzdAddSrc(QtGui.QWizard):
 
         self._frm_edit_main = frm_sett_main.FrmSettMain(self)
         self._ui.l_main_opt.addWidget(self._frm_edit_main)
+        aconf = appconfig.AppConfig()
+        self._ui.e_interval.\
+                setValue(aconf.get('articles.update_interval', 60))
 
     def _bind(self):
         pass

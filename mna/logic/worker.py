@@ -16,7 +16,7 @@ from PyQt4 import QtCore
 from mna.model import dbobjects as DBO
 from mna import plugins
 from mna.common import objects
-
+from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 _LONG_SLEEP = 15  # sleep when no source processed
@@ -51,8 +51,12 @@ class Worker(QtCore.QRunnable):
 
         source = source_cls(source_cfg)
         cnt = 0
+        aconf = appconfig.AppConfig()
+        max_num_load = aconf.get('articles.max_num_load', 0)
+        max_age_load = aconf.get('articles.max_age_load', 0)
         try:
-            for article in source.get_items(session):
+            for article in source.get_items(session, max_num_load,
+                                            max_age_load):
                 cnt += 1
                 article.source_id = source_cfg.oid
                 # TODO: filtrowanie artykułów
