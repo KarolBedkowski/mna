@@ -82,6 +82,8 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="action_preferences"/>
+    <addaction name="separator"/>
     <addaction name="action_exit"/>
    </widget>
    <widget class="QMenu" name="menu_add">
@@ -177,6 +179,11 @@
    </property>
    <property name="shortcut">
     <string>Alt+R</string>
+   </property>
+  </action>
+  <action name="action_preferences">
+   <property name="text">
+    <string>Preferences</string>
    </property>
   </action>
  </widget>
