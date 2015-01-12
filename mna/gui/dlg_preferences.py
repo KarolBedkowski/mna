@@ -56,6 +56,8 @@ class DlgPreferences(QtGui.QDialog):
         self_ui.sb_max_age_load.setValue(aconf.get('articles.max_age_load', 0))
         self_ui.sb_art_keep_age.setValue(aconf.get('articles.keep_older', 0))
         self_ui.sb_art_keep_num.setValue(aconf.get('articles.keep_num', 0))
+        self_ui.sb_update_interval.\
+                setValue(aconf.get('articles.update_interval', 60))
 
     def _from_window(self):
         aconf = self._appconf
@@ -64,6 +66,8 @@ class DlgPreferences(QtGui.QDialog):
         aconf['articles.max_age_load'] = self_ui.sb_max_age_load.value()
         aconf['articles.keep_older'] = self_ui.sb_art_keep_age.value()
         aconf['articles.keep_num'] = self_ui.sb_art_keep_num.value()
+        aconf['articles.update_interval'] = \
+                self_ui.sb_update_interval.value()
         return True
 
     def _validate(self):
