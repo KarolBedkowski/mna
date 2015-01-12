@@ -47,7 +47,6 @@ class WndMain(QtGui.QMainWindow):
         self._tree_model = _models.TreeModel()
         self._list_model = _models.ListModel()
         self._list_model_proxy = QtGui.QSortFilterProxyModel(self)
-        self._list_model_proxy.setDynamicSortFilter(True)
         self._list_model_proxy.setSourceModel(self._list_model)
         self._ui.tree_subscriptions.setModel(self._tree_model)
         self._ui.table_articles.setModel(self._list_model_proxy)
@@ -64,6 +63,7 @@ class WndMain(QtGui.QMainWindow):
             QtWebKit.QWebPage.DelegateAllLinks)
         self._bind()
         self._set_window_pos_size()
+        self._ui.table_articles.sortByColumn(3, QtCore.Qt.AscendingOrder)
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
@@ -189,7 +189,6 @@ class WndMain(QtGui.QMainWindow):
             presenter = source.presenter(source)
             self._last_presenter = (article.source_id, presenter)
         content = presenter.to_gui(article)
-        #print repr(article.content)
         self._ui.article_view.setHtml(content)
         article.read = 1
         article.save(True)
@@ -278,7 +277,6 @@ class WndMain(QtGui.QMainWindow):
         if not articles:
             return
         toggled = list(sources.toggle_articles_read(articles))
-        # when updated - emit signals for refresh tree/list
         if not toggled:
             return
         updated_sources = {}
