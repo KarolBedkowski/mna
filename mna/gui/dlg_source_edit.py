@@ -54,7 +54,6 @@ class DlgSourceEdit(QtGui.QDialog):
         if result != QtGui.QDialog.Accepted:
             return QtGui.QDialog.done(self, result)
         if not self._validate():
-            print 'n-valid'
             return
         if self._from_window():
             sources.save_source(self._source)

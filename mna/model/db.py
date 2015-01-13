@@ -101,7 +101,6 @@ def connect(filename, debug=False, *args, **kwargs):
 
     freelist_count = session.execute("PRAGMA freelist_count").fetchone()[0]
     page_count = session.execute("PRAGMA page_count").fetchone()[0]
-    print freelist_count, page_count
     if freelist_count > 0.20 * page_count:
         _LOG.debug('Database vacuum')
         session.execute('PRAGMA incremental_vacuum(%d)' % (freelist_count / 2))

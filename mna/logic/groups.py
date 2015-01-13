@@ -34,7 +34,6 @@ def save_group(group):
     # check for dupilcate name
     session = DBO.Session()
     tmp_group = DBO.Group.get(session=session, name=group.name)
-    print repr(tmp_group)
     if tmp_group and tmp_group.oid != group.oid:
         raise GroupSaveError("duplicated name")
     group.save(commit=True, session=session)
