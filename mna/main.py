@@ -17,6 +17,9 @@ import logging
 
 _LOG = logging.getLogger(__name__)
 
+import sip
+sip.setapi("QString",2)
+
 
 from mna import version
 

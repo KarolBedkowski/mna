@@ -29,8 +29,12 @@ from mna.model import dbobjects as DBO
 _LOG = logging.getLogger(__name__)
 
 
+def text_factory(text):
+    return unicode(text, 'utf-8', errors='replace')
+
 @sqlalchemy.event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
+    dbapi_connection.text_factory = text_factory
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")

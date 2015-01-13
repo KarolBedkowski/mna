@@ -63,12 +63,15 @@ def get_page_part(info, page, selector):
                                 tree.xpath("//script"),
                                 tree.xpath("//style")):
         elem.getparent().remove(elem)
-    return (etree.tostring(elem).strip() for elem in tree.xpath(selector))
+    return (unicode(etree.tostring(elem, encoding='utf-8',
+                                   method='html').strip(),
+                    encoding='utf-8', errors="replace")
+            for elem in tree.xpath(selector))
 
 
 def create_checksum(data):
     md5 = hashlib.md5()
-    md5.update(data)
+    md5.update(data.encode('utf-8'))
     return md5.hexdigest().lower()
 
 
@@ -137,8 +140,8 @@ class FrmSettWeb(QtGui.QFrame):
         return True
 
     def from_window(self, source):
-        source.conf["url"] = unicode(self.ui.e_url.text())
-        source.conf["xpath"] = unicode(self.ui.e_xpath.toPlainText())
+        source.conf["url"] = unicode(self.ui.e_url.text(), 'utf-8')
+        source.conf["xpath"] = unicode(self.ui.e_xpath.toPlainText(), 'utf-8')
         source.conf["similarity"] = \
             self.ui.sb_similarity_ratio.value() / 100.0
         if self.ui.rb_scan_page.isChecked():

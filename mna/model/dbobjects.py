@@ -17,7 +17,7 @@ __version__ = "2014-06-12"
 import logging
 import datetime
 
-from sqlalchemy import (Column, Integer, String, DateTime, Boolean,
+from sqlalchemy import (Column, Integer, Unicode, DateTime, Boolean,
                         ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm, and_
@@ -148,7 +148,7 @@ class Group(BaseModelMixin, Base):
     __tablename__ = "groups"
 
     oid = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(Unicode)
     default_actions_group_id = Column(Integer, ForeignKey("actions.oid"))
 
     def get_articles(self, unread_only=False, sorting=None):
@@ -185,9 +185,9 @@ class Source(BaseModelMixin, Base):
     # Database (internal) source id
     oid = Column(Integer, primary_key=True)
     # Source name (package and class)
-    name = Column(String)
+    name = Column(Unicode)
     # Displayed source title
-    title = Column(String)
+    title = Column(Unicode)
     last_refreshed = Column(DateTime)
     # Refresh interval; default=1h
     interval = Column(Integer, default=3600)
@@ -196,7 +196,7 @@ class Source(BaseModelMixin, Base):
     initial_score = Column(Integer, default=0)
     enabled = Column(Boolean, default=True)
     processing = Column(Boolean, default=False)
-    last_error = Column(String)
+    last_error = Column(Unicode)
     last_error_date = Column(DateTime)
 
     max_articles_to_load = Column(Integer, default=0)
@@ -285,7 +285,7 @@ class Task(BaseModelMixin, Base):
 
     oid = Column(Integer, primary_key=True)
     # Filter name
-    name = Column(String)
+    name = Column(Unicode)
     enabled = Column(Integer, default=0)
     conf = Column('conf', jsonobj.JSONEncodedDict)
 
@@ -296,7 +296,7 @@ class Actions(BaseModelMixin, Base):
     __tablename__ = "actions"
 
     oid = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(Unicode)
     # actions
     actions = association_proxy("actions_tasks", "actions")
 
@@ -314,13 +314,13 @@ class Article(BaseModelMixin, Base):
     updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     # article read?
     read = Column(Integer, default=0)
-    title = Column(String)
-    summary = Column(String)
-    content = Column(String)
+    title = Column(Unicode)
+    summary = Column(Unicode)
+    content = Column(Unicode)
     # internal id (hash)
-    internal_id = Column(String, index=True)
-    link = Column(String)
-    author = Column(String)
+    internal_id = Column(Unicode, index=True)
+    link = Column(Unicode)
+    author = Column(Unicode)
     meta = Column(jsonobj.JSONEncodedDict)
     score = Column(Integer, default=0)
 
@@ -367,8 +367,8 @@ class SourceLog(BaseModelMixin, Base):
     # database id
     oid = Column(Integer, primary_key=True)
     date = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    category = Column(String)
-    message = Column(String)
+    category = Column(Unicode)
+    message = Column(Unicode)
 
     source_id = Column(Integer, ForeignKey("sources.oid"))
     source = orm.relationship(Source,
