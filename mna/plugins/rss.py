@@ -72,8 +72,8 @@ class RssSource(objects.AbstractSource):
                                               doc.get('status'))
 
         last_refreshed = self.cfg.last_refreshed
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
+        if last_refreshed and (self.cfg.max_articles_to_load > 0 or \
+                (self.cfg.max_articles_to_load == 0 and max_load > 0)):
             max_age_to_load = self.cfg.max_age_to_load or max_age_load
             # if max_age_to_load defined - set limit last_refreshed
             last_refreshed = \
