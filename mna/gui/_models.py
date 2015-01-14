@@ -212,12 +212,13 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 class ListItem(object):
     def __init__(self, title=None, oid=None, read=None, updated=None,
-                 source=None):
+                 source=None, starred=None):
         self.title = title
         self.oid = oid
         self.read = read
         self.updated = updated
         self.source = source
+        self.starred = starred
 
     def __str__(self):
         return self.title
@@ -229,7 +230,7 @@ class ListItem(object):
 
 class ListModel(QtCore.QAbstractTableModel):
 
-    _HEADERS = ("R.", "Source", "Title", "Date")
+    _HEADERS = ("R.", "S.", "Source", "Title", "Date")
 
     def __init__(self, parent=None):
         super(ListModel, self).__init__(parent)
@@ -239,7 +240,7 @@ class ListModel(QtCore.QAbstractTableModel):
         _LOG.debug("ListModel.set_items(len=%d)", len(items))
         self.layoutAboutToBeChanged.emit()
         self.items = [ListItem(item.title, item.oid, item.read,
-                               item.updated, item.source.title)
+                               item.updated, item.source.title, item.starred)
                       for item in items]
         self.layoutChanged.emit()
 
@@ -249,6 +250,7 @@ class ListModel(QtCore.QAbstractTableModel):
                 itm.title = item.title
                 itm.read = item.read
                 itm.updated = item.updated
+                itm.starred = item.starred
                 self.dataChanged.emit(self.index(row, 0), self.index(row, 3))
                 return True
         return False
@@ -257,7 +259,7 @@ class ListModel(QtCore.QAbstractTableModel):
         return len(self.items)
 
     def columnCount(self, parent):
-        return 4
+        return 5
 
     def headerData(self, col, orientation, role):
         if orientation == QtCore.Qt.Horizontal and \
@@ -274,10 +276,12 @@ class ListModel(QtCore.QAbstractTableModel):
             if col == 0:
                 return QtCore.QVariant(u"✔" if row.read else "")
             elif col == 1:
-                return QtCore.QVariant(row.source)
+                return QtCore.QVariant(u"★" if row.starred else "")
             elif col == 2:
-                return QtCore.QVariant(row.title)
+                return QtCore.QVariant(row.source)
             elif col == 3:
+                return QtCore.QVariant(row.title)
+            elif col == 4:
                 return QtCore.QDateTime(row.updated)
         elif role == QtCore.Qt.FontRole:
             row = self.items[index.row()]

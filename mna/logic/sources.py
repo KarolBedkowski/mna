@@ -102,7 +102,8 @@ def delete_old_articles():
         del_date = datetime.datetime.now() - datetime.timedelta(days=keep)
         arts = session.query(DBO.Article).\
                 filter(DBO.Article.source_id == src.oid,
-                       DBO.Article.updated < del_date)
+                       DBO.Article.updated < del_date,
+                       DBO.Article.starred == 0)
         num_deleted = arts.delete()
         _LOG.debug("delete_old_articles: %d deleted by age for (%r, %r)",
                    num_deleted, src.oid, src.title)
@@ -127,7 +128,8 @@ def delete_old_articles():
         if min_oid > 0:
             arts = session.query(DBO.Article).\
                     filter(DBO.Article.source_id == src.oid,
-                           DBO.Article.oid < min_oid)
+                           DBO.Article.oid < min_oid,
+                           DBO.Article.starred == 0)
             num_deleted = arts.delete()
             _LOG.debug("delete_old_articles: %d deleted by num for (%r, %r)",
                        num_deleted, src.oid, src.title)
@@ -149,6 +151,24 @@ def toggle_articles_read(articles_oid):
         art = DBO.Article.get(session=sess, oid=art_oid)
         if art.read != read:
             art.read = read
+            yield art
+
+    sess.commit()
+
+
+def toggle_articles_starred(articles_oid):
+    """ Toggle given by `articles_oid`  articles starred flag.
+    Generate changed `Article` object.
+    """
+    sess = DBO.Session()
+    # get status of first articles
+    art1 = DBO.Article.get(session=sess, oid=articles_oid[0])
+    starred = art1.starred = not art1.starred
+    yield art1
+    for art_oid in articles_oid[1:]:
+        art = DBO.Article.get(session=sess, oid=art_oid)
+        if art.starred != starred:
+            art.starred = starred
             yield art
 
     sess.commit()
