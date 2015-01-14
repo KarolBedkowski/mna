@@ -75,7 +75,9 @@ class WndMain(QtGui.QMainWindow):
                 connect(self._on_action_preferences)
         self._ui.tree_subscriptions.clicked.connect(self._on_tree_clicked)
         self._ui.table_articles.selectionModel().\
-                selectionChanged.connect(self._on_table_articles_clicked)
+                selectionChanged.connect(self._on_article_list_selchng)
+        self._ui.table_articles.clicked.\
+                connect(self._on_article_list_clicked)
         self._ui.add_group_action.triggered.connect(self._on_add_group_action)
         self._ui.add_src_action.triggered.connect(self._on_add_src_action)
         self._ui.article_view.linkClicked.connect(self._on_article_view_link)
@@ -179,11 +181,27 @@ class WndMain(QtGui.QMainWindow):
         dlg = dlg_source_info.DlgSourceInfo(self, source)
         dlg.exec_()
 
-    def _on_table_articles_clicked(self, index):
+    def _on_article_list_clicked(self, index):
+        """ Handle article click -  star/flag articles. """
+        index = self._ui.table_articles.selectionModel().currentIndex()
+        item = self._list_model.node_from_index(index)
+        _LOG.debug("_on_article_list_clicked %r %r", item.oid, index.column())
+        article = None
+        if index.column() == 0:  # readed
+            article = list(sources.toggle_articles_read([item.oid]))[0]
+        elif index.column() == 1:  # starred
+            article = list(sources.toggle_articles_starred([item.oid]))[0]
+        if article:
+            self._list_model.update_item(article)
+            self._tree_model.update_source(article.source_id,
+                                           article.source.group_id)
+
+    def _on_article_list_selchng(self, index):
         """ Handle article selection -  show article in HtmlView. """
         index = self._ui.table_articles.selectionModel().currentIndex()
         item = self._list_model.node_from_index(index)
-        _LOG.debug("_on_table_articles_clicked %r", item.oid)
+        _LOG.debug("_on_article_list_selchng %r %r", item.oid, index.column())
+        article = None
         article = DBO.Article.get(oid=item.oid)
         if self._last_presenter[0] == article.source_id:
             presenter = self._last_presenter[1]
