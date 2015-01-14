@@ -102,7 +102,8 @@ def delete_old_articles():
         del_date = datetime.datetime.now() - datetime.timedelta(days=keep)
         arts = session.query(DBO.Article).\
                 filter(DBO.Article.source_id == src.oid,
-                       DBO.Article.updated < del_date)
+                       DBO.Article.updated < del_date,
+                       DBO.Article.starred == 0)
         num_deleted = arts.delete()
         _LOG.debug("delete_old_articles: %d deleted by age for (%r, %r)",
                    num_deleted, src.oid, src.title)
@@ -127,7 +128,8 @@ def delete_old_articles():
         if min_oid > 0:
             arts = session.query(DBO.Article).\
                     filter(DBO.Article.source_id == src.oid,
-                           DBO.Article.oid < min_oid)
+                           DBO.Article.oid < min_oid,
+                           DBO.Article.starred == 0)
             num_deleted = arts.delete()
             _LOG.debug("delete_old_articles: %d deleted by num for (%r, %r)",
                        num_deleted, src.oid, src.title)
