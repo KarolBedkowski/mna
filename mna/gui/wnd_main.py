@@ -65,7 +65,7 @@ class WndMain(QtGui.QMainWindow):
             QtWebKit.QWebPage.DelegateAllLinks)
         self._bind()
         self._set_window_pos_size()
-        self._ui.table_articles.sortByColumn(3, QtCore.Qt.AscendingOrder)
+        self._ui.table_articles.sortByColumn(4, QtCore.Qt.AscendingOrder)
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
