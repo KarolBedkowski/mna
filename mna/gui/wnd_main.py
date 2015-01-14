@@ -300,6 +300,7 @@ class WndMain(QtGui.QMainWindow):
     def _show_articles(self, node):
         _LOG.debug("WndMain._show_articles(%r(oid=%r))", type(node),
                    node.oid)
+        self._ui.table_articles.selectionModel().clearSelection()
         unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):
             source = DBO.Source.get(oid=node.oid)
