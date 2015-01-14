@@ -154,3 +154,21 @@ def toggle_articles_read(articles_oid):
             yield art
 
     sess.commit()
+
+
+def toggle_articles_starred(articles_oid):
+    """ Toggle given by `articles_oid`  articles starred flag.
+    Generate changed `Article` object.
+    """
+    sess = DBO.Session()
+    # get status of first articles
+    art1 = DBO.Article.get(session=sess, oid=articles_oid[0])
+    starred = art1.starred = not art1.starred
+    yield art1
+    for art_oid in articles_oid[1:]:
+        art = DBO.Article.get(session=sess, oid=art_oid)
+        if art.starred != starred:
+            art.starred = starred
+            yield art
+
+    sess.commit()
