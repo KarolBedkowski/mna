@@ -323,6 +323,8 @@ class Article(BaseModelMixin, Base):
     author = Column(Unicode)
     meta = Column(jsonobj.JSONEncodedDict)
     score = Column(Integer, default=0)
+    starred = Column(Boolean, default=False)
+
 
     # tags
     source_id = Column(Integer, ForeignKey("sources.oid"))
