@@ -75,8 +75,7 @@ class Worker(QtCore.QRunnable):
                 datetime.timedelta(seconds=source_cfg.interval)
         source_cfg.last_refreshed = now
         session.commit()
-        if cnt > 0:
-            source.emit_updated()
+        source.emit_updated(cnt)
         _LOG.debug("%s: finished", _p_name)
 
 

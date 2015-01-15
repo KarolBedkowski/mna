@@ -20,6 +20,7 @@ class _Messenger(QtCore.QObject):
 
     source_updated = QtCore.pyqtSignal(int, int, name="updateSource")
     group_updated = QtCore.pyqtSignal(int, name="updateGroup")
+    announce = QtCore.pyqtSignal(unicode, name="announce")
 
     def emit_source_updated(self, source_id, group_id):
         """ Send source updated message.
@@ -37,6 +38,14 @@ class _Messenger(QtCore.QObject):
             group_id (int): updated group id
         """
         self.group_updated.emit(group_id)
+
+    def emit_announce(self, message):
+        """ Announce some message (in status bar i.e.).
+
+        Args:
+            message (unicode): message to display
+        """
+        self.announce.emit(message)
 
 
 MESSENGER = _Messenger()
@@ -132,8 +141,13 @@ class AbstractSource(object):
     def get_params(cls):
         return {}
 
-    def emit_updated(self):
-        MESSENGER.emit_source_updated(self.oid, self.group_id)
+    def emit_updated(self, new_articles_cnt):
+        if new_articles_cnt > 0:
+            MESSENGER.emit_source_updated(self.oid, self.group_id)
+            MESSENGER.emit_announce(u"%s updated - %d new articles" %
+                                    (self.cfg.title, new_articles_cnt))
+        else:
+            MESSENGER.emit_announce(u"%s updated" % self.cfg.title)
 
 
 class AbstractFilter(object):

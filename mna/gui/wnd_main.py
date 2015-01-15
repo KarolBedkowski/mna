@@ -86,6 +86,7 @@ class WndMain(QtGui.QMainWindow):
                 connect(self._on_mark_all_read_action)
         objects.MESSENGER.source_updated.connect(self._on_source_updated)
         objects.MESSENGER.group_updated.connect(self._on_group_updated)
+        objects.MESSENGER.announce.connect(self._on_announce)
 
         self._ui.show_unread_action.triggered.\
                 connect(self._on_show_unread_action)
@@ -234,8 +235,8 @@ class WndMain(QtGui.QMainWindow):
     def _refresh_tree(self):
         self._tree_model.refresh()
 
-    @QtCore.pyqtSlot(int, int)
-    def _on_source_updated(self, source_id, group_id):
+    @QtCore.pyqtSlot(int, int, bool, unicode)
+    def _on_source_updated(self, source_id, group_id, announce, group_name):
         """ Handle  source update event. """
         _LOG.debug("Source updated %r, %r", source_id, group_id)
         if not source_id or not group_id:
@@ -251,6 +252,10 @@ class WndMain(QtGui.QMainWindow):
             self._show_articles(node)
         elif isinstance(node, _models.GroupTreeNode) and group_id == node.oid:
             self._show_articles(node)
+
+    @QtCore.pyqtSlot(unicode)
+    def _on_announce(self, message):
+        self.statusBar().showMessage(message, 10000)
 
     @QtCore.pyqtSlot(int)
     def _on_group_updated(self, group_id):
