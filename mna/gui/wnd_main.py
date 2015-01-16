@@ -235,8 +235,8 @@ class WndMain(QtGui.QMainWindow):
     def _refresh_tree(self):
         self._tree_model.refresh()
 
-    @QtCore.pyqtSlot(int, int, bool, unicode)
-    def _on_source_updated(self, source_id, group_id, announce, group_name):
+    @QtCore.pyqtSlot(int, int)
+    def _on_source_updated(self, source_id, group_id):
         """ Handle  source update event. """
         _LOG.debug("Source updated %r, %r", source_id, group_id)
         if not source_id or not group_id:
