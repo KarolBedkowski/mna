@@ -103,7 +103,7 @@ class WndMain(QtGui.QMainWindow):
         return item
 
     def _on_action_refresh(self):
-        DBO.Source.force_refresh_all()
+        sources.force_refresh_all()
 
     def _on_tree_clicked(self, index):
         """ Handle group/source selection."""

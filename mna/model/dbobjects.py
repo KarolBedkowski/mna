@@ -219,14 +219,6 @@ class Source(BaseModelMixin, Base):
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
 
-    @classmethod
-    def force_refresh_all(cls):
-        """ Force refresh all sources. """
-        _LOG.info("Sources.force_refresh_all()")
-        session = Session()
-        session.query(cls).update({"next_refresh": datetime.datetime.now()})
-        session.commit()
-
     @property
     def unread(self):
         cnt = orm.object_session(self).\

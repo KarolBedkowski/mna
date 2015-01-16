@@ -172,3 +172,11 @@ def toggle_articles_starred(articles_oid):
             yield art
 
     sess.commit()
+
+
+def force_refresh_all():
+    """ Force refresh all sources. """
+    _LOG.info("Sources.force_refresh_all()")
+    session = DBO.Session()
+    session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
+    session.commit()
