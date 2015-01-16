@@ -242,15 +242,6 @@ class Source(BaseModelMixin, Base):
             articles = articles.order_by("updated")
         return list(articles)
 
-    @classmethod
-    def get_last_article(self, source_id, session=None):
-        """  Find last article for `source_id` """
-        session = session or Session()
-        article = session.query(Article).\
-            filter(Article.source_id == source_id).\
-            order_by(Article.updated.desc()).first()
-        return article
-
     def add_to_log(self, category, message, commit=False):
         session = orm.object_session(self)
         log = SourceLog()
