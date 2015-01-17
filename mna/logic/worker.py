@@ -108,7 +108,7 @@ def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt):
 
 def _process_sources():
     """ Process all sources with `next_refresh` date in past """
-    _LOG.info("MainWorker: start processing")
+    _LOG.debug("MainWorker: start processing")
     session = DBO.Session()
     now = datetime.datetime.now()
     query = session.query(DBO.Source)
@@ -120,12 +120,14 @@ def _process_sources():
     session.close()
     _LOG.debug("MainWorker: processing %d sources", len(sources))
     if len(sources) > 0:
+        messenger.MESSENGER.emit_announce(u"Starting sources update")
         pool = QtCore.QThreadPool()
         pool.setMaxThreadCount(_WORKERS)
         for source_id in sources:
             worker = Worker(source_id)
             pool.start(worker)
         pool.waitForDone()
+        messenger.MESSENGER.emit_announce(u"Update finished")
     _LOG.debug("MainWorker: processing finished")
     return 0
 
