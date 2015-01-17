@@ -15,8 +15,6 @@ __version__ = "2015-01-17"
 
 import logging
 
-from mna.common import objects
-
 
 _LOG = logging.getLogger(__name__)
 
@@ -114,20 +112,9 @@ class AbstractSource(object):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         return []
 
-    def format_item_for_view(self, item):
-        return str(item)
-
     @classmethod
     def get_name(cls):
         return cls.__module__ + '.' + cls.__name__
-
-    def emit_updated(self, new_articles_cnt):
-        if new_articles_cnt > 0:
-            objects.MESSENGER.emit_source_updated(self.oid, self.group_id)
-            objects.MESSENGER.emit_announce(u"%s updated - %d new articles" %
-                                            (self.cfg.title, new_articles_cnt))
-        else:
-            objects.MESSENGER.emit_announce(u"%s updated" % self.cfg.title)
 
 
 class AbstractFilter(object):

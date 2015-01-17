@@ -17,6 +17,7 @@ from mna.model import dbobjects as DBO
 from mna import plugins
 from mna.model import base
 from mna.lib import appconfig
+from mna.common import objects
 
 _LOG = logging.getLogger(__name__)
 _LONG_SLEEP = 15  # sleep when no source processed
@@ -75,7 +76,8 @@ class Worker(QtCore.QRunnable):
                 datetime.timedelta(seconds=source_cfg.interval)
         source_cfg.last_refreshed = now
         session.commit()
-        source.emit_updated(cnt)
+        _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
+                      cnt)
         _LOG.debug("%s: finished", _p_name)
 
 
@@ -92,6 +94,16 @@ def _on_error(session, source_cfg, error_msg):
     source_cfg.last_refreshed = now
     source_cfg.add_to_log("ERROR", error_msg)
     session.commit()
+
+
+def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt):
+    """ Inform application about source updates. """
+    if new_articles_cnt:
+        objects.MESSENGER.emit_source_updated(source_oid, group_oid)
+        objects.MESSENGER.emit_announce(u"%s updated - %d new articles" %
+                                        (source_title, new_articles_cnt))
+    else:
+        objects.MESSENGER.emit_announce(u"%s updated" % source_title)
 
 
 def _process_sources():
