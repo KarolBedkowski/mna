@@ -17,7 +17,7 @@ from mna.model import dbobjects as DBO
 from mna import plugins
 from mna.model import base
 from mna.lib import appconfig
-from mna.common import objects
+from mna.common import messenger
 
 _LOG = logging.getLogger(__name__)
 _LONG_SLEEP = 15  # sleep when no source processed
@@ -99,11 +99,11 @@ def _on_error(session, source_cfg, error_msg):
 def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt):
     """ Inform application about source updates. """
     if new_articles_cnt:
-        objects.MESSENGER.emit_source_updated(source_oid, group_oid)
-        objects.MESSENGER.emit_announce(u"%s updated - %d new articles" %
+        messenger.MESSENGER.emit_source_updated(source_oid, group_oid)
+        messenger.MESSENGER.emit_announce(u"%s updated - %d new articles" %
                                         (source_title, new_articles_cnt))
     else:
-        objects.MESSENGER.emit_announce(u"%s updated" % source_title)
+        messenger.MESSENGER.emit_announce(u"%s updated" % source_title)
 
 
 def _process_sources():

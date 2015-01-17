@@ -28,7 +28,7 @@ from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
-from mna.common import objects
+from mna.common import messenger
 from mna import plugins
 
 _ = gettext.gettext
@@ -84,9 +84,9 @@ class WndMain(QtGui.QMainWindow):
         # handle article list selection changes
         self._ui.mark_all_read_action.triggered.\
                 connect(self._on_mark_all_read_action)
-        objects.MESSENGER.source_updated.connect(self._on_source_updated)
-        objects.MESSENGER.group_updated.connect(self._on_group_updated)
-        objects.MESSENGER.announce.connect(self._on_announce)
+        messenger.MESSENGER.source_updated.connect(self._on_source_updated)
+        messenger.MESSENGER.group_updated.connect(self._on_group_updated)
+        messenger.MESSENGER.announce.connect(self._on_announce)
 
         self._ui.show_unread_action.triggered.\
                 connect(self._on_show_unread_action)
@@ -133,13 +133,13 @@ class WndMain(QtGui.QMainWindow):
             source = DBO.Source.get(oid=node.oid)
             dlg = dlg_source_edit.DlgSourceEdit(self, source)
             if dlg.exec_() == QtGui.QDialog.Accepted:
-                objects.MESSENGER.emit_source_updated(source.oid,
+                messenger.MESSENGER.emit_source_updated(source.oid,
                                                       source.group_id)
         elif isinstance(node, _models.GroupTreeNode):
             group = DBO.Group.get(oid=node.oid)
             dlg = dlg_edit_group.DlgEditGroup(self, group)
             if dlg.exec_() == QtGui.QDialog.Accepted:
-                objects.MESSENGER.emit_group_updated(group.oid)
+                messenger.MESSENGER.emit_group_updated(group.oid)
         else:
             raise RuntimeError("invalid object type %r", node)
 
@@ -291,9 +291,9 @@ class WndMain(QtGui.QMainWindow):
             for source_oid, group_oid in sources_to_mark:
                 # send signals only for real updated sources
                 if src_updated[source_oid] > 0:
-                    objects.MESSENGER.emit_source_updated(source_oid,
+                    messenger.MESSENGER.emit_source_updated(source_oid,
                                                           group_oid)
-            objects.MESSENGER.emit_group_updated(sources_to_mark[0][1])
+            messenger.MESSENGER.emit_group_updated(sources_to_mark[0][1])
 
     def _on_toggle_read_action(self):
         """ Toggle selected articles read. """
