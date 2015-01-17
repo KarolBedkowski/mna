@@ -213,19 +213,13 @@ class Source(BaseModelMixin, Base):
 
     group_id = Column(Integer, ForeignKey("groups.oid"))
 
-    group = orm.relationship(Group, backref=orm.backref("sources",
-                               cascade="all, delete-orphan"))
+    group = orm.\
+            relationship(Group,
+                         backref=orm.backref("sources",
+                                             cascade="all, delete-orphan"))
 
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
-
-    @classmethod
-    def force_refresh_all(cls):
-        """ Force refresh all sources. """
-        _LOG.info("Sources.force_refresh_all()")
-        session = Session()
-        session.query(cls).update({"next_refresh": datetime.datetime.now()})
-        session.commit()
 
     @property
     def unread(self):
@@ -250,15 +244,6 @@ class Source(BaseModelMixin, Base):
             articles = articles.order_by("updated")
         return list(articles)
 
-    @classmethod
-    def get_last_article(self, source_id, session=None):
-        """  Find last article for `source_id` """
-        session = session or Session()
-        article = session.query(Article).\
-            filter(Article.source_id == source_id).\
-            order_by(Article.updated.desc()).first()
-        return article
-
     def add_to_log(self, category, message, commit=False):
         session = orm.object_session(self)
         log = SourceLog()
@@ -270,7 +255,7 @@ class Source(BaseModelMixin, Base):
             session.commit()
 
     def get_logs(self):
-        """  Find logs for `source_id` """
+        """  Find logs for source """
         session = orm.object_session(self) or Session()
         article = session.query(SourceLog).\
             filter(SourceLog.source_id == self.oid).\
@@ -325,12 +310,13 @@ class Article(BaseModelMixin, Base):
     score = Column(Integer, default=0)
     starred = Column(Boolean, default=False)
 
-
     # tags
     source_id = Column(Integer, ForeignKey("sources.oid"))
 
-    source = orm.relationship(Source, backref=orm.backref("articles",
-                              cascade="all, delete-orphan"))
+    source = orm.\
+            relationship(Source,
+                         backref=orm.backref("articles",
+                                             cascade="all, delete-orphan"))
 
     @staticmethod
     def compute_id(link, title, author, source_id):
@@ -349,15 +335,19 @@ class ActionsTasks(BaseModelMixin, Base):
 
     __tablename__ = "actions_tasks"
 
-    actions_id = Column(Integer, ForeignKey("actions.oid", onupdate="CASCADE",
-                                            ondelete="CASCADE"),
+    actions_id = Column(Integer,
+                        ForeignKey("actions.oid", onupdate="CASCADE",
+                                   ondelete="CASCADE"),
                         primary_key=True)
-    task_id = Column(Integer, ForeignKey("tasks.oid", onupdate="CASCADE",
-                                         ondelete="CASCADE"),
+    task_id = Column(Integer,
+                     ForeignKey("tasks.oid", onupdate="CASCADE",
+                                ondelete="CASCADE"),
                      primary_key=True)
 
-    actions = orm.relationship(Actions, backref=orm.backref("actions_tasks",
-                               cascade="all, delete-orphan"))
+    actions = orm.\
+            relationship(Actions,
+                         backref=orm.backref("actions_tasks",
+                                             cascade="all, delete-orphan"))
     task = orm.relationship(Task)
 
 
@@ -373,6 +363,7 @@ class SourceLog(BaseModelMixin, Base):
     message = Column(Unicode)
 
     source_id = Column(Integer, ForeignKey("sources.oid"))
-    source = orm.relationship(Source,
-                              backref=orm.backref("source_log",
-                                                  cascade="all, delete-orphan"))
+    source = orm.\
+            relationship(Source,
+                         backref=orm.backref("source_log",
+                                             cascade="all, delete-orphan"))

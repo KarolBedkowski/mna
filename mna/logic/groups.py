@@ -13,35 +13,33 @@ from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
 
+
 class GroupSaveError(RuntimeError):
     pass
 
 
-def add_group(name):
-    """ Add new group with `name`.
-
-    :return: DBO.Group object if success."""
-    # TODO check name uniques
-    group = DBO.Group()
-    group.name = name
-    group.save(True)
-    return group
-
-
 def save_group(group):
-    """ Save new or updated `group`. """
+    """ Save new or updated `group`.
+    Checking uniques of group name.
+    """
+    assert isinstance(group, DBO.Group), "Invalid function argument %r" % group
     _LOG.info("save_group %r", group)
     # check for dupilcate name
     session = DBO.Session()
-    tmp_group = DBO.Group.get(session=session, name=group.name)
-    if tmp_group and tmp_group.oid != group.oid:
-        raise GroupSaveError("duplicated name")
+    if group.oid:
+        # find groups with this same name
+        tmp_group = DBO.Group.get(session=session, name=group.name)
+        if tmp_group and tmp_group.oid != group.oid:
+            _LOG.info("save_group: group with name %r already exists, oid: %d",
+                      group.name, tmp_group.oid)
+            raise GroupSaveError("duplicated name")
     group.save(commit=True, session=session)
     _LOG.info("save_group done")
 
 
 def delete_group(group):
     """ Delete `group`. """
+    assert isinstance(group, DBO.Group), "Invalid function argument %r" % group
     _LOG.info("delete_group %r", group)
     group.delete(True)
     _LOG.info("delete_group done")

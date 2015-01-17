@@ -22,6 +22,7 @@ from mna.common import objects
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
 from mna.gui import _validators
+from mna.logic import sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ def accept_page(page, session, source_id, threshold):
         if `threshold`  given - reject pages with similarity ratio > threshold.
     """
     # find last article
-    last = DBO.Source.get_last_article(source_id, session)
+    last = sources.get_last_article(source_id, session)
     if last:
         similarity = articles_similarity(last.content, page)
         _LOG.debug("similarity: %r %r", similarity, threshold)

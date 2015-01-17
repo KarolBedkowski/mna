@@ -20,25 +20,12 @@ from mna.lib import appconfig
 _LOG = logging.getLogger(__name__)
 
 
-def add_source(clazz, params):
-    """ Add new source.
-
-    :param clazz: source class to add
-    :param params: dictionary of params.
-    :return: DBO.Group object if success."""
-    # TODO check name uniques
-    group = DBO.Group()
-    group.name = params.get('name')
-    group.save(True)
-    return group
-
-
 def mark_source_read(source_ids, read=True):
     """ Mark all article from source(s) read.
 
     Args:
-            source_ids (int/[int]): one or list source id to update
-            read (bool): mark articles read/unread
+        source_ids (int/[int]): one or list source id to update
+        read (bool): mark articles read/unread
     Return:
         (total updated articles, map[source_id] -> number of updated articles)
     """
@@ -172,3 +159,20 @@ def toggle_articles_starred(articles_oid):
             yield art
 
     sess.commit()
+
+
+def force_refresh_all():
+    """ Force refresh all sources. """
+    _LOG.info("Sources.force_refresh_all()")
+    session = DBO.Session()
+    session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
+    session.commit()
+
+
+def get_last_article(source_id, session=None):
+    """  Find last article for `source_id` """
+    session = session or DBO.Session()
+    article = session.query(DBO.Article).\
+        filter(DBO.Article.source_id == source_id).\
+        order_by(DBO.Article.updated.desc()).first()
+    return article
