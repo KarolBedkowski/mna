@@ -13,8 +13,38 @@ __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
 __version__ = "2015-01-17"
 
+import logging
 
 from mna.common import objects
+
+
+_LOG = logging.getLogger(__name__)
+
+
+def _sp_build_title(article):
+    if article.title:
+        yield "<h1>"
+        if article.link:
+            yield '<a href="' + article.link + '">'
+        yield article.title
+        if article.link:
+            yield '</a>'
+        yield "</h1>"
+
+
+def _sp_build_author(article):
+    if article.author:
+        yield "<p><small>" + article.author + "</small></p>"
+
+
+def _sp_build_published(article):
+    if article.published:
+        yield "<p><small><strong>Published:</strong> "
+        yield unicode(article.published)
+        if article.updated and article.updated != article.published:
+            yield "&nbsp;&nbsp;&nbsp;<strong>Updated:</strong> "
+            yield unicode(article.updated)
+        yield "</small></p>"
 
 
 class SimplePresenter(object):
@@ -22,9 +52,7 @@ class SimplePresenter(object):
     displayed in gui.
     """
     # Human readable name
-    name = "Abstract presenter"
-    # subclass of QFrame
-    conf_panel_class = None
+    name = "Simple presenter"
 
     def __init__(self, source=None):
         """ Constructor
@@ -47,28 +75,16 @@ class SimplePresenter(object):
         TODO:
             use some template system
         """
+        _LOG.debug("SimplePresenter: %s - render %r", self.name,
+                   article)
         result = ["<!doctype html><html><head>",
                   '<meta charset="UTF-8">',
                   '<title></title>',
                   '</head><body>']
-        if article.title:
-            result.append("<h1>")
-            if article.link:
-                result.append('<a href="' + article.link + '">')
-            result.append(article.title)
-            if article.link:
-                result.append('</a>')
-            result.append("</h1>")
+        result.extend(_sp_build_title(article))
         result.append('<header>')
-        if article.author:
-            result.append("<p><small>" + article.author + "</small></p>")
-        if article.published:
-            result.append("<p><small><strong>Published:</strong> ")
-            result.append(unicode(article.published))
-            if article.updated and article.updated != article.published:
-                result.append("<strong>Updated:</strong> ")
-                result.append(unicode(article.updated))
-            result.append("</small></p>")
+        result.extend(_sp_build_author(article))
+        result.extend(_sp_build_published(article))
         result.append('</header>')
         if article.summary and article.content:
             result.append("<p><i>" + article.summary + r"</i></p>")
@@ -85,6 +101,8 @@ class AbstractSource(object):
     # Human readable name
     name = "dummy"
     presenter = SimplePresenter
+    # subclass of QFrame
+    conf_panel_class = None
 
     def __init__(self, cfg):
         super(AbstractSource, self).__init__()
