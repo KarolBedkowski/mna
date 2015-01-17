@@ -260,10 +260,3 @@ class WebSource(base.AbstractSource):
                       last_refreshed)
             return False
         return True
-
-    @classmethod
-    def get_params(cls):
-        return {'name': 'Name',
-                'url': "Website URL",
-                'xpath': 'Web part selector',
-                'similarity': 'Similarity threshold'}

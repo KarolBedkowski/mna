@@ -132,8 +132,3 @@ class RssSource(base.AbstractSource):
         art.published = published or datetime.datetime.now()
         art.link = feed.get('link')
         return art
-
-    @classmethod
-    def get_params(cls):
-        return {'name': 'Name',
-                'url': "RSS URL"}

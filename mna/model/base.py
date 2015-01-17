@@ -121,10 +121,6 @@ class AbstractSource(object):
     def get_name(cls):
         return cls.__module__ + '.' + cls.__name__
 
-    @classmethod
-    def get_params(cls):
-        return {}
-
     def emit_updated(self, new_articles_cnt):
         if new_articles_cnt > 0:
             objects.MESSENGER.emit_source_updated(self.oid, self.group_id)
