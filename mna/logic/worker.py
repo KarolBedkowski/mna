@@ -31,7 +31,7 @@ class Worker(QtCore.QRunnable):
         source_id: source to process
     """
     def __init__(self, source_id):
-        super(Worker, self).__init__()
+        QtCore.QRunnable.__init__(self)
         self.source_id = source_id
 
     def run(self):

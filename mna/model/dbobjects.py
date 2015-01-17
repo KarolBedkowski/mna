@@ -213,8 +213,10 @@ class Source(BaseModelMixin, Base):
 
     group_id = Column(Integer, ForeignKey("groups.oid"))
 
-    group = orm.relationship(Group, backref=orm.backref("sources",
-                               cascade="all, delete-orphan"))
+    group = orm.\
+            relationship(Group,
+                         backref=orm.backref("sources",
+                                             cascade="all, delete-orphan"))
 
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
@@ -253,7 +255,7 @@ class Source(BaseModelMixin, Base):
             session.commit()
 
     def get_logs(self):
-        """  Find logs for `source_id` """
+        """  Find logs for source """
         session = orm.object_session(self) or Session()
         article = session.query(SourceLog).\
             filter(SourceLog.source_id == self.oid).\
@@ -308,12 +310,13 @@ class Article(BaseModelMixin, Base):
     score = Column(Integer, default=0)
     starred = Column(Boolean, default=False)
 
-
     # tags
     source_id = Column(Integer, ForeignKey("sources.oid"))
 
-    source = orm.relationship(Source, backref=orm.backref("articles",
-                              cascade="all, delete-orphan"))
+    source = orm.\
+            relationship(Source,
+                         backref=orm.backref("articles",
+                                             cascade="all, delete-orphan"))
 
     @staticmethod
     def compute_id(link, title, author, source_id):
@@ -332,15 +335,19 @@ class ActionsTasks(BaseModelMixin, Base):
 
     __tablename__ = "actions_tasks"
 
-    actions_id = Column(Integer, ForeignKey("actions.oid", onupdate="CASCADE",
-                                            ondelete="CASCADE"),
+    actions_id = Column(Integer,
+                        ForeignKey("actions.oid", onupdate="CASCADE",
+                                   ondelete="CASCADE"),
                         primary_key=True)
-    task_id = Column(Integer, ForeignKey("tasks.oid", onupdate="CASCADE",
-                                         ondelete="CASCADE"),
+    task_id = Column(Integer,
+                     ForeignKey("tasks.oid", onupdate="CASCADE",
+                                ondelete="CASCADE"),
                      primary_key=True)
 
-    actions = orm.relationship(Actions, backref=orm.backref("actions_tasks",
-                               cascade="all, delete-orphan"))
+    actions = orm.\
+            relationship(Actions,
+                         backref=orm.backref("actions_tasks",
+                                             cascade="all, delete-orphan"))
     task = orm.relationship(Task)
 
 
@@ -356,6 +363,7 @@ class SourceLog(BaseModelMixin, Base):
     message = Column(Unicode)
 
     source_id = Column(Integer, ForeignKey("sources.oid"))
-    source = orm.relationship(Source,
-                              backref=orm.backref("source_log",
-                                                  cascade="all, delete-orphan"))
+    source = orm.\
+            relationship(Source,
+                         backref=orm.backref("source_log",
+                                             cascade="all, delete-orphan"))
