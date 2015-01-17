@@ -4,13 +4,13 @@
 """ Standard plugins """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-02"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-17"
 
 import pkgutil
 import logging
 
-from mna.common import objects
+from mna.model import base
 
 _LOG = logging.getLogger(__name__)
 MODULES = {}
@@ -34,7 +34,7 @@ def load_plugins():
         except (ImportError, ValueError):
             _LOG.exception("Load module %s error", modname)
 
-    SOURCES.update(_load_sources_from_subclass(objects.AbstractSource))
+    SOURCES.update(_load_sources_from_subclass(base.AbstractSource))
     _LOG.info('Modules: %s', ', '.join(sorted(MODULES.keys())))
     _LOG.info('Sources: %s', ', '.join(sorted(SOURCES.keys())))
 

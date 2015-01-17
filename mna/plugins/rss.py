@@ -14,7 +14,7 @@ import datetime
 import feedparser
 from PyQt4 import QtGui
 
-from mna.common import objects
+from mna.model import base
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_rss_ui
 from mna.gui import _validators
@@ -50,7 +50,7 @@ class FrmSettRss(QtGui.QFrame):
         self.ui.e_url.setText(source.conf.get("url") or "")
 
 
-class RssSource(objects.AbstractSource):
+class RssSource(base.AbstractSource):
     """Rss/Atom source class. """
 
     name = "RSS/Atom Source"
@@ -68,11 +68,11 @@ class RssSource(objects.AbstractSource):
                                 doc.get('status'))
             _LOG.error("RssSource: error getting items from %s, %r, %r",
                        url, doc, self.cfg)
-            raise objects.GetArticleException("Get rss feed error: %r" %
-                                              doc.get('status'))
+            raise base.GetArticleException("Get rss feed error: %r" %
+                                           doc.get('status'))
 
         last_refreshed = self.cfg.last_refreshed
-        if last_refreshed and (self.cfg.max_articles_to_load > 0 or \
+        if last_refreshed and (self.cfg.max_articles_to_load > 0 or
                 (self.cfg.max_articles_to_load == 0 and max_load > 0)):
             max_age_to_load = self.cfg.max_age_to_load or max_age_load
             # if max_age_to_load defined - set limit last_refreshed

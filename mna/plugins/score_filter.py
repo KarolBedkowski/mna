@@ -8,10 +8,10 @@ __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-02"
 
 
-from mna.common import objects
+from mna.model import base
 
 
-class ScoreFilter(objects.AbstractFilter):
+class ScoreFilter(base.AbstractFilter):
     """ Filter articles with too low score. """
 
     name = "Basic score filter"

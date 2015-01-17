@@ -18,7 +18,7 @@ import difflib
 from lxml import etree
 from PyQt4 import QtGui
 
-from mna.common import objects
+from mna.model import base
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
 from mna.gui import _validators
@@ -163,7 +163,7 @@ class FrmSettWeb(QtGui.QFrame):
         self.ui.rb_scan_parts.toggled.emit(scan_part)
 
 
-class WebSource(objects.AbstractSource):
+class WebSource(base.AbstractSource):
     """Load article from website"""
 
     name = "Web Page Source"
@@ -181,7 +181,7 @@ class WebSource(objects.AbstractSource):
         except LoadPageError, err:
             self.cfg.add_to_log('error',
                                 "Error loading page: " + str(err))
-            raise objects.GetArticleException("Get web page error: %s" % err)
+            raise base.GetArticleException("Get web page error: %s" % err)
 
         if not self.is_page_updated(info, max_age_load):
             return []

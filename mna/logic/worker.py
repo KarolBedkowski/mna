@@ -15,7 +15,7 @@ from PyQt4 import QtCore
 
 from mna.model import dbobjects as DBO
 from mna import plugins
-from mna.common import objects
+from mna.model import base
 from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class Worker(QtCore.QRunnable):
                 article.source_id = source_cfg.oid
                 # TODO: filtrowanie artykułów
                 session.merge(article)
-        except objects.GetArticleException, err:
+        except base.GetArticleException, err:
             # some processing error occurred
             _LOG.exception("%s: Load articles from %s/%s error: %r",
                            _p_name, source_cfg.name, source_cfg.title, err)
