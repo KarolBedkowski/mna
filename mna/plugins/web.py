@@ -4,8 +4,8 @@
 """ Web source plugin """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-03"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-18"
 
 import urllib2
 import hashlib
@@ -128,39 +128,39 @@ def accept_page(page, session, source_id, threshold):
 class FrmSettWeb(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = frm_sett_web_ui.Ui_FrmSettWeb()
-        self.ui.setupUi(self)
+        self._ui = frm_sett_web_ui.Ui_FrmSettWeb()
+        self._ui.setupUi(self)
 
     def validate(self):
         try:
-            _validators.validate_empty_string(self.ui.e_url, 'URL')
-            if self.ui.rb_scan_parts.isChecked():
-                _validators.validate_empty_string(self.ui.e_xpath, 'Xpath')
+            _validators.validate_empty_string(self._ui.e_url, 'URL')
+            if self._ui.rb_scan_parts.isChecked():
+                _validators.validate_empty_string(self._ui.e_xpath, 'Xpath')
         except _validators.ValidationError:
             return False
         return True
 
     def from_window(self, source):
-        source.conf["url"] = unicode(self.ui.e_url.text(), 'utf-8')
-        source.conf["xpath"] = unicode(self.ui.e_xpath.toPlainText(), 'utf-8')
+        source.conf["url"] = self._ui.e_url.text()
+        source.conf["xpath"] = self._ui.e_xpath.toPlainText()
         source.conf["similarity"] = \
-            self.ui.sb_similarity_ratio.value() / 100.0
-        if self.ui.rb_scan_page.isChecked():
+            self._ui.sb_similarity_ratio.value() / 100.0
+        if self._ui.rb_scan_page.isChecked():
             source.conf["mode"] = "page"
         else:
             source.conf["mode"] = "part"
         return True
 
     def to_window(self, source):
-        self.ui.e_url.setText(source.conf.get("url") or "")
-        self.ui.e_xpath.setPlainText(source.conf.get("xpath") or "")
-        self.ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
-                                             or 0.5) * 100.0)
+        self._ui.e_url.setText(source.conf.get("url") or "")
+        self._ui.e_xpath.setPlainText(source.conf.get("xpath") or "")
+        self._ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
+                                               or 0.5) * 100.0)
         scan_part = source.conf.get("mode") == "part"
-        self.ui.rb_scan_page.setChecked(not scan_part)
-        self.ui.rb_scan_page.toggled.emit(not scan_part)
-        self.ui.rb_scan_parts.setChecked(scan_part)
-        self.ui.rb_scan_parts.toggled.emit(scan_part)
+        self._ui.rb_scan_page.setChecked(not scan_part)
+        self._ui.rb_scan_page.toggled.emit(not scan_part)
+        self._ui.rb_scan_parts.setChecked(scan_part)
+        self._ui.rb_scan_parts.toggled.emit(scan_part)
 
 
 class WebSource(base.AbstractSource):
@@ -244,6 +244,8 @@ class WebSource(base.AbstractSource):
 
     def is_page_updated(self, info, max_age_load):
         last_refreshed = self.cfg.last_refreshed
+        if last_refreshed is None:
+            return True
         # if max_age_to_load defined - set limit last_refreshed
         if self.cfg.max_age_to_load > 0 or (self.cfg.max_age_to_load == 0
                                             and max_age_load > 0):
