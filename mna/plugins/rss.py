@@ -32,22 +32,22 @@ def _ts2datetime(tstruct):
 class FrmSettRss(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = frm_sett_rss_ui.Ui_FrmSettRss()
-        self.ui.setupUi(self)
+        self._ui = frm_sett_rss_ui.Ui_FrmSettRss()
+        self._ui.setupUi(self)
 
     def validate(self):
         try:
-            _validators.validate_empty_string(self.ui.e_url, 'URL')
+            _validators.validate_empty_string(self._ui.e_url, 'URL')
         except _validators.ValidationError:
             return False
         return True
 
     def from_window(self, source):
-        source.conf["url"] = unicode(self.ui.e_url.text())
+        source.conf["url"] = self._ui.e_url.text()
         return True
 
     def to_window(self, source):
-        self.ui.e_url.setText(source.conf.get("url") or "")
+        self._ui.e_url.setText(source.conf.get("url") or "")
 
 
 class RssSource(base.AbstractSource):
