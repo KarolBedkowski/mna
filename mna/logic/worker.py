@@ -91,7 +91,7 @@ def _on_error(session, source_cfg, error_msg):
     source_cfg.last_error_date = now
     source_cfg.next_refresh = now + datetime.timedelta(
         seconds=source_cfg.interval)
-    source_cfg.last_refreshed = now
+    # source_cfg.last_refreshed = now
     source_cfg.add_to_log("ERROR", error_msg)
     session.commit()
 
