@@ -15,6 +15,7 @@ from mna.model import base
 _LOG = logging.getLogger(__name__)
 MODULES = {}
 SOURCES = {}
+FILTERS = {}
 
 
 def load_plugins():
@@ -35,8 +36,9 @@ def load_plugins():
             _LOG.exception("Load module %s error", modname)
 
     SOURCES.update(_load_sources_from_subclass(base.AbstractSource))
-    _LOG.info('Modules: %s', ', '.join(sorted(MODULES.keys())))
+    FILTERS.update(_load_sources_from_subclass(base.AbstractFilter))
     _LOG.info('Sources: %s', ', '.join(sorted(SOURCES.keys())))
+    _LOG.info('Filters: %s', ', '.join(sorted(FILTERS.keys())))
 
 
 def _load_sources_from_subclass(base_class):
