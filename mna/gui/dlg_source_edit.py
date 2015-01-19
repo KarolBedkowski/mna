@@ -13,13 +13,15 @@ __version__ = "2015-01-04"
 
 import logging
 
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 
 from mna.gui import resources_rc
 from mna.gui import dlg_source_edit_ui
 from mna.gui import frm_sett_main
+from mna.gui import filter_conf
 from mna.logic import sources
 from mna import plugins
+from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
 
@@ -34,10 +36,16 @@ class DlgSourceEdit(QtGui.QDialog):
         QtGui.QDialog.__init__(self, parent)
         self._ui = dlg_source_edit_ui.Ui_DlgSourceEdit()
         self._ui.setupUi(self)
+        self._bind()
         self._source = source
         self._setup(source)
         self.setWindowTitle(source.title)
         self._to_window(source)
+
+    def _bind(self):
+        self._ui.b_add_filter.clicked.connect(self._on_add_filter)
+        self._ui.b_remove_filter.clicked.connect(self._on_remove_filter)
+        self._ui.lv_filters.itemActivated.connect(self._on_filters_act)
 
     def _setup(self, source):
         self._frm_sett_main = frm_sett_main.FrmSettMain(self)
@@ -80,6 +88,7 @@ class DlgSourceEdit(QtGui.QDialog):
             source.conf.get('filter.min_score', 0))
         self_ui.cb_global_filters.setChecked(
             source.conf.get('filter.apply_global', True))
+        self._fill_filters()
 
     def _from_window(self):
         source = self._source
@@ -113,3 +122,36 @@ class DlgSourceEdit(QtGui.QDialog):
         if self._ui.e_interval.value() < 1:
             return False
         return True
+
+    def _fill_filters(self):
+        lv_filters = self._ui.lv_filters
+        lv_filters.clear()
+        for fltr in DBO.Session().query(DBO.Filter).\
+                filter(DBO.Filter.source_id == self._source.oid):
+            fltr_class = plugins.FILTERS[fltr.name]
+            itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
+            itm.setData(QtCore.Qt.UserRole, fltr.oid)
+            lv_filters.addItem(itm)
+
+    def _on_add_filter(self):
+        if filter_conf.add_filter(self, self._source.oid):
+            self._fill_filters()
+
+    def _on_remove_filter(self):
+        item = self._ui.lv_filters.currentItem()
+        if not item:
+            return
+        fltr_id = item.data(QtCore.Qt.UserRole)
+        assert fltr_id, "Missing user data in item %r" % item
+        fltr_id, ok = fltr_id.toInt()
+        assert ok, "Invalid id in item: %r" % fltr_id
+        if filter_conf.delete_filter(self, fltr_id):
+            self._fill_filters()
+
+    def _on_filters_act(self, item):
+        fltr_id = item.data(QtCore.Qt.UserRole)
+        assert fltr_id, "Missing user data in item %r" % item
+        fltr_id, ok = fltr_id.toInt()
+        assert ok, "Invalid id in item: %r" % fltr_id
+        if filter_conf.edit_filter(self, fltr_id):
+            self._fill_filters()
