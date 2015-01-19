@@ -23,7 +23,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -236,7 +236,7 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <item>
-             <widget class="QListView" name="lv_filters"/>
+             <widget class="QListWidget" name="lv_filters"/>
             </item>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_5">

@@ -13,12 +13,15 @@ __version__ = "2015-01-12"
 
 import logging
 
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 
 from mna.gui import _validators
 from mna.gui import resources_rc
 from mna.gui import dlg_preferences_ui
 from mna.lib import appconfig
+from mna.gui import filter_conf
+from mna.model import dbobjects as DBO
+from mna import plugins
 
 _LOG = logging.getLogger(__name__)
 
@@ -37,7 +40,7 @@ class DlgPreferences(QtGui.QDialog):
         self._to_window()
 
     def _bind(self):
-        pass
+        self._ui.b_add_filter.clicked.connect(self._on_add_filter)
 
     def done(self, result):
         if result != QtGui.QDialog.Accepted:
@@ -59,7 +62,17 @@ class DlgPreferences(QtGui.QDialog):
         self_ui.sb_update_interval.\
                 setValue(aconf.get('articles.update_interval', 60))
         self_ui.sp_minial_score.setValue(aconf.get('filter.min_score', 0))
-        # lv_filters
+        self._fill_filters()
+
+    def _fill_filters(self):
+        lv_filters = self._ui.lv_filters
+        lv_filters.clear()
+        for fltr in DBO.Session().query(DBO.Filter).\
+                filter(DBO.Filter.source_id == None):
+            fltr_class = plugins.FILTERS[fltr.name]
+            itm = QtGui.QListWidgetItem(fltr_class.name)
+            itm.setData(QtCore.Qt.UserRole, fltr.oid)
+            lv_filters.addItem(itm)
 
     def _from_window(self):
         aconf = self._appconf
@@ -75,3 +88,7 @@ class DlgPreferences(QtGui.QDialog):
 
     def _validate(self):
         pass
+
+    def _on_add_filter(self):
+        if filter_conf.add_filter(self, None):
+            self._fill_filters()
