@@ -58,6 +58,8 @@ class DlgPreferences(QtGui.QDialog):
         self_ui.sb_art_keep_num.setValue(aconf.get('articles.keep_num', 0))
         self_ui.sb_update_interval.\
                 setValue(aconf.get('articles.update_interval', 60))
+        self_ui.sp_minial_score.setValue(aconf.get('filter.min_score', 0))
+        # lv_filters
 
     def _from_window(self):
         aconf = self._appconf
@@ -68,6 +70,7 @@ class DlgPreferences(QtGui.QDialog):
         aconf['articles.keep_num'] = self_ui.sb_art_keep_num.value()
         aconf['articles.update_interval'] = \
                 self_ui.sb_update_interval.value()
+        aconf['filter.min_score'] = self_ui.sp_minial_score.value()
         return True
 
     def _validate(self):

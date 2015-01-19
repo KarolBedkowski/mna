@@ -63,12 +63,23 @@ class DlgSourceEdit(QtGui.QDialog):
         self._frm_sett_main.to_window(source)
         if hasattr(self._curr_src_frame, 'to_window'):
             self._curr_src_frame.to_window(source)
-        self._ui.e_interval.setValue((source.interval or 3600) / 60)
-        self._ui.sb_art_keep_num.setValue(source.num_articles_to_keep or 0)
-        self._ui.sb_art_keep_age.setValue(source.age_articles_to_keep or 0)
-        self._ui.gb_delete_art.setChecked(bool(source.delete_old_articles))
-        self._ui.sb_max_art_load.setValue(source.max_articles_to_load or 0)
-        self._ui.sb_max_age_load.setValue(source.max_age_to_load or 0)
+        self_ui = self._ui
+        self_ui.e_interval.setValue((source.interval or 3600) / 60)
+        self_ui.sb_art_keep_num.setValue(source.num_articles_to_keep or 0)
+        self_ui.sb_art_keep_age.setValue(source.age_articles_to_keep or 0)
+        self_ui.gb_delete_art.setChecked(bool(source.delete_old_articles))
+        self_ui.sb_max_art_load.setValue(source.max_articles_to_load or 0)
+        self_ui.sb_max_age_load.setValue(source.max_age_to_load or 0)
+        self_ui.gb_filter_articles.setChecked(
+            source.conf.get('filter.enabled', True))
+        self_ui.cb_filter_score.setChecked(
+            source.conf.get('filter.score', True))
+        self_ui.cb_filter_score_default.setChecked(
+            source.conf.get('filter.use_default_score', True))
+        self_ui.sp_minial_score.setValue(
+            source.conf.get('filter.min_score', 0))
+        self_ui.cb_global_filters.setChecked(
+            source.conf.get('filter.apply_global', True))
 
     def _from_window(self):
         source = self._source
@@ -77,12 +88,20 @@ class DlgSourceEdit(QtGui.QDialog):
         if hasattr(self._curr_src_frame, 'from_window'):
             if not self._curr_src_frame.from_window(source):
                 return False
+        self_ui = self._ui
         source.interval = self._ui.e_interval.value() * 60
-        source.num_articles_to_keep = self._ui.sb_art_keep_num.value()
-        source.age_articles_to_keep = self._ui.sb_art_keep_age.value()
-        source.delete_old_articles = self._ui.gb_delete_art.isChecked()
-        source.max_articles_to_load = self._ui.sb_max_art_load.value()
-        source.max_age_to_load = self._ui.sb_max_age_load.value()
+        source.num_articles_to_keep = self_ui.sb_art_keep_num.value()
+        source.age_articles_to_keep = self_ui.sb_art_keep_age.value()
+        source.delete_old_articles = self_ui.gb_delete_art.isChecked()
+        source.max_articles_to_load = self_ui.sb_max_art_load.value()
+        source.max_age_to_load = self_ui.sb_max_age_load.value()
+        source.conf['filter.enabled'] = self_ui.gb_filter_articles.isChecked()
+        source.conf['filter.score'] = self_ui.cb_filter_score.isChecked()
+        source.conf['filter.use_default_score'] = \
+            self_ui.cb_filter_score_default.isChecked()
+        source.conf['filter.min_score'] = self_ui.sp_minial_score.value()
+        source.conf['filter.apply_global'] = \
+            self_ui.cb_global_filters.isChecked()
         return True
 
     def _validate(self):
