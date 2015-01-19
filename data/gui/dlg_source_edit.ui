@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>603</width>
-    <height>407</height>
+    <width>636</width>
+    <height>496</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>3</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -179,6 +179,129 @@
        </item>
       </layout>
      </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>Filtering</string>
+      </attribute>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QGroupBox" name="gb_filter_articles">
+         <property name="title">
+          <string>Filter loaded articles</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_6">
+          <item>
+           <layout class="QFormLayout" name="formLayout_2">
+            <item row="0" column="1">
+             <layout class="QVBoxLayout" name="verticalLayout_7">
+              <item>
+               <widget class="QCheckBox" name="cb_filter_score_default">
+                <property name="locale">
+                 <locale language="C" country="AnyCountry"/>
+                </property>
+                <property name="text">
+                 <string>Use application defaults</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QDoubleSpinBox" name="sp_minial_score">
+                <property name="decimals">
+                 <number>1</number>
+                </property>
+                <property name="minimum">
+                 <double>-100.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>100.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="cb_filter_score">
+              <property name="text">
+               <string>Accept articles with score greater than:</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_3">
+            <property name="title">
+             <string>Filters</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="QCheckBox" name="cb_global_filters">
+               <property name="text">
+                <string>Apply global filters</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QListWidget" name="lv_filters"/>
+               </item>
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_5">
+                 <item>
+                  <spacer name="verticalSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="b_add_filter">
+                   <property name="locale">
+                    <locale language="C" country="AnyCountry"/>
+                   </property>
+                   <property name="text">
+                    <string>Add</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="b_remove_filter">
+                   <property name="locale">
+                    <locale language="C" country="AnyCountry"/>
+                   </property>
+                   <property name="text">
+                    <string>Remove</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>
@@ -224,6 +347,22 @@
     <hint type="destinationlabel">
      <x>286</x>
      <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_filter_score_default</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>sp_minial_score</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>427</x>
+     <y>83</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>427</x>
+     <y>110</y>
     </hint>
    </hints>
   </connection>

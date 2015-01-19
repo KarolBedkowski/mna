@@ -4,14 +4,14 @@
 
 """ SqlAlchemy objects definition.
 
-Copyright (c) Karol Będkowski, 2014
+Copyright (c) Karol Będkowski, 2014-2015
 
 This file is part of mna
 Licence: GPLv2+
 """
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-12"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-18"
 
 
 import logging
@@ -20,9 +20,8 @@ import datetime
 from sqlalchemy import (Column, Integer, Unicode, DateTime, Boolean,
                         ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import orm, and_
+from sqlalchemy import orm, and_, or_
 from sqlalchemy import select, func
-from sqlalchemy.ext.associationproxy import association_proxy
 
 from mna.model import jsonobj
 
@@ -149,7 +148,6 @@ class Group(BaseModelMixin, Base):
 
     oid = Column(Integer, primary_key=True)
     name = Column(Unicode)
-    default_actions_group_id = Column(Integer, ForeignKey("actions.oid"))
 
     def get_articles(self, unread_only=False, sorting=None):
         """ Get list articles for all sources in current group.
@@ -213,10 +211,9 @@ class Source(BaseModelMixin, Base):
 
     group_id = Column(Integer, ForeignKey("groups.oid"))
 
-    group = orm.\
-            relationship(Group,
-                         backref=orm.backref("sources",
-                                             cascade="all, delete-orphan"))
+    group = orm.relationship(
+        Group,
+        backref=orm.backref("sources", cascade="all, delete-orphan"))
 
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
@@ -228,6 +225,12 @@ class Source(BaseModelMixin, Base):
                        where(and_(Article.source_id == self.oid,
                                   Article.read == 0)))
         return cnt
+
+    @property
+    def minimal_score(self):
+        if self.conf.get('filter_use_default'):
+            return None
+        return self.conf.get('filter_minimal_score', 0)
 
     def get_articles(self, unread_only=False, sorting=None):
         """ Get list articles for source. If `unread_only` filter articles by
@@ -262,28 +265,36 @@ class Source(BaseModelMixin, Base):
             order_by(SourceLog.date.desc()).all()
         return article
 
+    def get_filters(self):
+        """  Find all (globals/locals) filters for source """
+        session = orm.object_session(self) or Session()
+        fltrs = session.query(Filter)
+        if self.conf.get('filter.apply_global', True):
+            fltrs = fltrs.filter(or_(Filter.source_id == self.oid,
+                                     Filter.source_id == None))
+        else:
+            fltrs = fltrs.filter(Filter.source_id == self.oid)
+        return fltrs
 
-class Task(BaseModelMixin, Base):
-    """Tasks (i.e. filters) configuration"""
 
-    __tablename__ = "tasks"
+class Filter(BaseModelMixin, Base):
+    """Filters configuration"""
+
+    __tablename__ = "filters"
 
     oid = Column(Integer, primary_key=True)
-    # Filter name
+    # Filter (class) name
     name = Column(Unicode)
     enabled = Column(Integer, default=0)
+
+    # source id, null for global filters
+    source_id = Column(Integer, ForeignKey("sources.oid"))
+    # filter configuration
     conf = Column('conf', jsonobj.JSONEncodedDict)
 
-
-class Actions(BaseModelMixin, Base):
-    """Group of task"""
-
-    __tablename__ = "actions"
-
-    oid = Column(Integer, primary_key=True)
-    name = Column(Unicode)
-    # actions
-    actions = association_proxy("actions_tasks", "actions")
+    source = orm.relationship(
+        Source,
+        backref=orm.backref("filters", cascade="all, delete-orphan"))
 
 
 class Article(BaseModelMixin, Base):
@@ -328,27 +339,6 @@ class Article(BaseModelMixin, Base):
 Index('idx_articles_chs', Article.source_id, Article.internal_id, Article.oid)
 Index('idx_articles_read', Article.source_id, Article.read, Article.updated,
       Article.oid)
-
-
-class ActionsTasks(BaseModelMixin, Base):
-    """ Actions-Tasks connections. """
-
-    __tablename__ = "actions_tasks"
-
-    actions_id = Column(Integer,
-                        ForeignKey("actions.oid", onupdate="CASCADE",
-                                   ondelete="CASCADE"),
-                        primary_key=True)
-    task_id = Column(Integer,
-                     ForeignKey("tasks.oid", onupdate="CASCADE",
-                                ondelete="CASCADE"),
-                     primary_key=True)
-
-    actions = orm.\
-            relationship(Actions,
-                         backref=orm.backref("actions_tasks",
-                                             cascade="all, delete-orphan"))
-    task = orm.relationship(Task)
 
 
 class SourceLog(BaseModelMixin, Base):

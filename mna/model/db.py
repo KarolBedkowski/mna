@@ -143,11 +143,6 @@ def _bootstrap_data(session):
         group = DBO.Group()
         group.name = "OSS"
         session.add(group)
-    if DBO.Actions.count() == 0:
-        # create empty action
-        action = DBO.Actions()
-        action.name = "No actions"
-        session.add(action)
     if DBO.Source.count() == 0:
         source = DBO.Source()
         source.name = "mna.plugins.rss.RssSource"
