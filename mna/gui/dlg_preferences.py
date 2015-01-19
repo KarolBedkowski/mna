@@ -99,7 +99,5 @@ class DlgPreferences(QtGui.QDialog):
         assert fltr_id, "Missing user data in item %r" % item
         fltr_id, ok = fltr_id.toInt()
         assert ok, "Invalid id in item: %r" % fltr_id
-        fltr = DBO.Filter.get(oid=fltr_id)
-        assert fltr_id is not None, "Can't find filter with id %r" % fltr_id
-        if filter_conf.edit_filter(self, fltr):
+        if filter_conf.edit_filter(self, fltr_id):
             self._fill_filters()

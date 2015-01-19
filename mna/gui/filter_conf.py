@@ -91,6 +91,7 @@ class DlgFilterOptions(QtGui.QDialog):
 
 
 def add_filter(parent_wnd, source_id):
+    """ Open dialogs for new filter. Save changes to database. """
     dlg = DlgFilterType(parent_wnd)
     if dlg.exec_() != QtGui.QDialog.Accepted:
         return
@@ -106,7 +107,10 @@ def add_filter(parent_wnd, source_id):
     return False
 
 
-def edit_filter(parent_wnd, fltr_cfg):
+def edit_filter(parent_wnd, fltr_id):
+    """ Open filter edit dialog; save changes to database. """
+    fltr_cfg = DBO.Filter.get(oid=fltr_id)
+    assert fltr_cfg is not None, "Can't find filter with id %r" % fltr_id
     fltr = plugins.FILTERS[fltr_cfg.name](fltr_cfg)
     dlg = DlgFilterOptions(parent_wnd, fltr)
     if dlg.exec_() == QtGui.QDialog.Accepted:
