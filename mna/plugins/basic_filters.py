@@ -45,3 +45,9 @@ class MinLenFilter(base.AbstractFilter):
         return {'min_length': ("Minimal content length", int, 0),
                 'score': ("Score to apply when content is too small",
                           int, -99)}
+
+    @classmethod
+    def get_label(cls, cfg):
+        conf = cfg.conf
+        return cls.name + " (length>%d -> score%+d)" % (conf.get("min_length"),
+                                                        conf.get("score"))

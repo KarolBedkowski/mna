@@ -143,6 +143,11 @@ class AbstractFilter(object):
             type (int/str), default_value} """
         return {}
 
+    @classmethod
+    def get_label(cls, cfg):
+        """ Get human name of filter type; can show params from `cfg` """
+        return cls.name
+
 
 class GetArticleException(Exception):
     """ General refresh source error. """
