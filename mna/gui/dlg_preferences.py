@@ -41,6 +41,7 @@ class DlgPreferences(QtGui.QDialog):
 
     def _bind(self):
         self._ui.b_add_filter.clicked.connect(self._on_add_filter)
+        self._ui.lv_filters.itemActivated.connect(self._on_filters_act)
 
     def done(self, result):
         if result != QtGui.QDialog.Accepted:
@@ -70,7 +71,7 @@ class DlgPreferences(QtGui.QDialog):
         for fltr in DBO.Session().query(DBO.Filter).\
                 filter(DBO.Filter.source_id == None):
             fltr_class = plugins.FILTERS[fltr.name]
-            itm = QtGui.QListWidgetItem(fltr_class.name)
+            itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
             itm.setData(QtCore.Qt.UserRole, fltr.oid)
             lv_filters.addItem(itm)
 
@@ -91,4 +92,14 @@ class DlgPreferences(QtGui.QDialog):
 
     def _on_add_filter(self):
         if filter_conf.add_filter(self, None):
+            self._fill_filters()
+
+    def _on_filters_act(self, item):
+        fltr_id = item.data(QtCore.Qt.UserRole)
+        assert fltr_id, "Missing user data in item %r" % item
+        fltr_id, ok = fltr_id.toInt()
+        assert ok, "Invalid id in item: %r" % fltr_id
+        fltr = DBO.Filter.get(oid=fltr_id)
+        assert fltr_id is not None, "Can't find filter with id %r" % fltr_id
+        if filter_conf.edit_filter(self, fltr):
             self._fill_filters()

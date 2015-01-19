@@ -50,6 +50,9 @@ class DlgFilterOptions(QtGui.QDialog):
         self._ui = dlg_filter_options_ui.Ui_DlgFilterOptions()
         self._ui.setupUi(self)
 
+
+        self._ui.l_title.setText(self.tr("%s parameters") % fltr.name)
+
         self._widgets = {}
         lay = self._ui.fl_options
         values = fltr.cfg.conf
@@ -61,6 +64,8 @@ class DlgFilterOptions(QtGui.QDialog):
                 value = default
             if ftype == int:
                 wdg = QtGui.QSpinBox()
+                wdg.setMinimum(-999999)
+                wdg.setMaximum(999999)
                 wdg.setValue(value or 0)
             elif ftype == str:
                 wdg = QtGui.QLineEdit()
@@ -81,6 +86,7 @@ class DlgFilterOptions(QtGui.QDialog):
                 elif ftype == str:
                     value = wdg.text()
                 self.fltr.cfg.conf[name] = value
+            print self.fltr.cfg.conf
         return QtGui.QDialog.done(self, result)
 
 
@@ -89,10 +95,21 @@ def add_filter(parent_wnd, source_id):
     if dlg.exec_() != QtGui.QDialog.Accepted:
         return
     fltr_cfg = DBO.Filter()
+    fltr_cfg.conf = {}
+    fltr_cfg.name = dlg.value
     fltr_cfg.source_id = source_id
     fltr = plugins.FILTERS[dlg.value](fltr_cfg)
     dlg = DlgFilterOptions(parent_wnd, fltr)
-    if dlg.exec_() != QtGui.QDialog.Accepted:
-        fltr_cfg.save()
+    if dlg.exec_() == QtGui.QDialog.Accepted:
+        fltr_cfg.save(commit=True)
+        return True
+    return False
+
+
+def edit_filter(parent_wnd, fltr_cfg):
+    fltr = plugins.FILTERS[fltr_cfg.name](fltr_cfg)
+    dlg = DlgFilterOptions(parent_wnd, fltr)
+    if dlg.exec_() == QtGui.QDialog.Accepted:
+        fltr_cfg.save(commit=True)
         return True
     return False
