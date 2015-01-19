@@ -122,6 +122,7 @@ class AbstractFilter(object):
 
     # Human readable name
     name = "dummy"
+    description = ""
 
     def __init__(self, cfg):
         super(AbstractFilter, self).__init__()
@@ -135,6 +136,12 @@ class AbstractFilter(object):
     @classmethod
     def get_name(cls):
         return cls.__module__ + '.' + cls.__name__
+
+    @classmethod
+    def get_params(cls):
+        """ Get dict of filter params: {param_key -> (human_name,
+            type (int/str), default_value} """
+        return {}
 
 
 class GetArticleException(Exception):
