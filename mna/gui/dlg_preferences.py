@@ -41,6 +41,7 @@ class DlgPreferences(QtGui.QDialog):
 
     def _bind(self):
         self._ui.b_add_filter.clicked.connect(self._on_add_filter)
+        self._ui.b_remove_filter.clicked.connect(self._on_remove_filter)
         self._ui.lv_filters.itemActivated.connect(self._on_filters_act)
 
     def done(self, result):
@@ -92,6 +93,17 @@ class DlgPreferences(QtGui.QDialog):
 
     def _on_add_filter(self):
         if filter_conf.add_filter(self, None):
+            self._fill_filters()
+
+    def _on_remove_filter(self):
+        item = self._ui.lv_filters.currentItem()
+        if not item:
+            return
+        fltr_id = item.data(QtCore.Qt.UserRole)
+        assert fltr_id, "Missing user data in item %r" % item
+        fltr_id, ok = fltr_id.toInt()
+        assert ok, "Invalid id in item: %r" % fltr_id
+        if filter_conf.delete_filter(self, fltr_id):
             self._fill_filters()
 
     def _on_filters_act(self, item):

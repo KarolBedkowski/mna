@@ -117,3 +117,18 @@ def edit_filter(parent_wnd, fltr_id):
         fltr_cfg.save(commit=True)
         return True
     return False
+
+
+def delete_filter(parent_wnd, fltr_id):
+    """ Delete filter from database. """
+    fltr_cfg = DBO.Filter.get(oid=fltr_id)
+    fltr = plugins.FILTERS[fltr_cfg.name](fltr_cfg)
+    reply = QtGui.QMessageBox.question(
+        parent_wnd,
+        "Delete filter",
+        "Delete filter: " + fltr.get_label(fltr_cfg) + "?",
+        QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+    if reply == QtGui.QMessageBox.Yes:
+        fltr_cfg.delete(commit=True)
+        return True
+    return False
