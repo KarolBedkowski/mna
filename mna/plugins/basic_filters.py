@@ -28,14 +28,14 @@ class MinLenFilter(base.AbstractFilter):
         super(MinLenFilter, self).__init__(cfg)
 
     def filter(self, article):
-        _LOG.debug('MinLenFilter.filter(%r len=%d)', article.oid,
-                   len(article.content))
+        _LOG.debug('MinLenFilter.filter(%r)', article.oid)
         conf = self.cfg.conf
         min_length = conf.get('min_length')
-        if min_length and len(article.content or '') < min_length:
+        content_len = len(article.content or '') + len(article.summary or '')
+        if min_length and content_len < min_length:
             article.score += conf.get('score', 0)
-        _LOG.debug('MinLenFilter.filter(%r) = %r finished', article.oid,
-                   article.score)
+        _LOG.debug('MinLenFilter.filter(%r) = %d -> %r finished',
+                   article.oid, content_len, article.score)
         return article
 
     @classmethod
