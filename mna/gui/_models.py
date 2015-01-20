@@ -212,13 +212,14 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 class ListItem(object):
     def __init__(self, title=None, oid=None, read=None, updated=None,
-                 source=None, starred=None):
+                 source=None, starred=None, score=None):
         self.title = title
         self.oid = oid
         self.read = read
         self.updated = updated
         self.source = source
         self.starred = starred
+        self.score = score
 
     def __str__(self):
         return self.title
@@ -230,7 +231,7 @@ class ListItem(object):
 
 class ListModel(QtCore.QAbstractTableModel):
 
-    _HEADERS = ("R.", "S.", "Source", "Title", "Date")
+    _HEADERS = ("R.", "S.", "Source", "Title", "Date", "Score")
 
     def __init__(self, parent=None):
         super(ListModel, self).__init__(parent)
@@ -240,7 +241,8 @@ class ListModel(QtCore.QAbstractTableModel):
         _LOG.debug("ListModel.set_items(len=%d)", len(items))
         self.layoutAboutToBeChanged.emit()
         self.items = [ListItem(item.title, item.oid, item.read,
-                               item.updated, item.source.title, item.starred)
+                               item.updated, item.source.title, item.starred,
+                               item.score)
                       for item in items]
         self.layoutChanged.emit()
 
@@ -259,7 +261,7 @@ class ListModel(QtCore.QAbstractTableModel):
         return len(self.items)
 
     def columnCount(self, parent):
-        return 5
+        return 6
 
     def headerData(self, col, orientation, role):
         if orientation == QtCore.Qt.Horizontal and \
@@ -283,6 +285,8 @@ class ListModel(QtCore.QAbstractTableModel):
                 return QtCore.QVariant(row.title)
             elif col == 4:
                 return QtCore.QDateTime(row.updated)
+            elif col == 5:
+                return QtCore.QVariant(row.score)
         elif role == QtCore.Qt.FontRole:
             row = self.items[index.row()]
             if not row.read:
