@@ -49,5 +49,5 @@ class MinLenFilter(base.AbstractFilter):
     @classmethod
     def get_label(cls, cfg):
         conf = cfg.conf
-        return cls.name + " (length>%d -> score%+d)" % (conf.get("min_length"),
+        return cls.name + " (length<%d -> score%+d)" % (conf.get("min_length"),
                                                         conf.get("score"))
