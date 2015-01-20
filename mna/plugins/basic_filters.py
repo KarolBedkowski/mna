@@ -51,3 +51,44 @@ class MinLenFilter(base.AbstractFilter):
         conf = cfg.conf
         return cls.name + " (length<%d -> score%+d)" % (conf.get("min_length"),
                                                         conf.get("score"))
+
+
+class KeywordFilter(base.AbstractFilter):
+    """ Filter articles with too short content. """
+
+    name = "Keyword filter"
+    description = "Find keywords in articles."
+
+    def __init__(self, cfg):
+        assert isinstance(cfg, DBO.Filter), 'Invalid object type: %r' % cfg
+        super(KeywordFilter, self).__init__(cfg)
+        conf = self.cfg.conf
+        self._score = conf.get('score', 0)
+        self._keywords = None
+        keywords = conf.get('keywords')
+        if keywords:
+            keywords = keywords.split(',')
+            self._keywords = [kwrd.strip().lower() for kwrd in keywords]
+
+    def filter(self, article):
+        _LOG.debug('KeywordFilter.filter(%r)', article.oid)
+        for kwrd in self._keywords or []:
+            if kwrd in (article.content or '').lower() or \
+                    kwrd in (article.summary or '').lower():
+                article.score += self._score
+                _LOG.debug('KeywordFilter.filter(%r) = %s -> %r finished',
+                           article.oid, kwrd, article.score)
+                break
+        return article
+
+    @classmethod
+    def get_params(cls):
+        return {'keywords': ("Keyword separated by ','", str, ''),
+                'score': ("Score to apply when content is too small",
+                          int, 10)}
+
+    @classmethod
+    def get_label(cls, cfg):
+        conf = cfg.conf
+        return cls.name + " (%s -> score%+d)" % \
+            (conf.get("keywords") or "", conf.get("score"))
