@@ -19,6 +19,13 @@ import logging
 _LOG = logging.getLogger(__name__)
 
 
+_DEFAULT_CSS = """
+body { font-family: Arial, Helvetica, sans-serif; margin: 0;}
+header { background-color: #ccc;  padding: 0.5em 1em; font-size: 0.75em; }
+article {padding: 0.5em 1em; }
+"""
+
+
 def _sp_build_title(article):
     if article.title:
         yield "<h1>"
@@ -77,10 +84,11 @@ class SimplePresenter(object):
                    article)
         result = ["<!doctype html><html><head>",
                   '<meta charset="UTF-8">',
-                  '<title></title>',
+                  '<title></title>'
+                  '<style type="text/css">', _DEFAULT_CSS, '</style>',
                   '</head><body>']
-        result.extend(_sp_build_title(article))
         result.append('<header>')
+        result.extend(_sp_build_title(article))
         result.extend(_sp_build_author(article))
         result.extend(_sp_build_published(article))
         result.append('</header>')
