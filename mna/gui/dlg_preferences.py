@@ -64,6 +64,7 @@ class DlgPreferences(QtGui.QDialog):
         self_ui.sb_update_interval.\
                 setValue(aconf.get('articles.update_interval', 60))
         self_ui.sp_minial_score.setValue(aconf.get('filter.min_score', 0))
+        self_ui.t_base_css.setPlainText(aconf.get('view.base_css') or '')
         self._fill_filters()
 
     def _fill_filters(self):
@@ -86,6 +87,7 @@ class DlgPreferences(QtGui.QDialog):
         aconf['articles.update_interval'] = \
                 self_ui.sb_update_interval.value()
         aconf['filter.min_score'] = self_ui.sp_minial_score.value()
+        aconf['view.base_css'] = self_ui.t_base_css.toPlainText()
         return True
 
     def _validate(self):

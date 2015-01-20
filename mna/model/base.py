@@ -15,15 +15,9 @@ __version__ = "2015-01-17"
 
 import logging
 
+from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
-
-
-_DEFAULT_CSS = """
-body { font-family: Arial, Helvetica, sans-serif; margin: 0;}
-header { background-color: #ccc;  padding: 0.5em 1em; font-size: 0.75em; }
-article {padding: 0.5em 1em; }
-"""
 
 
 def _sp_build_title(article):
@@ -82,10 +76,11 @@ class SimplePresenter(object):
         """
         _LOG.debug("SimplePresenter: %s - render %r", self.name,
                    article)
+        css = appconfig.AppConfig().get('view.base_css')
         result = ["<!doctype html><html><head>",
                   '<meta charset="UTF-8">',
                   '<title></title>'
-                  '<style type="text/css">', _DEFAULT_CSS, '</style>',
+                  '<style type="text/css">', css, '</style>',
                   '</head><body>']
         result.append('<header>')
         result.extend(_sp_build_title(article))
