@@ -34,8 +34,8 @@ class MinLenFilter(base.AbstractFilter):
         content_len = len(article.content or '') + len(article.summary or '')
         if min_length and content_len < min_length:
             article.score += conf.get('score', 0)
-        _LOG.debug('MinLenFilter.filter(%r) = %d -> %r finished',
-                   article.oid, content_len, article.score)
+            _LOG.debug('MinLenFilter.filter(%r) = %d -> %r finished',
+                       article.oid, content_len, article.score)
         return article
 
     @classmethod

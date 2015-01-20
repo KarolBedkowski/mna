@@ -72,7 +72,6 @@ class Worker(QtCore.QRunnable):
                         min_score = aconf.get('filter.min_score') \
                             if source_cfg.conf.get('filter.use_default_score') \
                             else source_cfg.conf.get('filter.min_score', 0)
-                        print score, min_score
                         if score < min_score:
                             _LOG.debug('%s: article %r to low score (min: %d)',
                                        self._p_name, article, min_score)
