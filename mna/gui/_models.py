@@ -293,6 +293,16 @@ class ListModel(QtCore.QAbstractTableModel):
                 font = QtGui.QFont()
                 font.setBold(True)
                 return font
+        elif role == QtCore.Qt.TextColorRole:
+            row = self.items[index.row()]
+            if row.score > 9:
+                return QtGui.QColor(0, 0, 200)
+            elif row.score > 25:
+                return QtGui.QColor(0, 200, 0)
+            elif row.score > 75:
+                return QtGui.QColor(200, 0, 0)
+            elif row.score < -10:
+                return QtGui.QColor(50, 50, 50)
         return QtCore.QVariant()
 
     def node_from_index(self, index):
