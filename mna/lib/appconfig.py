@@ -2,7 +2,7 @@
 # pylint: disable-msg=C0103
 """ Application configuration.
 
-Copyright (c) Karol Będkowski, 2007-2014
+Copyright (c) Karol Będkowski, 2007-2015
 
 This file is part of kPyLibs,mna
 
@@ -12,8 +12,8 @@ Foundation, version 2.
 """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-14"
+__copyright__ = "Copyright (c) Karol Będkowski, 2007-2015"
+__version__ = "2015-01-21"
 
 import sys
 import os
@@ -45,6 +45,8 @@ class AppConfig(Singleton):
         # pylint: disable=W0221
         _LOG.debug('AppConfig.__init__(%r, %r, %r)', filename, app_name,
                    main_dir)
+        self._defaults = {}
+        self.clear()
         self._user_home = os.path.expanduser('~')
         self.app_name = app_name
         self.main_is_frozen = is_frozen()
@@ -52,7 +54,6 @@ class AppConfig(Singleton):
         self.config_path = self._get_config_path(app_name)
         self.data_dir = self._get_data_dir()
         self._filename = os.path.join(self.config_path, filename)
-        self.clear()
         _LOG.debug('AppConfig.__init__: frozen=%(main_is_frozen)r, '
                    'main_dir=%(main_dir)s, config=%(_filename)s, '
                    'data=%(data_dir)s', self.__dict__)
@@ -60,16 +61,25 @@ class AppConfig(Singleton):
     ###########################################################################
 
     def __setitem__(self, key, value):
-        self._config.__setitem__(key, value)
+        """ Set configuration value; if value == default value - remove. """
+        if key in self._defaults and value == self._defaults[key]:
+            if key in self._config:
+                del self._config[key]
+            return
+        self._config[key] = value
 
     def __getitem__(self, key):
-        return self._config.__getitem__(key)
+        if key in self._config:
+            return self._config[key]
+        return self._defaults[key]
 
     def __dellitem__(self, key):
         self._config.__delitem__(key)
 
     def get(self, key, default=None):
-        return self._config.get(key, default)
+        if key in self._config:
+            return self._config.get(key)
+        return self._defaults.get(key, default)
 
     ###########################################################################
 
@@ -107,29 +117,30 @@ class AppConfig(Singleton):
 
     def load(self):
         """ Load application configuration file. """
-        if self.load_configuration_file(self._filename):
+        self._config = self.load_configuration_file(self._filename)
+        if self._config:
             self._after_load(self._config)
 
     def load_defaults(self, filename):
         """ Load default configuration file. """
         if filename:
-            self.load_configuration_file(filename)
+            self._defaults = self.load_configuration_file(filename)
 
     def load_configuration_file(self, filename):
         """ Load configuration file. """
         if not os.path.exists(filename):
             _LOG.warn("AppConfig.load_configuration_file: file %r not found",
                       filename)
-            return False
+            return {}
         _LOG.info('AppConfig.load_configuration_file: %r', filename)
+        conf = None
         try:
             with open(filename, 'r') as cfile:
-                self._config.update(json.load(cfile))
+                conf = json.load(cfile)
         except StandardError:
             _LOG.exception('AppConfig.load_configuration_file error')
-            return False
         _LOG.debug('AppConfig.load_configuration_file finished')
-        return True
+        return conf or {}
 
     def save(self):
         """ Save configuration. """
