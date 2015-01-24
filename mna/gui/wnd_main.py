@@ -11,6 +11,8 @@ __author__ = u"Karol Będkowski"
 __copyright__ = u"Copyright (c) Karol Będkowski, 2014"
 __version__ = "2013-04-28"
 
+import os
+import sys
 import gettext
 import logging
 import webbrowser
@@ -66,6 +68,11 @@ class WndMain(QtGui.QMainWindow):
         self._bind()
         self._set_window_pos_size()
         self._ui.table_articles.sortByColumn(4, QtCore.Qt.AscendingOrder)
+        # expand previous nodes
+        for oid in self._appconfig.get('wnd_main.tree.expanded') or []:
+            idx = self._tree_model.find_oid_index(oid)
+            if idx:
+                self._ui.tree_subscriptions.expand(idx[0])
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
@@ -230,7 +237,10 @@ class WndMain(QtGui.QMainWindow):
             self._refresh_tree()
 
     def _on_article_view_link(self, url):
-        webbrowser.open(unicode(url.toString()))
+        if sys.platform.startswith('linux'):
+            os.popen('xdg-open "%s"' % unicode(url.toString()))
+        else:
+            webbrowser.open(unicode(url.toString()))
 
     def _refresh_tree(self):
         self._tree_model.refresh()
@@ -354,3 +364,8 @@ class WndMain(QtGui.QMainWindow):
         appcfg['wnd_main.height'] = self.height()
         appcfg['wnd_main.splitter1'] = self._ui.splitter.sizes()
         appcfg['wnd_main.splitter2'] = self._ui.splitter_2.sizes()
+        # save expanded tree items
+        expanded = [self._tree_model.node_from_index(itm).oid
+                    for itm in self._tree_model.persistentIndexList()
+                    if self._ui.tree_subscriptions.isExpanded(itm)]
+        appcfg['wnd_main.tree.expanded'] = expanded

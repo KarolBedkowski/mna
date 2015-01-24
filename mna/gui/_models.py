@@ -21,6 +21,9 @@ from mna.model import dbobjects as DBO
 _LOG = logging.getLogger(__name__)
 
 
+ID_ROLE = QtCore.Qt.UserRole + 1
+
+
 class TreeNode(object):
     def __init__(self, parent, caption=None, oid=None, unread=0):
         self.clear()
@@ -152,6 +155,9 @@ class TreeModel(QtCore.QAbstractItemModel):
                 font = QtGui.QFont()
                 font.setBold(True)
                 return font
+        elif role == ID_ROLE:
+            node = self.node_from_index(index)
+            return node.oid
         return QtCore.QVariant()
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
@@ -208,6 +214,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         if parent is None or parent == self.root:
             return QtCore.QModelIndex()
         return self.createIndex(parent.row(), 0, parent)
+
+    def find_oid_index(self, oid):
+        root = self.createIndex(0, 0, 0)
+        return self.match(root, ID_ROLE, oid, -1)
 
 
 class ListItem(object):
