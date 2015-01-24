@@ -337,11 +337,9 @@ class WndMain(QtGui.QMainWindow):
         self._ui.table_articles.selectionModel().clearSelection()
         unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):
-            source = db.get_one(DBO.Source, oid=node.oid)
-            articles = db.get_articles_by_source(source, unread_only)
+            articles = db.get_articles_by_source(node.oid, unread_only)
         elif isinstance(node, _models.GroupTreeNode):
-            group = db.get_one(DBO.Group, oid=node.oid)
-            articles = db.get_articles_by_group(group, unread_only)
+            articles = db.get_articles_by_group(node.oid, unread_only)
         else:
             raise RuntimeError("invalid tree item: %r", node)
         self._list_model.set_items(articles)

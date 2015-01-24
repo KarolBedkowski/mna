@@ -257,10 +257,19 @@ def get_articles_by_group(group, unread_only=False, sorting=None):
     Return:
         list of Article objects
     """
-    session = Session.object_session(group) or Session()
-    articles = session.query(DBO.Article).\
-                join(DBO.Article.source).\
-                filter(DBO.Source.group_id == group.oid)
+    if isinstance(group, DBO.Group):
+        session = Session.object_session(group) or Session()
+        articles = session.query(DBO.Article).\
+                    join(DBO.Article.source).\
+                    filter(DBO.Source.group_id == group.oid)
+    elif isinstance(group, (int, long)):
+        session = Session()
+        articles = session.query(DBO.Article).\
+                    join(DBO.Article.source).\
+                    filter(DBO.Source.group_id == group)
+    else:
+        raise RuntimeError("Invalid argument: group=%r" % group)
+
     if unread_only:
         articles = articles.filter(DBO.Article.read == 0)
     if sorting:
@@ -274,9 +283,17 @@ def get_articles_by_source(source, unread_only=False, sorting=None):
     """ Get list articles for source. If `unread_only` filter articles by
         `read` flag.
     """
-    session = Session.object_session(source) or Session()
-    articles = session.query(DBO.Article).\
-                filter(DBO.Article.source_id == source.oid)
+    if isinstance(source, DBO.Source):
+        session = Session.object_session(source) or Session()
+        articles = session.query(DBO.Article).\
+                    filter(DBO.Article.source_id == source.oid)
+    elif isinstance(source, (int, long)):
+        session = Session()
+        articles = session.query(DBO.Article).\
+                    filter(DBO.Article.source_id == source)
+    else:
+        raise RuntimeError("Invalid argument: source=%r" % source)
+
     if unread_only:
         articles = articles.filter(DBO.Article.read == 0)
     if sorting:
