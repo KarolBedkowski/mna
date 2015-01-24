@@ -20,6 +20,7 @@ from mna.gui import resources_rc
 from mna.gui import dlg_preferences_ui
 from mna.lib import appconfig
 from mna.gui import filter_conf
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna import plugins
 
@@ -70,7 +71,7 @@ class DlgPreferences(QtGui.QDialog):
     def _fill_filters(self):
         lv_filters = self._ui.lv_filters
         lv_filters.clear()
-        for fltr in DBO.Session().query(DBO.Filter).\
+        for fltr in db.Session().query(DBO.Filter).\
                 filter(DBO.Filter.source_id == None):
             fltr_class = plugins.FILTERS[fltr.name]
             itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))

@@ -13,6 +13,7 @@ import time
 
 from PyQt4 import QtCore
 
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna import plugins
 from mna.model import base
@@ -38,8 +39,9 @@ class Worker(QtCore.QRunnable):
         self._p_name = "Worker%d" % id(self)
 
     def run(self):
-        session = DBO.Session()
-        source_cfg = DBO.Source.get(session=session, oid=self.source_id)
+        session = db.Session()
+        source_cfg = db.get_one(DBO.Source, session=session,
+                                oid=self.source_id)
         _LOG.debug("%s processing %s/%s", self._p_name, source_cfg.name,
                    source_cfg.title)
         # find pluign
@@ -98,7 +100,7 @@ class Worker(QtCore.QRunnable):
         _LOG.debug("%s: finished", self._p_name)
 
     def _load_filters(self, source_cfg, session):
-        for fltr in source_cfg.get_filters():
+        for fltr in db.get_filters(source_cfg):
             fltr_cls = plugins.FILTERS.get(fltr.name)
             if not fltr_cls:
                 _LOG.error("%s: unknown filter: %s in %r", self._p_name,
@@ -119,7 +121,7 @@ def _on_error(session, source_cfg, error_msg):
     source_cfg.next_refresh = now + datetime.timedelta(
         seconds=source_cfg.interval)
     # source_cfg.last_refreshed = now
-    source_cfg.add_to_log("ERROR", error_msg)
+    db.add_to_log(source_cfg, "ERROR", error_msg)
     session.commit()
 
 
@@ -127,8 +129,9 @@ def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt):
     """ Inform application about source updates. """
     if new_articles_cnt:
         messenger.MESSENGER.emit_source_updated(source_oid, group_oid)
-        messenger.MESSENGER.emit_announce(u"%s updated - %d new articles" %
-                                        (source_title, new_articles_cnt))
+        messenger.MESSENGER.emit_announce(
+            u"%s updated - %d new articles" %
+            (source_title, new_articles_cnt))
     else:
         messenger.MESSENGER.emit_announce(u"%s updated" % source_title)
 
@@ -136,7 +139,7 @@ def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt):
 def _process_sources():
     """ Process all sources with `next_refresh` date in past """
     _LOG.debug("MainWorker: start processing")
-    session = DBO.Session()
+    session = db.Session()
     now = datetime.datetime.now()
     query = session.query(DBO.Source)
     query = query.filter(DBO.Source.enabled == 1,

@@ -28,6 +28,7 @@ from mna.gui import dlg_source_info
 from mna.gui import dlg_preferences
 from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
 from mna.common import messenger
@@ -137,13 +138,13 @@ class WndMain(QtGui.QMainWindow):
         if node is None:
             return
         if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
+            source = db.get_one(DBO.Source, oid=node.oid)
             dlg = dlg_source_edit.DlgSourceEdit(self, source)
             if dlg.exec_() == QtGui.QDialog.Accepted:
-                messenger.MESSENGER.emit_source_updated(source.oid,
-                                                      source.group_id)
+                messenger.MESSENGER.emit_source_updated(
+                    source.oid, source.group_id)
         elif isinstance(node, _models.GroupTreeNode):
-            group = DBO.Group.get(oid=node.oid)
+            group = db.get_one(DBO.Group, oid=node.oid)
             dlg = dlg_edit_group.DlgEditGroup(self, group)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 messenger.MESSENGER.emit_group_updated(group.oid)
@@ -169,11 +170,11 @@ class WndMain(QtGui.QMainWindow):
 #            model.select(parent)
 
         if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
+            source = db.get_one(DBO.Source, oid=node.oid)
             if sources.delete_source(source):
                 self._refresh_tree()
         elif isinstance(node, _models.GroupTreeNode):
-            group = DBO.Group.get(oid=node.oid)
+            group = db.get_one(DBO.Group, oid=node.oid)
             if groups.delete_group(group):
                 self._refresh_tree()
         else:
@@ -185,7 +186,7 @@ class WndMain(QtGui.QMainWindow):
         node = self._tree_model.node_from_index(index)
         if node is None or not isinstance(node, _models.SourceTreeNode):
             return
-        source = DBO.Source.get(oid=node.oid)
+        source = db.get_one(DBO.Source, oid=node.oid)
         dlg = dlg_source_info.DlgSourceInfo(self, source)
         dlg.exec_()
 
@@ -210,18 +211,18 @@ class WndMain(QtGui.QMainWindow):
         item = self._list_model.node_from_index(index)
         _LOG.debug("_on_article_list_selchng %r %r", item.oid, index.column())
         article = None
-        article = DBO.Article.get(oid=item.oid)
+        article = db.get_one(DBO.Article, oid=item.oid)
         if self._last_presenter[0] == article.source_id:
             presenter = self._last_presenter[1]
         else:
-            source_cfg = DBO.Source.get(oid=article.source_id)
+            source_cfg = db.get_one(DBO.Source, oid=article.source_id)
             source = plugins.SOURCES.get(source_cfg.name)
             presenter = source.presenter(source)
             self._last_presenter = (article.source_id, presenter)
         content = presenter.to_gui(article)
         self._ui.article_view.setHtml(content)
         article.read = 1
-        article.save(True)
+        db.save(article, True)
         self._list_model.update_item(article)
         self._tree_model.update_source(article.source_id,
                                        article.source.group_id)
@@ -301,8 +302,8 @@ class WndMain(QtGui.QMainWindow):
             for source_oid, group_oid in sources_to_mark:
                 # send signals only for real updated sources
                 if src_updated[source_oid] > 0:
-                    messenger.MESSENGER.emit_source_updated(source_oid,
-                                                          group_oid)
+                    messenger.MESSENGER.emit_source_updated(
+                        source_oid, group_oid)
             messenger.MESSENGER.emit_group_updated(sources_to_mark[0][1])
 
     def _on_toggle_read_action(self):
@@ -336,12 +337,13 @@ class WndMain(QtGui.QMainWindow):
         self._ui.table_articles.selectionModel().clearSelection()
         unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
+            source = db.get_one(DBO.Source, oid=node.oid)
+            articles = db.get_articles_by_source(source, unread_only)
         elif isinstance(node, _models.GroupTreeNode):
-            source = DBO.Group.get(oid=node.oid)
+            group = db.get_one(DBO.Group, oid=node.oid)
+            articles = db.get_articles_by_group(group, unread_only)
         else:
             raise RuntimeError("invalid tree item: %r", node)
-        articles = source.get_articles(unread_only)
         self._list_model.set_items(articles)
         self._ui.table_articles.resizeColumnsToContents()
 

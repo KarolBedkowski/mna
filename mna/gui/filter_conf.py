@@ -16,6 +16,7 @@ import logging
 from PyQt4 import QtGui
 
 from mna import plugins
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.gui import dlg_filter_type_ui
 from mna.gui import dlg_filter_options_ui
@@ -102,26 +103,26 @@ def add_filter(parent_wnd, source_id):
     fltr = plugins.FILTERS[dlg.value](fltr_cfg)
     dlg = DlgFilterOptions(parent_wnd, fltr)
     if dlg.exec_() == QtGui.QDialog.Accepted:
-        fltr_cfg.save(commit=True)
+        db.save(fltr_cfg, commit=True)
         return True
     return False
 
 
 def edit_filter(parent_wnd, fltr_id):
     """ Open filter edit dialog; save changes to database. """
-    fltr_cfg = DBO.Filter.get(oid=fltr_id)
+    fltr_cfg = db.get_one(DBO.Filter, oid=fltr_id)
     assert fltr_cfg is not None, "Can't find filter with id %r" % fltr_id
     fltr = plugins.FILTERS[fltr_cfg.name](fltr_cfg)
     dlg = DlgFilterOptions(parent_wnd, fltr)
     if dlg.exec_() == QtGui.QDialog.Accepted:
-        fltr_cfg.save(commit=True)
+        db.save(fltr_cfg, commit=True)
         return True
     return False
 
 
 def delete_filter(parent_wnd, fltr_id):
     """ Delete filter from database. """
-    fltr_cfg = DBO.Filter.get(oid=fltr_id)
+    fltr_cfg = db.get_one(DBO.Filter, oid=fltr_id)
     fltr = plugins.FILTERS[fltr_cfg.name](fltr_cfg)
     reply = QtGui.QMessageBox.question(
         parent_wnd,

@@ -19,6 +19,7 @@ from lxml import etree
 from PyQt4 import QtGui
 
 from mna.model import base
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
 from mna.gui import _validators
@@ -105,8 +106,8 @@ def accept_part(session, source_id, checksum):
     """ Check is given part don't already exists in database for given  part
         `checksum` and `source_id`.
     """
-    return DBO.Article.count(session=session, internal_id=checksum,
-                             source_id=source_id) == 0
+    return db.count(DBO.Article, session=session, internal_id=checksum,
+                    source_id=source_id) == 0
 
 
 def accept_page(page, session, source_id, threshold):
@@ -179,8 +180,8 @@ class WebSource(base.AbstractSource):
         try:
             info, page = download_page(url)
         except LoadPageError, err:
-            self.cfg.add_to_log('error',
-                                "Error loading page: " + str(err))
+            db.add_to_log(self.cfg, 'error',
+                          "Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         if not self.is_page_updated(info, max_age_load):
@@ -199,9 +200,10 @@ class WebSource(base.AbstractSource):
 
         _LOG.debug("WebSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_to_log('info', "Not found new articles")
+            db.add_to_log(self.cfg, 'info', "Not found new articles")
             return []
-        self.cfg.add_to_log('info', "Found %d new articles" % len(articles))
+        db.add_to_log(self.cfg, 'info',
+                      "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
@@ -237,9 +239,9 @@ class WebSource(base.AbstractSource):
             if len(articles) > max_articles_to_load:
                 _LOG.debug("WebSource: loaded >max_articles - truncating")
                 articles = articles[-max_articles_to_load:]
-                self.cfg.add_to_log('info',
-                                    "Loaded only %d articles (limit)." %
-                                    len(articles))
+                db.add_to_log(self.cfg, 'info',
+                              "Loaded only %d articles (limit)." %
+                              len(articles))
         return articles
 
     def is_page_updated(self, info, max_age_load):
@@ -256,8 +258,8 @@ class WebSource(base.AbstractSource):
 
         page_modification = info.get('_last-modified')
         if page_modification and page_modification < last_refreshed:
-            self.cfg.add_to_log('info',
-                                "Page not modified according to header")
+            db.add_to_log(self.cfg, 'info',
+                          "Page not modified according to header")
             _LOG.info("No page %s modification since %s", self.cfg.title,
                       last_refreshed)
             return False

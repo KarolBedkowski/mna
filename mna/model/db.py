@@ -21,16 +21,19 @@ import datetime
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import SingletonThreadPool
+from sqlalchemy import orm, or_
+# from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
+Session = orm.sessionmaker()  # pylint: disable=C0103
 
 
 def text_factory(text):
     return unicode(text, 'utf-8', errors='replace')
+
 
 @sqlalchemy.event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -60,13 +63,11 @@ def connect(filename, debug=False, *args, **kwargs):
                                       echo=False,
                                       connect_args=args,
                                       native_datetime=True,
-                                      isolation_level='SERIALIZABLE',
-                                      # poolclass=SingletonThreadPool
-                                      )
+                                      isolation_level='SERIALIZABLE')
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
-    DBO.Session.configure(bind=engine)  # pylint: disable=E1120
+    Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:
         @sqlalchemy.event.listens_for(Engine, "before_cursor_execute")
@@ -85,7 +86,7 @@ def connect(filename, debug=False, *args, **kwargs):
     _LOG.info('Database create_all COMPLETED')
     # bootstrap
     _LOG.info('Database bootstrap START')
-    session = DBO.Session()
+    session = Session()
     _bootstrap_data(session)
     session.commit()
     _LOG.info('Database bootstrap COMPLETED')
@@ -105,7 +106,7 @@ def connect(filename, debug=False, *args, **kwargs):
         _LOG.debug('Database vacuum')
         session.execute('PRAGMA incremental_vacuum(%d)' % (freelist_count / 2))
     _LOG.info('Database cleanup COMPLETED')
-    return DBO.Session
+    return Session
 
 
 def find_db_file(config):
@@ -135,7 +136,7 @@ def find_db_file(config):
 
 
 def _bootstrap_data(session):
-    if DBO.Group.count() == 0:
+    if count(DBO.Group) == 0:
         # create default group
         group = DBO.Group()
         group.name = "Default Group"
@@ -143,7 +144,7 @@ def _bootstrap_data(session):
         group = DBO.Group()
         group.name = "OSS"
         session.add(group)
-    if DBO.Source.count() == 0:
+    if count(DBO.Source) == 0:
         source = DBO.Source()
         source.name = "mna.plugins.rss.RssSource"
         source.title = "Filmweb"
@@ -180,3 +181,138 @@ def _bootstrap_data(session):
         source.conf = {"url": r'http://linuxtoday.com/backend/biglt.rss'}
         source.group_id = 2
         session.add(source)
+
+
+def get_one(clazz, session=None, **kwargs):
+    """ Get one object with given attributes.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    return (session or Session()).query(clazz).filter_by(**kwargs).first()
+
+
+def get_all(clazz, order_by=None, session=None):
+    """ Return all objects this class.
+
+    Args:
+        order_by: optional order_by query argument
+    """
+    session = session or Session()
+    query = session.query(clazz)
+    if hasattr(clazz, 'deleted'):
+        query = query.filter(clazz.deleted.is_(None))
+    if order_by:
+        query = query.order_by(order_by)
+    return query  # pylint: disable=E1101
+
+
+def count(clazz, session=None, **kwargs):
+    """ Count objects with given attributes.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    return (session or Session()).query(clazz).filter_by(**kwargs).count()
+
+
+def save(obj, commit=False, session=None):
+    """ Save object into database. """
+    if session:
+        session.merge(obj)
+    else:
+        session = Session.object_session(obj) or Session()
+        session.add(obj)
+    if commit:
+        session.commit()
+    return session
+
+
+def delete(obj, commit=False, session=None):
+    """ Delete object from database. """
+    if session:
+        session.merge(obj)
+    else:
+        session = Session.object_session(obj) or Session()
+        session.delete(obj)
+    if commit:
+        session.commit()
+
+
+def get_articles_by_group(group, unread_only=False, sorting=None):
+    """ Get list articles for all sources in current group.
+
+    Args:
+        unread_only (bool): filter articles by read flag
+        sorting (str): name of column to sort; default - "updated"
+
+    Return:
+        list of Article objects
+    """
+    session = Session.object_session(group) or Session()
+    articles = session.query(DBO.Article).\
+                join(DBO.Article.source).\
+                filter(DBO.Source.group_id == group.oid)
+    if unread_only:
+        articles = articles.filter(DBO.Article.read == 0)
+    if sorting:
+        articles = articles.order_by(sorting)
+    else:
+        articles = articles.order_by("updated")
+    return list(articles)
+
+
+def get_articles_by_source(source, unread_only=False, sorting=None):
+    """ Get list articles for source. If `unread_only` filter articles by
+        `read` flag.
+    """
+    session = Session.object_session(source) or Session()
+    articles = session.query(DBO.Article).\
+                filter(DBO.Article.source_id == source.oid)
+    if unread_only:
+        articles = articles.filter(DBO.Article.read == 0)
+    if sorting:
+        articles = articles.order_by(sorting)
+    else:
+        articles = articles.order_by("updated")
+    return list(articles)
+
+
+def add_to_log(source, category, message, commit=False):
+    session = Session.object_session(source)
+    log = DBO.SourceLog()
+    log.source_id = source.oid
+    log.category = category
+    log.message = message
+    session.add(log)
+    if commit:
+        session.commit()
+
+
+def get_source_logs(source):
+    """  Find logs for source """
+    session = Session.object_session(source) or Session()
+    article = session.query(DBO.SourceLog).\
+        filter(DBO.SourceLog.source_id == source.oid).\
+        order_by(DBO.SourceLog.date.desc()).all()
+    return article
+
+
+def get_filters(source):
+    """  Find all (globals/locals) filters for source """
+    session = Session.object_session(source) or Session()
+    fltrs = session.query(DBO.Filter)
+    if source.conf.get('filter.apply_global', True):
+        fltrs = fltrs.filter(or_(DBO.Filter.source_id == source.oid,
+                                 DBO.Filter.source_id == None))
+    else:
+        fltrs = fltrs.filter(DBO.Filter.source_id == source.oid)
+    return fltrs

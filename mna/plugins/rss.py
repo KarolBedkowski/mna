@@ -15,6 +15,7 @@ import feedparser
 from PyQt4 import QtGui
 
 from mna.model import base
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_rss_ui
 from mna.gui import _validators
@@ -64,8 +65,8 @@ class RssSource(base.AbstractSource):
         _LOG.info("RssSource.get_items from %r", url)
         doc = feedparser.parse(url)
         if not doc or doc.get('status') >= 400:
-            self.cfg.add_to_log('error', "Error loading RSS feed: " +
-                                doc.get('status'))
+            db.add_to_log(self.cfg, 'error', "Error loading RSS feed: " +
+                          doc.get('status'))
             _LOG.error("RssSource: error getting items from %s, %r, %r",
                        url, doc, self.cfg)
             raise base.GetArticleException("Get rss feed error: %r" %
@@ -73,7 +74,8 @@ class RssSource(base.AbstractSource):
 
         last_refreshed = self.cfg.last_refreshed
         if last_refreshed and (self.cfg.max_articles_to_load > 0 or
-                (self.cfg.max_articles_to_load == 0 and max_load > 0)):
+                               (self.cfg.max_articles_to_load == 0 and
+                                max_load > 0)):
             max_age_to_load = self.cfg.max_age_to_load or max_age_load
             # if max_age_to_load defined - set limit last_refreshed
             last_refreshed = \
@@ -87,7 +89,7 @@ class RssSource(base.AbstractSource):
 
         _LOG.debug("RssSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_to_log('info', "Not found new articles")
+            db.add_to_log(self.cfg, 'info', "Not found new articles")
             return []
 
         # Limit number articles to load
@@ -97,9 +99,9 @@ class RssSource(base.AbstractSource):
             if len(articles) > max_articles_to_load:
                 _LOG.debug("WebSource: loaded >max_articles - truncating")
                 articles = articles[-max_articles_to_load:]
-                self.cfg.add_to_log('info',
-                                    "Loaded only %d articles (limit)." %
-                                    len(articles))
+                db.add_to_log(self.cfg, 'info',
+                              "Loaded only %d articles (limit)." %
+                              len(articles))
         return articles
 
     def _create_article(self, feed, session, last_refreshed):
@@ -114,8 +116,9 @@ class RssSource(base.AbstractSource):
                                        feed.get('title'),
                                        feed.get('author'),
                                        self.__class__.get_name())
-        art = DBO.Article.get(session=session, source_id=self.cfg.oid,
-                              internal_id=internal_id)
+        art = db.get_one(DBO.Article, session=session,
+                         source_id=self.cfg.oid,
+                         internal_id=internal_id)
         if art:
             _LOG.debug("Article already in db: %r", internal_id)
             if art.updated > updated:

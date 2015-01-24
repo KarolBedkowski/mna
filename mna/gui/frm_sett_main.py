@@ -17,6 +17,7 @@ from PyQt4 import QtGui
 
 from mna.gui import frm_sett_main_ui
 from mna.gui import _validators
+from mna.model import db
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class FrmSettMain(QtGui.QFrame):
         self._setup()
 
     def _setup(self):
-        for group in DBO.Group.all():
+        for group in db.get_all(DBO.Group):
             self.ui.c_group.addItem(group.name, group.oid)
 
     def validate(self):

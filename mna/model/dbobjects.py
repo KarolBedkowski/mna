@@ -20,7 +20,7 @@ import datetime
 from sqlalchemy import (Column, Integer, Unicode, DateTime, Boolean,
                         ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import orm, and_, or_
+from sqlalchemy import orm, and_
 from sqlalchemy import select, func
 
 from mna.model import jsonobj
@@ -29,33 +29,10 @@ _LOG = logging.getLogger(__name__)
 
 # SQLAlchemy
 Base = declarative_base()  # pylint: disable=C0103
-Session = orm.sessionmaker()  # pylint: disable=C0103
 
 
 class BaseModelMixin(object):
     """ Utilities method for database objects """
-
-    def save(self, commit=False, session=None):
-        """ Save object into database. """
-        if session:
-            session.merge(self)
-        else:
-            session = Session.object_session(self) or Session()
-            session.add(self)
-        if commit:
-            session.commit()
-        return session
-
-    def delete(self, commit=False, session=None):
-        """ Delete object from database. """
-        if session:
-            session.merge(self)
-        else:
-            session = Session.object_session(self) or Session()
-            session.delete(self)
-        if commit:
-            session.commit()
-        return session
 
     def clone(self, cleanup=True):
         """ Clone current object.
@@ -90,47 +67,6 @@ class BaseModelMixin(object):
         if hasattr(self, 'modified'):
             self.modified = datetime.datetime.utcnow()  # pylint: disable=W0201
 
-    @classmethod
-    def all(cls, order_by=None, session=None):
-        """ Return all objects this class.
-
-        Args:
-            order_by: optional order_by query argument
-        """
-        session = session or Session()
-        query = session.query(cls)
-        if hasattr(cls, 'deleted'):
-            query = query.filter(cls.deleted.is_(None))
-        if order_by:
-            query = query.order_by(order_by)
-        return query  # pylint: disable=E1101
-
-    @classmethod
-    def get(cls, session=None, **kwargs):
-        """ Get one object with given attributes.
-
-        Args:
-            session: optional sqlalchemy session
-            kwargs: query filters.
-
-        Return:
-            One object.
-        """
-        return (session or Session()).query(cls).filter_by(**kwargs).first()
-
-    @classmethod
-    def count(cls, session=None, **kwargs):
-        """ Count objects with given attributes.
-
-        Args:
-            session: optional sqlalchemy session
-            kwargs: query filters.
-
-        Return:
-            One object.
-        """
-        return (session or Session()).query(cls).filter_by(**kwargs).count()
-
     def __repr__(self):
         info = []
         for prop in orm.object_mapper(self).iterate_properties:
@@ -148,28 +84,6 @@ class Group(BaseModelMixin, Base):
 
     oid = Column(Integer, primary_key=True)
     name = Column(Unicode)
-
-    def get_articles(self, unread_only=False, sorting=None):
-        """ Get list articles for all sources in current group.
-
-        Args:
-            unread_only (bool): filter articles by read flag
-            sorting (str): name of column to sort; default - "updated"
-
-        Return:
-            list of Article objects
-        """
-        session = orm.object_session(self) or Session()
-        articles = session.query(Article).\
-                    join(Article.source).\
-                    filter(Source.group_id == self.oid)
-        if unread_only:
-            articles = articles.filter(Article.read == 0)
-        if sorting:
-            articles = articles.order_by(sorting)
-        else:
-            articles = articles.order_by("updated")
-        return list(articles)
 
     def is_valid(self):
         return bool(self.name)
@@ -231,50 +145,6 @@ class Source(BaseModelMixin, Base):
         if self.conf.get('filter_use_default'):
             return None
         return self.conf.get('filter_minimal_score', 0)
-
-    def get_articles(self, unread_only=False, sorting=None):
-        """ Get list articles for source. If `unread_only` filter articles by
-            `read` flag.
-        """
-        session = orm.object_session(self) or Session()
-        articles = session.query(Article).\
-                    filter(Article.source_id == self.oid)
-        if unread_only:
-            articles = articles.filter(Article.read == 0)
-        if sorting:
-            articles = articles.order_by(sorting)
-        else:
-            articles = articles.order_by("updated")
-        return list(articles)
-
-    def add_to_log(self, category, message, commit=False):
-        session = orm.object_session(self)
-        log = SourceLog()
-        log.source_id = self.oid
-        log.category = category
-        log.message = message
-        session.add(log)
-        if commit:
-            session.commit()
-
-    def get_logs(self):
-        """  Find logs for source """
-        session = orm.object_session(self) or Session()
-        article = session.query(SourceLog).\
-            filter(SourceLog.source_id == self.oid).\
-            order_by(SourceLog.date.desc()).all()
-        return article
-
-    def get_filters(self):
-        """  Find all (globals/locals) filters for source """
-        session = orm.object_session(self) or Session()
-        fltrs = session.query(Filter)
-        if self.conf.get('filter.apply_global', True):
-            fltrs = fltrs.filter(or_(Filter.source_id == self.oid,
-                                     Filter.source_id == None))
-        else:
-            fltrs = fltrs.filter(Filter.source_id == self.oid)
-        return fltrs
 
 
 class Filter(BaseModelMixin, Base):

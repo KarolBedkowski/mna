@@ -13,6 +13,7 @@ import datetime
 
 from sqlalchemy import func
 
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.lib import appconfig
 
@@ -33,7 +34,7 @@ def mark_source_read(source_ids, read=True):
         source_ids = [source_ids]
     cnt = 0
     results = {}
-    session = DBO.Session()
+    session = db.Session()
     for sid in source_ids:
         _LOG.debug("mark_source_read(%r, %r)", sid, read)
         s_cnt = session.query(DBO.Article).\
@@ -49,14 +50,14 @@ def mark_source_read(source_ids, read=True):
 
 def save_source(source):
     _LOG.info("save_source %r", source)
-    source.save(True)
+    db.save(source, True)
     _LOG.info("save_source done")
 
 
 def delete_source(source):
     """ Delete `source`. """
     _LOG.info("delete_source %r", source)
-    source.delete(True)
+    db.delete(source, True)
     _LOG.info("delete_source done")
     return True
 
@@ -68,7 +69,7 @@ def delete_old_articles():
     or delete_old_articles=False).
     """
     _LOG.info("delete_old_articles START")
-    session = DBO.Session()
+    session = db.Session()
     # globals settings
     appconf = appconfig.AppConfig()
     delete_articles = appconf.get('articles.delete_old', False)
@@ -129,13 +130,13 @@ def toggle_articles_read(articles_oid):
     """ Toggle given by `articles_oid`  articles read flag.
     Generate changed `Article` object.
     """
-    sess = DBO.Session()
+    sess = db.Session()
     # get status of first articles
-    art1 = DBO.Article.get(session=sess, oid=articles_oid[0])
+    art1 = db.get_one(DBO.Article, session=sess, oid=articles_oid[0])
     read = art1.read = not art1.read
     yield art1
     for art_oid in articles_oid[1:]:
-        art = DBO.Article.get(session=sess, oid=art_oid)
+        art = db.get_one(DBO.Article, session=sess, oid=art_oid)
         if art.read != read:
             art.read = read
             yield art
@@ -147,13 +148,13 @@ def toggle_articles_starred(articles_oid):
     """ Toggle given by `articles_oid`  articles starred flag.
     Generate changed `Article` object.
     """
-    sess = DBO.Session()
+    sess = db.Session()
     # get status of first articles
-    art1 = DBO.Article.get(session=sess, oid=articles_oid[0])
+    art1 = db.get_one(DBO.Article, session=sess, oid=articles_oid[0])
     starred = art1.starred = not art1.starred
     yield art1
     for art_oid in articles_oid[1:]:
-        art = DBO.Article.get(session=sess, oid=art_oid)
+        art = db.get_one(DBO.Article, session=sess, oid=art_oid)
         if art.starred != starred:
             art.starred = starred
             yield art
@@ -164,14 +165,14 @@ def toggle_articles_starred(articles_oid):
 def force_refresh_all():
     """ Force refresh all sources. """
     _LOG.info("Sources.force_refresh_all()")
-    session = DBO.Session()
+    session = db.Session()
     session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
     session.commit()
 
 
 def get_last_article(source_id, session=None):
     """  Find last article for `source_id` """
-    session = session or DBO.Session()
+    session = session or db.Session()
     article = session.query(DBO.Article).\
         filter(DBO.Article.source_id == source_id).\
         order_by(DBO.Article.updated.desc()).first()
