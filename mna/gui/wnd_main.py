@@ -29,7 +29,6 @@ from mna.gui import dlg_preferences
 from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
 from mna.model import db
-from mna.model import dbobjects as DBO
 from mna.logic import groups, sources, articles as larts
 from mna.common import messenger
 
