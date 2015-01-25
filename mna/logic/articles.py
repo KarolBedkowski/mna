@@ -16,6 +16,7 @@ from sqlalchemy import func
 from mna.lib import appconfig
 from mna.model import db
 from mna.model import dbobjects as DBO
+from mna import plugins
 
 
 _LOG = logging.getLogger(__name__)
@@ -173,3 +174,33 @@ def toggle_articles_starred(articles_oid):
             yield art
 
     sess.commit()
+
+
+_LAST_PRESENTER = {'source_id': None, 'presenter': None}
+
+
+def get_article_content(article_oid, mark_read=True, session=None):
+    """ Get article and formated by presenter article.
+
+    Args:
+        article_oid (long): id article to load
+        mark_read (bool): mark article as read
+        session (SqlAlchemy Session): optional session
+    Return:
+        (article, content as html)
+    """
+    session = session or db.Session()
+    article = db.get_one(DBO.Article, session=session, oid=article_oid)
+    if _LAST_PRESENTER['source_id'] == article.source_id:
+        presenter = _LAST_PRESENTER['presenter']
+    else:
+        source_cfg = article.source
+        source = plugins.SOURCES.get(source_cfg.name)
+        presenter = source.presenter(source)
+        _LAST_PRESENTER['source_id'] = article.source_id
+        _LAST_PRESENTER['presenter'] = presenter
+    content = presenter.to_gui(article)
+    if mark_read:
+        article.read = 1
+        db.save(article, True)
+    return article, content

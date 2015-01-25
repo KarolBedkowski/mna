@@ -32,7 +32,6 @@ from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.logic import groups, sources, articles as larts
 from mna.common import messenger
-from mna import plugins
 
 _ = gettext.gettext
 _LOG = logging.getLogger(__name__)
@@ -207,20 +206,10 @@ class WndMain(QtGui.QMainWindow):
         index = self._ui.table_articles.selectionModel().currentIndex()
         item = self._list_model.node_from_index(index)
         _LOG.debug("_on_article_list_selchng %r %r", item.oid, index.column())
-        article = None
         session = db.Session()
-        article = db.get_one(DBO.Article, session=session, oid=item.oid)
-        if self._last_presenter[0] == article.source_id:
-            presenter = self._last_presenter[1]
-        else:
-            source_cfg = article.source
-            source = plugins.SOURCES.get(source_cfg.name)
-            presenter = source.presenter(source)
-            self._last_presenter = (article.source_id, presenter)
-        content = presenter.to_gui(article)
+        article, content = larts.get_article_content(item.oid, True,
+                                                     session=session)
         self._ui.article_view.setHtml(content)
-        article.read = 1
-        db.save(article, True)
         self._list_model.update_item(article)
         self._tree_model.update_source(article.source_id,
                                        article.source.group_id)
