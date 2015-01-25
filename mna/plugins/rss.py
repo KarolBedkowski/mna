@@ -65,8 +65,8 @@ class RssSource(base.AbstractSource):
         _LOG.info("RssSource.get_items from %r", url)
         doc = feedparser.parse(url)
         if not doc or doc.get('status') >= 400:
-            db.add_to_log(self.cfg, 'error', "Error loading RSS feed: " +
-                          doc.get('status'))
+            self.cfg.add_log('error', "Error loading RSS feed: " +
+                             doc.get('status'))
             _LOG.error("RssSource: error getting items from %s, %r, %r",
                        url, doc, self.cfg)
             raise base.GetArticleException("Get rss feed error: %r" %
@@ -89,7 +89,7 @@ class RssSource(base.AbstractSource):
 
         _LOG.debug("RssSource: loaded %d articles", len(articles))
         if not articles:
-            db.add_to_log(self.cfg, 'info', "Not found new articles")
+            self.cfg.add_log('info', "Not found new articles")
             return []
 
         # Limit number articles to load
@@ -99,9 +99,9 @@ class RssSource(base.AbstractSource):
             if len(articles) > max_articles_to_load:
                 _LOG.debug("WebSource: loaded >max_articles - truncating")
                 articles = articles[-max_articles_to_load:]
-                db.add_to_log(self.cfg, 'info',
-                              "Loaded only %d articles (limit)." %
-                              len(articles))
+                self.cfg.add_log('info',
+                                 "Loaded only %d articles (limit)." %
+                                  len(articles))
         return articles
 
     def _create_article(self, feed, session, last_refreshed):

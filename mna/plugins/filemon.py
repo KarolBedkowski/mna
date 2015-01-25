@@ -164,9 +164,9 @@ class FileSource(base.AbstractSource):
 
         _LOG.debug("FileSource: loaded %d articles", len(articles))
         if not articles:
-            db.add_to_log(self.cfg, 'info', "Not found new articles")
+            self.cfg.add_log('info', "Not found new articles")
             return []
-        db.add_to_log(self.cfg, 'info',
+        self.cfg.add_log('info',
                       "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
@@ -186,7 +186,7 @@ class FileSource(base.AbstractSource):
                              errors="replace") as srcfile:
                 return srcfile.read()
         except IOError, err:
-            db.add_to_log(self.cfg, 'error',
+            self.cfg.add_log('error',
                           "Error loading file: " + str(err))
             raise base.GetArticleException("Load file error: %s" % err)
         return None
@@ -225,9 +225,9 @@ class FileSource(base.AbstractSource):
             if len(articles) > max_articles_to_load:
                 _LOG.debug("FileSource: loaded >max_articles - truncating")
                 articles = articles[-max_articles_to_load:]
-                db.add_to_log(self.cfg, 'info',
-                              "Loaded only %d articles (limit)." %
-                              len(articles))
+                self.cfg.add_log('info',
+                                 "Loaded only %d articles (limit)." %
+                                 len(articles))
         return articles
 
     def is_file_updated(self, filename, max_age_load):
@@ -245,9 +245,8 @@ class FileSource(base.AbstractSource):
         file_modification = datetime.datetime.fromtimestamp(
             os.path.getmtime(filename))
         if file_modification < last_refreshed:
-            db.add_to_log(self.cfg,
-                          'info',
-                          "File not modified according to modification time")
+            self.cfg.add_log(
+                'info', "File not modified according to modification time")
             _LOG.info("No page %s modification since %s", self.cfg.title,
                       last_refreshed)
             return False

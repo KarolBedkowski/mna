@@ -146,6 +146,9 @@ class Source(BaseModelMixin, Base):
             return None
         return self.conf.get('filter_minimal_score', 0)
 
+    def add_log(self, category, message):
+        self.source_log.append(SourceLog(category=category, message=message))
+
 
 class Filter(BaseModelMixin, Base):
     """Filters configuration"""

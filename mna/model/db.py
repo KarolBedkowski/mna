@@ -247,17 +247,6 @@ def delete(obj, commit=False, session=None):
         session.commit()
 
 
-def add_to_log(source, category, message, commit=False):
-    session = Session.object_session(source)
-    log = DBO.SourceLog()
-    log.source_id = source.oid
-    log.category = category
-    log.message = message
-    session.add(log)
-    if commit:
-        session.commit()
-
-
 def get_filters(source):
     """  Find all (globals/locals) filters for source """
     session = Session.object_session(source) or Session()
