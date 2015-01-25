@@ -103,6 +103,16 @@ class SourceTreeNode(TreeNode):
         self.unread = item.unread
 
 
+SPECIAL_STARRED = -1
+SPECIAL_ALL = -2
+
+
+class SpecialTreeNode(TreeNode):
+    """Special node (all nodes, stared, etc). """
+    def __init__(self, parent, title, sid):
+        super(SpecialTreeNode, self).__init__(parent, title, sid)
+
+
 class TreeModel(QtCore.QAbstractItemModel):
     """ Groups & sources tree model.
     """
@@ -115,6 +125,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         """ Refresh whole tree model from database. """
         self.layoutAboutToBeChanged.emit()
         self.root.clear()
+        self.root.children.append(SpecialTreeNode(
+            self.root, "All", SPECIAL_ALL))
+        self.root.children.append(SpecialTreeNode(
+            self.root, "Starred", SPECIAL_STARRED))
         session = db.Session()
         for group in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(None, group)
@@ -135,7 +149,8 @@ class TreeModel(QtCore.QAbstractItemModel):
         group = self.root.get_child(group_id)
         assert group is not None
         source = group.get_child(source_id)
-        assert source is not None
+        assert source is not None, 'cant find source %r in tree model' % \
+            source_id
         source.update(session, False)
         group.update(session, False)
         self.layoutChanged.emit()

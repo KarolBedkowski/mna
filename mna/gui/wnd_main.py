@@ -115,6 +115,9 @@ class WndMain(QtGui.QMainWindow):
 
     def _on_tree_popupmenu(self, position):
         selected = self.selected_tree_item
+        if isinstance(selected, _models.SpecialTreeNode):
+            # no menu on special nodes
+            return
         menu = QtGui.QMenu()
         menu.addAction(self.tr("Edit")).triggered.\
                 connect(self._on_tree_menu_edit)
@@ -130,6 +133,9 @@ class WndMain(QtGui.QMainWindow):
     def _on_tree_menu_edit(self):
         node = self.selected_tree_item
         if node is None:
+            return
+        if isinstance(node, _models.SpecialTreeNode):
+            # can't edit special nodes
             return
         if isinstance(node, _models.SourceTreeNode):
             dlg = dlg_source_edit.DlgSourceEdit(self, node.oid)
@@ -148,6 +154,9 @@ class WndMain(QtGui.QMainWindow):
         index = model.currentIndex()
         node = self._tree_model.node_from_index(index)
         if node is None:
+            return
+        if isinstance(node, _models.SpecialTreeNode):
+            # can't delete special nodes
             return
         if QtGui.QMessageBox.question(self, self.tr("Delete"),
                                       self.tr("Delete selected item?"),
@@ -322,6 +331,13 @@ class WndMain(QtGui.QMainWindow):
             articles = larts.get_articles_by_source(node.oid, unread_only)
         elif isinstance(node, _models.GroupTreeNode):
             articles = larts.get_articles_by_group(node.oid, unread_only)
+        elif isinstance(node, _models.SpecialTreeNode):
+            if node.oid == _models.SPECIAL_ALL:
+                articles = larts.get_all_articles(unread_only)
+            elif node.oid == _models.SPECIAL_STARRED:
+                articles = larts.get_starred_articles(unread_only)
+            else:
+                raise RuntimeError("invalid special tree item: %r", node)
         else:
             raise RuntimeError("invalid tree item: %r", node)
         self._list_model.set_items(articles)

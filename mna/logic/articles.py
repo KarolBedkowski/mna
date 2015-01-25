@@ -76,6 +76,52 @@ def get_articles_by_source(source_oid, unread_only=False, sorting=None):
     return list(articles)
 
 
+def get_all_articles(unread_only=False, sorting=None):
+    """ Get list of all articles for source. If `unread_only` filter articles by
+        `read` flag.
+
+    Args:
+        unread_only (bool): filter articles by read flag
+        sorting (str): name of column to sort; default - "updated"
+
+    Return:
+        list of Article objects
+    """
+    _LOG.debug('get_all_articles(%r, %r)', unread_only, sorting)
+    session = db.Session()
+    articles = session.query(DBO.Article)
+    if unread_only:
+        articles = articles.filter(DBO.Article.read == 0)
+    if sorting:
+        articles = articles.order_by(sorting)
+    else:
+        articles = articles.order_by("updated")
+    return list(articles)
+
+
+def get_starred_articles(unread_only=False, sorting=None):
+    """ Get list of starred articles for source. If `unread_only` filter
+    articles by `read` flag.
+
+    Args:
+        unread_only (bool): filter articles by read flag
+        sorting (str): name of column to sort; default - "updated"
+
+    Return:
+        list of Article objects
+    """
+    _LOG.debug('get_starred_articles(%r, %r)', unread_only, sorting)
+    session = db.Session()
+    articles = session.query(DBO.Article).filter(DBO.Article.starred == 1)
+    if unread_only:
+        articles = articles.filter(DBO.Article.read == 0)
+    if sorting:
+        articles = articles.order_by(sorting)
+    else:
+        articles = articles.order_by("updated")
+    return list(articles)
+
+
 def delete_old_articles():
     """ Find and delete old articles for all sources.
     Source can have own configuration (num_articles_to_keep > 0,
