@@ -68,11 +68,7 @@ class WndMain(QtGui.QMainWindow):
         self._bind()
         self._set_window_pos_size()
         self._ui.table_articles.sortByColumn(4, QtCore.Qt.AscendingOrder)
-        # expand previous nodes
-        for oid in self._appconfig.get('wnd_main.tree.expanded') or []:
-            idx = self._tree_model.find_oid_index(oid)
-            if idx:
-                self._ui.tree_subscriptions.expand(idx[0])
+        self._restore_expanded_tree_nodes()
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
@@ -229,7 +225,9 @@ class WndMain(QtGui.QMainWindow):
             webbrowser.open(unicode(url.toString()))
 
     def _refresh_tree(self):
+        self._save_expanded_tree_nodes()
         self._tree_model.refresh()
+        self._restore_expanded_tree_nodes()
 
     @QtCore.pyqtSlot(int, int)
     def _on_source_updated(self, source_id, group_id):
@@ -333,7 +331,7 @@ class WndMain(QtGui.QMainWindow):
     def _set_window_pos_size(self):
         appcfg = self._appconfig
         width = appcfg.get('wnd_main.width')
-        height = appcfg.get('wnd_main.hright')
+        height = appcfg.get('wnd_main.height')
         if width and height:
             self.resize(width, height)
         sp1 = appcfg.get('wnd_main.splitter1')
@@ -350,7 +348,17 @@ class WndMain(QtGui.QMainWindow):
         appcfg['wnd_main.splitter1'] = self._ui.splitter.sizes()
         appcfg['wnd_main.splitter2'] = self._ui.splitter_2.sizes()
         # save expanded tree items
+        self._save_expanded_tree_nodes()
+
+    def _save_expanded_tree_nodes(self):
         expanded = [self._tree_model.node_from_index(itm).oid
                     for itm in self._tree_model.persistentIndexList()
                     if self._ui.tree_subscriptions.isExpanded(itm)]
-        appcfg['wnd_main.tree.expanded'] = expanded
+        self._appconfig['wnd_main.tree.expanded'] = expanded
+
+    def _restore_expanded_tree_nodes(self):
+        # expand previous nodes
+        for oid in self._appconfig.get('wnd_main.tree.expanded') or []:
+            idx = self._tree_model.find_oid_index(oid)
+            if idx:
+                self._ui.tree_subscriptions.expand(idx[0])
