@@ -23,7 +23,6 @@ from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_filemon_ui
 from mna.gui import _validators
-from mna.logic import sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -52,12 +51,12 @@ def accept_part(session, source_id, checksum):
                     source_id=source_id) == 0
 
 
-def accept_page(content, session, source_id, threshold):
+def accept_page(content, session, source, threshold):
     """ Check is check similarity ratio if `threshold`  given -
     reject files with similarity ratio > threshold.
     """
     # find last article
-    last = sources.get_last_article(source_id, session)
+    last = source.get_last_article()
     if last:
         similarity = articles_similarity(last.content, content)
         _LOG.debug("similarity: %r %r", similarity, threshold)
@@ -192,7 +191,7 @@ class FileSource(base.AbstractSource):
         return None
 
     def _process_page(self, content, session):
-        if accept_page(content, session, self.cfg.oid,
+        if accept_page(content, session, self.cfg,
                        self.cfg.conf.get('similarity') or 1):
             return self._create_article(content)
         return None

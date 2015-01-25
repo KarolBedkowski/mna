@@ -65,12 +65,3 @@ def force_refresh_all():
     session = db.Session()
     session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
     session.commit()
-
-
-def get_last_article(source_id, session=None):
-    """  Find last article for `source_id` """
-    session = session or db.Session()
-    article = session.query(DBO.Article).\
-        filter(DBO.Article.source_id == source_id).\
-        order_by(DBO.Article.updated.desc()).first()
-    return article

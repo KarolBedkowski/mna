@@ -149,6 +149,9 @@ class Source(BaseModelMixin, Base):
     def add_log(self, category, message):
         self.source_log.append(SourceLog(category=category, message=message))
 
+    def get_last_article(self):
+        return self.articles.order_by(Article.updated.desc()).first()
+
 
 class Filter(BaseModelMixin, Base):
     """Filters configuration"""
@@ -200,7 +203,8 @@ class Article(BaseModelMixin, Base):
     source = orm.\
             relationship(Source,
                          backref=orm.backref("articles",
-                                             cascade="all, delete-orphan"))
+                                             cascade="all, delete-orphan",
+                                             lazy='dynamic'))
 
     @staticmethod
     def compute_id(link, title, author, source_id):
