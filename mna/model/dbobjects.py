@@ -20,7 +20,7 @@ import datetime
 from sqlalchemy import (Column, Integer, Unicode, DateTime, Boolean,
                         ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import orm, and_
+from sqlalchemy import orm, and_, or_
 from sqlalchemy import select, func
 
 from mna.model import jsonobj
@@ -152,6 +152,16 @@ class Source(BaseModelMixin, Base):
     def get_last_article(self):
         return self.articles.order_by(Article.updated.desc()).first()
 
+    def get_filters(self):
+        apply_global = self.conf.get('filter.apply_global', True)
+        if not apply_global:
+            return self.filters
+        session = orm.object_session(self)
+        fltrs = session.query(Filter).\
+            filter(or_(Filter.source_id == self.oid,
+                       Filter.source_id == None))
+        return fltrs
+
 
 class Filter(BaseModelMixin, Base):
     """Filters configuration"""
@@ -170,7 +180,8 @@ class Filter(BaseModelMixin, Base):
 
     source = orm.relationship(
         Source,
-        backref=orm.backref("filters", cascade="all, delete-orphan"))
+        backref=orm.backref("filters", cascade="all, delete-orphan",
+                            lazy='dynamic'))
 
 
 class Article(BaseModelMixin, Base):

@@ -100,7 +100,7 @@ class Worker(QtCore.QRunnable):
         _LOG.debug("%s: finished", self._p_name)
 
     def _load_filters(self, source_cfg, session):
-        for fltr in db.get_filters(source_cfg):
+        for fltr in source_cfg.get_filters():
             fltr_cls = plugins.FILTERS.get(fltr.name)
             if not fltr_cls:
                 _LOG.error("%s: unknown filter: %s in %r", self._p_name,

@@ -247,15 +247,3 @@ def delete(obj, commit=False, session=None):
         session.delete(obj)
     if commit:
         session.commit()
-
-
-def get_filters(source):
-    """  Find all (globals/locals) filters for source """
-    session = Session.object_session(source) or Session()
-    fltrs = session.query(DBO.Filter)
-    if source.conf.get('filter.apply_global', True):
-        fltrs = fltrs.filter(or_(DBO.Filter.source_id == source.oid,
-                                 DBO.Filter.source_id == None))
-    else:
-        fltrs = fltrs.filter(DBO.Filter.source_id == source.oid)
-    return fltrs
