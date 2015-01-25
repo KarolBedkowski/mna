@@ -51,9 +51,10 @@ def save_source(source):
     _LOG.info("save_source done")
 
 
-def delete_source(source):
+def delete_source(source_oid):
     """ Delete `source`. """
-    _LOG.info("delete_source %r", source)
+    _LOG.info("delete_source %r", source_oid)
+    source = db.get_one(DBO.Source, oid=source_oid)
     db.delete(source, True)
     _LOG.info("delete_source done")
     return True

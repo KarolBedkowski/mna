@@ -170,12 +170,10 @@ class WndMain(QtGui.QMainWindow):
 #            model.select(parent)
 
         if isinstance(node, _models.SourceTreeNode):
-            source = db.get_one(DBO.Source, oid=node.oid)
-            if sources.delete_source(source):
+            if sources.delete_source(node.oid):
                 self._refresh_tree()
         elif isinstance(node, _models.GroupTreeNode):
-            group = db.get_one(DBO.Group, oid=node.oid)
-            if groups.delete_group(group):
+            if groups.delete_group(node.oid):
                 self._refresh_tree()
         else:
             raise RuntimeError("invalid object type %r", node)

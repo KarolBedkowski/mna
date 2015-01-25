@@ -38,10 +38,10 @@ def save_group(group):
     _LOG.info("save_group done")
 
 
-def delete_group(group):
+def delete_group(group_oid):
     """ Delete `group`. """
-    assert isinstance(group, DBO.Group), "Invalid function argument %r" % group
-    _LOG.info("delete_group %r", group)
+    _LOG.info("delete_group %r", group_oid)
+    group = db.get_one(DBO.Group, oid=group_oid)
     db.delete(group, True)
     _LOG.info("delete_group done")
     return True
