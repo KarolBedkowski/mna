@@ -17,29 +17,24 @@ from mna.model import dbobjects as DBO
 _LOG = logging.getLogger(__name__)
 
 
-def get_articles_by_group(group, unread_only=False, sorting=None):
+def get_articles_by_group(group_oid, unread_only=False, sorting=None):
     """ Get list articles for all sources in current group.
 
     Args:
+        group_oid (int/long): id group of sources
         unread_only (bool): filter articles by read flag
         sorting (str): name of column to sort; default - "updated"
 
     Return:
         list of Article objects
     """
-    if isinstance(group, DBO.Group):
-        session = db.Session.object_session(group) or db.Session()
-        articles = session.query(DBO.Article).\
-                    join(DBO.Article.source).\
-                    filter(DBO.Source.group_id == group.oid)
-    elif isinstance(group, (int, long)):
-        session = db.Session()
-        articles = session.query(DBO.Article).\
-                    join(DBO.Article.source).\
-                    filter(DBO.Source.group_id == group)
-    else:
-        raise RuntimeError("Invalid argument: group=%r" % group)
-
+    _LOG.debug('get_articles_by_group(%r, %r, %r)', group_oid, unread_only,
+               sorting)
+    assert isinstance(group_oid, (int, long)), "Invalid argument"
+    session = db.Session()
+    articles = session.query(DBO.Article).\
+                join(DBO.Article.source).\
+                filter(DBO.Source.group_id == group_oid)
     if unread_only:
         articles = articles.filter(DBO.Article.read == 0)
     if sorting:
@@ -49,21 +44,24 @@ def get_articles_by_group(group, unread_only=False, sorting=None):
     return list(articles)
 
 
-def get_articles_by_source(source, unread_only=False, sorting=None):
+def get_articles_by_source(source_oid, unread_only=False, sorting=None):
     """ Get list articles for source. If `unread_only` filter articles by
         `read` flag.
-    """
-    if isinstance(source, DBO.Source):
-        session = db.Session.object_session(source) or db.Session()
-        articles = session.query(DBO.Article).\
-                    filter(DBO.Article.source_id == source.oid)
-    elif isinstance(source, (int, long)):
-        session = db.Session()
-        articles = session.query(DBO.Article).\
-                    filter(DBO.Article.source_id == source)
-    else:
-        raise RuntimeError("Invalid argument: source=%r" % source)
 
+    Args:
+        source_oid (int/long): id group
+        unread_only (bool): filter articles by read flag
+        sorting (str): name of column to sort; default - "updated"
+
+    Return:
+        list of Article objects
+    """
+    _LOG.debug('get_articles_by_source(%r, %r, %r)', source_oid, unread_only,
+               sorting)
+    assert isinstance(source_oid, (int, long)), "Invalid argument"
+    session = db.Session()
+    articles = session.query(DBO.Article).\
+        filter(DBO.Article.source_id == source_oid)
     if unread_only:
         articles = articles.filter(DBO.Article.read == 0)
     if sorting:
