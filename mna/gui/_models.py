@@ -27,7 +27,7 @@ ID_ROLE = QtCore.Qt.UserRole + 1
 
 
 class TreeNode(object):
-    def __init__(self, parent, caption=None, oid=None, unread=0):
+    def __init__(self, parent, caption=None, oid=None, unread=None):
         self.clear()
         self.parent = parent
         self.caption = caption
@@ -148,7 +148,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         if role == QtCore.Qt.DisplayRole:
             node = self.node_from_index(index)
             if index.column() == 1:
-                return QtCore.QVariant(str(node.unread))
+                return QtCore.QVariant(str(node.unread) if node.unread else "")
             return QtCore.QVariant(str(node))
         elif role == QtCore.Qt.FontRole:
             node = self.node_from_index(index)
