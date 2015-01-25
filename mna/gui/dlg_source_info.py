@@ -29,18 +29,20 @@ assert resources_rc
 class DlgSourceInfo(QtGui.QDialog):
     """ Main Window class. """
 
-    def __init__(self, parent, source):
-        _LOG.info("DlgSourceInfo.init: %r", source)
+    def __init__(self, parent, source_oid):
+        _LOG.info("DlgSourceInfo.init: %r", source_oid)
         QtGui.QDialog.__init__(self, parent)
         self._ui = dlg_source_info_ui.Ui_DlgSourceInfo()
         self._ui.setupUi(self)
-        self._setup(source)
+        self._setup(source_oid)
         self._bind()
-        self.setWindowTitle("Source %s info" % source.title)
 
-    def _setup(self, source):
+    def _setup(self, source_oid):
+        session = db.Session()
+        source = db.get_one(DBO.Source, session=session, oid=source_oid)
         self._create_info_model(source)
         self._create_logs_model(source)
+        self.setWindowTitle("Source %s info" % source.title)
 
     def _create_info_model(self, source):
         articles_cnt = db.count(DBO.Article, source_id=source.oid)

@@ -186,8 +186,7 @@ class WndMain(QtGui.QMainWindow):
         node = self._tree_model.node_from_index(index)
         if node is None or not isinstance(node, _models.SourceTreeNode):
             return
-        source = db.get_one(DBO.Source, oid=node.oid)
-        dlg = dlg_source_info.DlgSourceInfo(self, source)
+        dlg = dlg_source_info.DlgSourceInfo(self, node.oid)
         dlg.exec_()
 
     def _on_article_list_clicked(self, index):
