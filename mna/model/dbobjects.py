@@ -229,4 +229,5 @@ class SourceLog(BaseModelMixin, Base):
     source = orm.\
             relationship(Source,
                          backref=orm.backref("source_log",
-                                             cascade="all, delete-orphan"))
+                                             cascade="all, delete-orphan",
+                                             order_by="SourceLog.date"))
