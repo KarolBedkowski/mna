@@ -20,6 +20,7 @@ import datetime
 from sqlalchemy import (Column, Integer, Unicode, DateTime, Boolean,
                         ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import orm, and_, or_
 from sqlalchemy import select, func
 
@@ -89,6 +90,45 @@ class Group(BaseModelMixin, Base):
         return bool(self.name)
 
 
+class Article(BaseModelMixin, Base):
+    """One Article object"""
+
+    __tablename__ = "articles"
+
+    # database id
+    oid = Column(Integer, primary_key=True)
+    # publish date
+    published = Column(DateTime, default=datetime.datetime.utcnow)
+    # last update date
+    updated = Column(DateTime, default=datetime.datetime.utcnow)
+    # article read?
+    read = Column(Integer, default=0)
+    title = Column(Unicode)
+    summary = Column(Unicode)
+    content = orm.deferred(Column(Unicode))
+    # internal id (hash)
+    internal_id = Column(Unicode)
+    link = Column(Unicode)
+    author = Column(Unicode)
+    meta = Column(jsonobj.JSONEncodedDict)
+    score = Column(Integer, default=0)
+    starred = Column(Boolean, default=False)
+
+    # tags
+    source_id = Column(Integer, ForeignKey("sources.oid"))
+
+    @staticmethod
+    def compute_id(link, title, author, source_id):
+        if link:
+            return link
+        return"".join(map(hash, (title, author, source_id)))
+
+
+Index('idx_articles_chs', Article.source_id, Article.internal_id)
+Index('idx_articles_read', Article.source_id, Article.read, Article.updated)
+Index('idx_articles_updated', Article.updated)
+
+
 class Source(BaseModelMixin, Base):
     """Source configuration"""
 
@@ -130,16 +170,26 @@ class Source(BaseModelMixin, Base):
         backref=orm.backref("sources", cascade="all, delete-orphan",
                             order_by="Source.title"))
 
+    articles = orm.relationship(
+        Article,
+        backref=orm.backref("source"),
+        cascade="all, delete-orphan",
+        lazy='dynamic')
+
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
 
-    @property
+    @hybrid_property
     def unread(self):
-        cnt = orm.object_session(self).\
-                scalar(select([func.count(Article.oid)]).
-                       where(and_(Article.source_id == self.oid,
-                                  Article.read == 0)))
-        return cnt
+        return orm.object_session(self).query(Article).\
+            filter(Article.source_id == self.oid, Article.read == 0).\
+            count()
+
+    @unread.expression
+    def unread(cls):
+        return select([func.count(Article)]).\
+            where(and_(Article.source_id == cls.oid, Article.read == 0)).\
+            label('unread_count')
 
     @property
     def minimal_score(self):
@@ -185,51 +235,6 @@ class Filter(BaseModelMixin, Base):
                             lazy='dynamic'))
 
 
-class Article(BaseModelMixin, Base):
-    """One Article object"""
-
-    __tablename__ = "articles"
-
-    # database id
-    oid = Column(Integer, primary_key=True)
-    # publish date
-    published = Column(DateTime, default=datetime.datetime.utcnow)
-    # last update date
-    updated = Column(DateTime, default=datetime.datetime.utcnow)
-    # article read?
-    read = Column(Integer, default=0)
-    title = Column(Unicode)
-    summary = Column(Unicode)
-    content = Column(Unicode)
-    # internal id (hash)
-    internal_id = Column(Unicode)
-    link = Column(Unicode)
-    author = Column(Unicode)
-    meta = Column(jsonobj.JSONEncodedDict)
-    score = Column(Integer, default=0)
-    starred = Column(Boolean, default=False)
-
-    # tags
-    source_id = Column(Integer, ForeignKey("sources.oid"))
-
-    source = orm.relationship(
-        Source,
-        backref=orm.backref("articles",
-                            cascade="all, delete-orphan",
-                            lazy='dynamic'))
-
-    @staticmethod
-    def compute_id(link, title, author, source_id):
-        if link:
-            return link
-        return"".join(map(hash, (title, author, source_id)))
-
-
-Index('idx_articles_chs', Article.source_id, Article.internal_id)
-Index('idx_articles_read', Article.source_id, Article.read, Article.updated)
-Index('idx_articles_updated', Article.updated)
-
-
 class SourceLog(BaseModelMixin, Base):
     """One log entry for source"""
 
@@ -242,8 +247,7 @@ class SourceLog(BaseModelMixin, Base):
     message = Column(Unicode)
 
     source_id = Column(Integer, ForeignKey("sources.oid"))
-    source = orm.\
-            relationship(Source,
-                         backref=orm.backref("source_log",
-                                             cascade="all, delete-orphan",
-                                             order_by="SourceLog.date"))
+    source = orm.relationship(
+        Source,
+        backref=orm.backref("source_log", cascade="all, delete-orphan",
+                            order_by="SourceLog.date"))

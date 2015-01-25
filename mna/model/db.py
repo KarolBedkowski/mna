@@ -21,7 +21,7 @@ import datetime
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
-from sqlalchemy import orm, or_
+from sqlalchemy import orm
 # from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls

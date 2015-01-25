@@ -50,6 +50,5 @@ def delete_group(group_oid):
 
 
 def get_group_sources_tree(session):
-    return session.query(DBO.Group).\
-        options(orm.joinedload(DBO.Group.sources)).\
-        order_by(DBO.Group.name)
+    res = session.query(DBO.Group).join(DBO.Source).order_by(DBO.Group.name)
+    return res
