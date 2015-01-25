@@ -137,16 +137,14 @@ class WndMain(QtGui.QMainWindow):
         if node is None:
             return
         if isinstance(node, _models.SourceTreeNode):
-            source = db.get_one(DBO.Source, oid=node.oid)
-            dlg = dlg_source_edit.DlgSourceEdit(self, source)
+            dlg = dlg_source_edit.DlgSourceEdit(self, node.oid)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 messenger.MESSENGER.emit_source_updated(
-                    source.oid, source.group_id)
+                    dlg.source.oid, dlg.source.group_id)
         elif isinstance(node, _models.GroupTreeNode):
-            group = db.get_one(DBO.Group, oid=node.oid)
-            dlg = dlg_edit_group.DlgEditGroup(self, group)
+            dlg = dlg_edit_group.DlgEditGroup(self, node.oid)
             if dlg.exec_() == QtGui.QDialog.Accepted:
-                messenger.MESSENGER.emit_group_updated(group.oid)
+                messenger.MESSENGER.emit_group_updated(node.oid)
         else:
             raise RuntimeError("invalid object type %r", node)
 
