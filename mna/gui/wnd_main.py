@@ -30,7 +30,7 @@ from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
 from mna.model import db
 from mna.model import dbobjects as DBO
-from mna.logic import groups, sources
+from mna.logic import groups, sources, articles as larts
 from mna.common import messenger
 from mna import plugins
 
@@ -211,11 +211,12 @@ class WndMain(QtGui.QMainWindow):
         item = self._list_model.node_from_index(index)
         _LOG.debug("_on_article_list_selchng %r %r", item.oid, index.column())
         article = None
-        article = db.get_one(DBO.Article, oid=item.oid)
+        session = db.Session()
+        article = db.get_one(DBO.Article, session=session, oid=item.oid)
         if self._last_presenter[0] == article.source_id:
             presenter = self._last_presenter[1]
         else:
-            source_cfg = db.get_one(DBO.Source, oid=article.source_id)
+            source_cfg = article.source
             source = plugins.SOURCES.get(source_cfg.name)
             presenter = source.presenter(source)
             self._last_presenter = (article.source_id, presenter)
@@ -337,9 +338,9 @@ class WndMain(QtGui.QMainWindow):
         self._ui.table_articles.selectionModel().clearSelection()
         unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):
-            articles = db.get_articles_by_source(node.oid, unread_only)
+            articles = larts.get_articles_by_source(node.oid, unread_only)
         elif isinstance(node, _models.GroupTreeNode):
-            articles = db.get_articles_by_group(node.oid, unread_only)
+            articles = larts.get_articles_by_group(node.oid, unread_only)
         else:
             raise RuntimeError("invalid tree item: %r", node)
         self._list_model.set_items(articles)
