@@ -71,8 +71,7 @@ class DlgPreferences(QtGui.QDialog):
     def _fill_filters(self):
         lv_filters = self._ui.lv_filters
         lv_filters.clear()
-        for fltr in db.Session().query(DBO.Filter).\
-                filter(DBO.Filter.source_id == None):
+        for fltr in db.get_all(DBO.Filter, source_id=None):
             fltr_class = plugins.FILTERS[fltr.name]
             itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
             itm.setData(QtCore.Qt.UserRole, fltr.oid)

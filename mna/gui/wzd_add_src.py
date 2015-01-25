@@ -100,9 +100,7 @@ class WzdAddSrc(QtGui.QWizard):
         return QtGui.QWizard.done(self, result)
 
     def _create_source(self):
-        source = DBO.Source()
-        source.name = self._curr_src
-        source.conf = {}
+        source = DBO.Source(name=self._curr_src, conf={})
         # get params from main frame
         self._frm_edit_main.from_window(source)
         # source specific

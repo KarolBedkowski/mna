@@ -11,7 +11,7 @@ __version__ = "2014-06-15"
 import logging
 import datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, orm
 
 from mna.lib import appconfig
 from mna.model import db
@@ -190,7 +190,10 @@ def get_article_content(article_oid, mark_read=True, session=None):
         (article, content as html)
     """
     session = session or db.Session()
-    article = db.get_one(DBO.Article, session=session, oid=article_oid)
+    article = session.query(DBO.Article).\
+        options(orm.undefer("content"),
+                orm.joinedload(DBO.Article.source)).\
+        filter_by(oid=article_oid).first()
     if _LAST_PRESENTER['source_id'] == article.source_id:
         presenter = _LAST_PRESENTER['presenter']
     else:

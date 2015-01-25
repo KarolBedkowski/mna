@@ -141,10 +141,10 @@ def _process_sources():
     _LOG.debug("MainWorker: start processing")
     session = db.Session()
     now = datetime.datetime.now()
-    query = session.query(DBO.Source)
-    query = query.filter(DBO.Source.enabled == 1,
-                         DBO.Source.next_refresh < now)
-    query = query.order_by(DBO.Source.next_refresh)
+    query = session.query(DBO.Source).\
+        filter(DBO.Source.enabled == 1,
+               DBO.Source.next_refresh < now).\
+        order_by(DBO.Source.next_refresh)
     sources = [src.oid for src in query]
     session.expunge_all()
     session.close()

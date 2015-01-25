@@ -55,7 +55,8 @@ def delete_source(source_oid):
     """ Delete `source`. """
     _LOG.info("delete_source %r", source_oid)
     source = db.get_one(DBO.Source, oid=source_oid)
-    db.delete(source, True)
+    if Source:
+        db.delete(source, True)
     _LOG.info("delete_source done")
     return True
 

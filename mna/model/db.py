@@ -193,6 +193,7 @@ def get_one(clazz, session=None, **kwargs):
     Return:
         One object.
     """
+    _LOG.debug('get_one: %r %r', clazz, kwargs)
     return (session or Session()).query(clazz).filter_by(**kwargs).first()
 
 
@@ -204,6 +205,7 @@ def get_all(clazz, order_by=None, session=None, **kwargs):
         session: optional current sqlalchemy session
         **kwargs: optional filters
     """
+    _LOG.debug('get_all: %r %r %r', clazz, order_by, kwargs)
     session = session or Session()
     query = session.query(clazz)
     if kwargs:
@@ -223,11 +225,13 @@ def count(clazz, session=None, **kwargs):
     Return:
         One object.
     """
+    _LOG.debug('count: %r %r', clazz, kwargs)
     return (session or Session()).query(clazz).filter_by(**kwargs).count()
 
 
 def save(obj, commit=False, session=None):
     """ Save object into database. """
+    _LOG.debug('save: %r %r', obj, commit)
     if session:
         session.merge(obj)
     else:
@@ -240,6 +244,7 @@ def save(obj, commit=False, session=None):
 
 def delete(obj, commit=False, session=None):
     """ Delete object from database. """
+    _LOG.debug('delete: %r %r', obj, commit)
     if session:
         session.merge(obj)
     else:
