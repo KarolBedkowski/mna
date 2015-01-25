@@ -19,6 +19,7 @@ from mna.gui import resources_rc
 from mna.gui import dlg_source_info_ui
 from mna.model import db
 from mna.model import dbobjects as DBO
+from mna.logic import sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class DlgSourceInfo(QtGui.QDialog):
         self._ui.lv_info.resizeColumnToContents(1)
 
     def _create_logs_model(self, source):
-        logs = db.get_source_logs(source)
+        logs = sources.get_source_logs(source)
         model = QtGui.QStandardItemModel(0, 3, self._ui.lv_logs)
         model.setHeaderData(0, QtCore.Qt.Horizontal, self.tr("Date"))
         model.setHeaderData(1, QtCore.Qt.Horizontal, self.tr("Category"))
@@ -75,7 +76,6 @@ class DlgSourceInfo(QtGui.QDialog):
         self._ui.lv_logs.resizeColumnToContents(0)
         self._ui.lv_logs.resizeColumnToContents(1)
         self._ui.lv_logs.resizeColumnToContents(2)
-
 
     def _bind(self):
         pass

@@ -177,3 +177,12 @@ def get_last_article(source_id, session=None):
         filter(DBO.Article.source_id == source_id).\
         order_by(DBO.Article.updated.desc()).first()
     return article
+
+
+def get_source_logs(source):
+    """  Find logs for source """
+    session = db.Session.object_session(source) or db.Session()
+    article = session.query(DBO.SourceLog).\
+        filter(DBO.SourceLog.source_id == source.oid).\
+        order_by(DBO.SourceLog.date.desc()).all()
+    return article

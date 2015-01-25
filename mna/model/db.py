@@ -258,15 +258,6 @@ def add_to_log(source, category, message, commit=False):
         session.commit()
 
 
-def get_source_logs(source):
-    """  Find logs for source """
-    session = Session.object_session(source) or Session()
-    article = session.query(DBO.SourceLog).\
-        filter(DBO.SourceLog.source_id == source.oid).\
-        order_by(DBO.SourceLog.date.desc()).all()
-    return article
-
-
 def get_filters(source):
     """  Find all (globals/locals) filters for source """
     session = Session.object_session(source) or Session()
