@@ -19,10 +19,10 @@ import codecs
 from PyQt4 import QtGui
 
 from mna.model import base
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_filemon_ui
 from mna.gui import _validators
-from mna.logic import sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -47,16 +47,16 @@ def accept_part(session, source_id, checksum):
     """ Check is given part don't already exists in database for given  part
         `checksum` and `source_id`.
     """
-    return DBO.Article.count(session=session, internal_id=checksum,
-                             source_id=source_id) == 0
+    return db.count(DBO.Article, session=session, internal_id=checksum,
+                    source_id=source_id) == 0
 
 
-def accept_page(content, session, source_id, threshold):
+def accept_page(content, session, source, threshold):
     """ Check is check similarity ratio if `threshold`  given -
     reject files with similarity ratio > threshold.
     """
     # find last article
-    last = sources.get_last_article(source_id, session)
+    last = source.get_last_article()
     if last:
         similarity = articles_similarity(last.content, content)
         _LOG.debug("similarity: %r %r", similarity, threshold)
@@ -163,9 +163,10 @@ class FileSource(base.AbstractSource):
 
         _LOG.debug("FileSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_to_log('info', "Not found new articles")
+            self.cfg.add_log('info', "Not found new articles")
             return []
-        self.cfg.add_to_log('info', "Found %d new articles" % len(articles))
+        self.cfg.add_log('info',
+                         "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
@@ -181,16 +182,16 @@ class FileSource(base.AbstractSource):
         local_encoding = locale.getpreferredencoding()
         try:
             with codecs.open(filename, 'r', encoding=local_encoding,
-                            errors="replace") as srcfile:
+                             errors="replace") as srcfile:
                 return srcfile.read()
         except IOError, err:
-            self.cfg.add_to_log('error',
-                                "Error loading file: " + str(err))
+            self.cfg.add_log('error',
+                             "Error loading file: " + str(err))
             raise base.GetArticleException("Load file error: %s" % err)
         return None
 
     def _process_page(self, content, session):
-        if accept_page(content, session, self.cfg.oid,
+        if accept_page(content, session, self.cfg,
                        self.cfg.conf.get('similarity') or 1):
             return self._create_article(content)
         return None
@@ -223,9 +224,9 @@ class FileSource(base.AbstractSource):
             if len(articles) > max_articles_to_load:
                 _LOG.debug("FileSource: loaded >max_articles - truncating")
                 articles = articles[-max_articles_to_load:]
-                self.cfg.add_to_log('info',
-                                    "Loaded only %d articles (limit)." %
-                                    len(articles))
+                self.cfg.add_log('info',
+                                 "Loaded only %d articles (limit)." %
+                                 len(articles))
         return articles
 
     def is_file_updated(self, filename, max_age_load):
@@ -243,9 +244,8 @@ class FileSource(base.AbstractSource):
         file_modification = datetime.datetime.fromtimestamp(
             os.path.getmtime(filename))
         if file_modification < last_refreshed:
-            self.cfg.add_to_log(
-                'info',
-                "File not modified according to modification time")
+            self.cfg.add_log(
+                'info', "File not modified according to modification time")
             _LOG.info("No page %s modification since %s", self.cfg.title,
                       last_refreshed)
             return False

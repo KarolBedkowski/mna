@@ -19,10 +19,10 @@ from lxml import etree
 from PyQt4 import QtGui
 
 from mna.model import base
+from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
 from mna.gui import _validators
-from mna.logic import sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -105,16 +105,16 @@ def accept_part(session, source_id, checksum):
     """ Check is given part don't already exists in database for given  part
         `checksum` and `source_id`.
     """
-    return DBO.Article.count(session=session, internal_id=checksum,
-                             source_id=source_id) == 0
+    return db.count(DBO.Article, session=session, internal_id=checksum,
+                    source_id=source_id) == 0
 
 
-def accept_page(page, session, source_id, threshold):
+def accept_page(page, session, source, threshold):
     """ Check is page change from last time, optionally check similarity ratio
         if `threshold`  given - reject pages with similarity ratio > threshold.
     """
     # find last article
-    last = sources.get_last_article(source_id, session)
+    last = source.get_last_article()
     if last:
         similarity = articles_similarity(last.content, page)
         _LOG.debug("similarity: %r %r", similarity, threshold)
@@ -179,8 +179,8 @@ class WebSource(base.AbstractSource):
         try:
             info, page = download_page(url)
         except LoadPageError, err:
-            self.cfg.add_to_log('error',
-                                "Error loading page: " + str(err))
+            self.cfg.add_log('error',
+                             "Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         if not self.is_page_updated(info, max_age_load):
@@ -199,15 +199,15 @@ class WebSource(base.AbstractSource):
 
         _LOG.debug("WebSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_to_log('info', "Not found new articles")
+            self.cfg.add_log('info', "Not found new articles")
             return []
-        self.cfg.add_to_log('info', "Found %d new articles" % len(articles))
+        self.cfg.add_log('info', "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
 
     def _process_page(self, page, info, session):
-        if accept_page(page, session, self.cfg.oid,
+        if accept_page(page, session, self.cfg,
                        self.cfg.conf.get('similarity') or 1):
             return self._create_article(page, info)
         return None
@@ -237,9 +237,9 @@ class WebSource(base.AbstractSource):
             if len(articles) > max_articles_to_load:
                 _LOG.debug("WebSource: loaded >max_articles - truncating")
                 articles = articles[-max_articles_to_load:]
-                self.cfg.add_to_log('info',
-                                    "Loaded only %d articles (limit)." %
-                                    len(articles))
+                self.cfg.add_log('info',
+                                 "Loaded only %d articles (limit)." %
+                                 len(articles))
         return articles
 
     def is_page_updated(self, info, max_age_load):
@@ -256,8 +256,8 @@ class WebSource(base.AbstractSource):
 
         page_modification = info.get('_last-modified')
         if page_modification and page_modification < last_refreshed:
-            self.cfg.add_to_log('info',
-                                "Page not modified according to header")
+            self.cfg.add_log('info',
+                             "Page not modified according to header")
             _LOG.info("No page %s modification since %s", self.cfg.title,
                       last_refreshed)
             return False

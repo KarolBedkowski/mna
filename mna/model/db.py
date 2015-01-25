@@ -21,16 +21,19 @@ import datetime
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import SingletonThreadPool
+from sqlalchemy import orm
+# from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
+Session = orm.sessionmaker()  # pylint: disable=C0103
 
 
 def text_factory(text):
     return unicode(text, 'utf-8', errors='replace')
+
 
 @sqlalchemy.event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -60,13 +63,11 @@ def connect(filename, debug=False, *args, **kwargs):
                                       echo=False,
                                       connect_args=args,
                                       native_datetime=True,
-                                      isolation_level='SERIALIZABLE',
-                                      # poolclass=SingletonThreadPool
-                                      )
+                                      isolation_level='SERIALIZABLE')
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
-    DBO.Session.configure(bind=engine)  # pylint: disable=E1120
+    Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:
         @sqlalchemy.event.listens_for(Engine, "before_cursor_execute")
@@ -85,7 +86,7 @@ def connect(filename, debug=False, *args, **kwargs):
     _LOG.info('Database create_all COMPLETED')
     # bootstrap
     _LOG.info('Database bootstrap START')
-    session = DBO.Session()
+    session = Session()
     _bootstrap_data(session)
     session.commit()
     _LOG.info('Database bootstrap COMPLETED')
@@ -105,7 +106,7 @@ def connect(filename, debug=False, *args, **kwargs):
         _LOG.debug('Database vacuum')
         session.execute('PRAGMA incremental_vacuum(%d)' % (freelist_count / 2))
     _LOG.info('Database cleanup COMPLETED')
-    return DBO.Session
+    return Session
 
 
 def find_db_file(config):
@@ -135,7 +136,7 @@ def find_db_file(config):
 
 
 def _bootstrap_data(session):
-    if DBO.Group.count() == 0:
+    if count(DBO.Group) == 0:
         # create default group
         group = DBO.Group()
         group.name = "Default Group"
@@ -143,7 +144,7 @@ def _bootstrap_data(session):
         group = DBO.Group()
         group.name = "OSS"
         session.add(group)
-    if DBO.Source.count() == 0:
+    if count(DBO.Source) == 0:
         source = DBO.Source()
         source.name = "mna.plugins.rss.RssSource"
         source.title = "Filmweb"
@@ -180,3 +181,74 @@ def _bootstrap_data(session):
         source.conf = {"url": r'http://linuxtoday.com/backend/biglt.rss'}
         source.group_id = 2
         session.add(source)
+
+
+def get_one(clazz, session=None, **kwargs):
+    """ Get one object with given attributes.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    _LOG.debug('get_one: %r %r', clazz, kwargs)
+    return (session or Session()).query(clazz).filter_by(**kwargs).first()
+
+
+def get_all(clazz, order_by=None, session=None, **kwargs):
+    """ Return all objects this class.
+
+    Args:
+        order_by: optional order_by query argument
+        session: optional current sqlalchemy session
+        **kwargs: optional filters
+    """
+    _LOG.debug('get_all: %r %r %r', clazz, order_by, kwargs)
+    session = session or Session()
+    query = session.query(clazz)
+    if kwargs:
+        query = query.filter_by(**kwargs)
+    if order_by:
+        query = query.order_by(order_by)
+    return query  # pylint: disable=E1101
+
+
+def count(clazz, session=None, **kwargs):
+    """ Count objects with given attributes.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    _LOG.debug('count: %r %r', clazz, kwargs)
+    return (session or Session()).query(clazz).filter_by(**kwargs).count()
+
+
+def save(obj, commit=False, session=None):
+    """ Save object into database. """
+    _LOG.debug('save: %r %r', obj, commit)
+    if session:
+        session.merge(obj)
+    else:
+        session = Session.object_session(obj) or Session()
+        session.add(obj)
+    if commit:
+        session.commit()
+    return session
+
+
+def delete(obj, commit=False, session=None):
+    """ Delete object from database. """
+    _LOG.debug('delete: %r %r', obj, commit)
+    if session:
+        session.merge(obj)
+    else:
+        session = Session.object_session(obj) or Session()
+        session.delete(obj)
+    if commit:
+        session.commit()

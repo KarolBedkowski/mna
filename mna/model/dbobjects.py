@@ -20,6 +20,7 @@ import datetime
 from sqlalchemy import (Column, Integer, Unicode, DateTime, Boolean,
                         ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import orm, and_, or_
 from sqlalchemy import select, func
 
@@ -29,33 +30,10 @@ _LOG = logging.getLogger(__name__)
 
 # SQLAlchemy
 Base = declarative_base()  # pylint: disable=C0103
-Session = orm.sessionmaker()  # pylint: disable=C0103
 
 
 class BaseModelMixin(object):
     """ Utilities method for database objects """
-
-    def save(self, commit=False, session=None):
-        """ Save object into database. """
-        if session:
-            session.merge(self)
-        else:
-            session = Session.object_session(self) or Session()
-            session.add(self)
-        if commit:
-            session.commit()
-        return session
-
-    def delete(self, commit=False, session=None):
-        """ Delete object from database. """
-        if session:
-            session.merge(self)
-        else:
-            session = Session.object_session(self) or Session()
-            session.delete(self)
-        if commit:
-            session.commit()
-        return session
 
     def clone(self, cleanup=True):
         """ Clone current object.
@@ -90,47 +68,6 @@ class BaseModelMixin(object):
         if hasattr(self, 'modified'):
             self.modified = datetime.datetime.utcnow()  # pylint: disable=W0201
 
-    @classmethod
-    def all(cls, order_by=None, session=None):
-        """ Return all objects this class.
-
-        Args:
-            order_by: optional order_by query argument
-        """
-        session = session or Session()
-        query = session.query(cls)
-        if hasattr(cls, 'deleted'):
-            query = query.filter(cls.deleted.is_(None))
-        if order_by:
-            query = query.order_by(order_by)
-        return query  # pylint: disable=E1101
-
-    @classmethod
-    def get(cls, session=None, **kwargs):
-        """ Get one object with given attributes.
-
-        Args:
-            session: optional sqlalchemy session
-            kwargs: query filters.
-
-        Return:
-            One object.
-        """
-        return (session or Session()).query(cls).filter_by(**kwargs).first()
-
-    @classmethod
-    def count(cls, session=None, **kwargs):
-        """ Count objects with given attributes.
-
-        Args:
-            session: optional sqlalchemy session
-            kwargs: query filters.
-
-        Return:
-            One object.
-        """
-        return (session or Session()).query(cls).filter_by(**kwargs).count()
-
     def __repr__(self):
         info = []
         for prop in orm.object_mapper(self).iterate_properties:
@@ -149,30 +86,47 @@ class Group(BaseModelMixin, Base):
     oid = Column(Integer, primary_key=True)
     name = Column(Unicode)
 
-    def get_articles(self, unread_only=False, sorting=None):
-        """ Get list articles for all sources in current group.
-
-        Args:
-            unread_only (bool): filter articles by read flag
-            sorting (str): name of column to sort; default - "updated"
-
-        Return:
-            list of Article objects
-        """
-        session = orm.object_session(self) or Session()
-        articles = session.query(Article).\
-                    join(Article.source).\
-                    filter(Source.group_id == self.oid)
-        if unread_only:
-            articles = articles.filter(Article.read == 0)
-        if sorting:
-            articles = articles.order_by(sorting)
-        else:
-            articles = articles.order_by("updated")
-        return list(articles)
-
     def is_valid(self):
         return bool(self.name)
+
+
+class Article(BaseModelMixin, Base):
+    """One Article object"""
+
+    __tablename__ = "articles"
+
+    # database id
+    oid = Column(Integer, primary_key=True)
+    # publish date
+    published = Column(DateTime, default=datetime.datetime.utcnow)
+    # last update date
+    updated = Column(DateTime, default=datetime.datetime.utcnow)
+    # article read?
+    read = Column(Integer, default=0)
+    title = Column(Unicode)
+    summary = Column(Unicode)
+    content = orm.deferred(Column(Unicode))
+    # internal id (hash)
+    internal_id = Column(Unicode)
+    link = Column(Unicode)
+    author = Column(Unicode)
+    meta = Column(jsonobj.JSONEncodedDict)
+    score = Column(Integer, default=0)
+    starred = Column(Boolean, default=False)
+
+    # tags
+    source_id = Column(Integer, ForeignKey("sources.oid"))
+
+    @staticmethod
+    def compute_id(link, title, author, source_id):
+        if link:
+            return link
+        return"".join(map(hash, (title, author, source_id)))
+
+
+Index('idx_articles_chs', Article.source_id, Article.internal_id)
+Index('idx_articles_read', Article.source_id, Article.read, Article.updated)
+Index('idx_articles_updated', Article.updated)
 
 
 class Source(BaseModelMixin, Base):
@@ -213,18 +167,29 @@ class Source(BaseModelMixin, Base):
 
     group = orm.relationship(
         Group,
-        backref=orm.backref("sources", cascade="all, delete-orphan"))
+        backref=orm.backref("sources", cascade="all, delete-orphan",
+                            order_by="Source.title"))
+
+    articles = orm.relationship(
+        Article,
+        backref=orm.backref("source"),
+        cascade="all, delete-orphan",
+        lazy='dynamic')
 
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
 
-    @property
+    @hybrid_property
     def unread(self):
-        cnt = orm.object_session(self).\
-                scalar(select([func.count(Article.oid)]).
-                       where(and_(Article.source_id == self.oid,
-                                  Article.read == 0)))
-        return cnt
+        return orm.object_session(self).query(Article).\
+            filter(Article.source_id == self.oid, Article.read == 0).\
+            count()
+
+    @unread.expression
+    def unread(cls):
+        return select([func.count(Article)]).\
+            where(and_(Article.source_id == cls.oid, Article.read == 0)).\
+            label('unread_count')
 
     @property
     def minimal_score(self):
@@ -232,48 +197,20 @@ class Source(BaseModelMixin, Base):
             return None
         return self.conf.get('filter_minimal_score', 0)
 
-    def get_articles(self, unread_only=False, sorting=None):
-        """ Get list articles for source. If `unread_only` filter articles by
-            `read` flag.
-        """
-        session = orm.object_session(self) or Session()
-        articles = session.query(Article).\
-                    filter(Article.source_id == self.oid)
-        if unread_only:
-            articles = articles.filter(Article.read == 0)
-        if sorting:
-            articles = articles.order_by(sorting)
-        else:
-            articles = articles.order_by("updated")
-        return list(articles)
+    def add_log(self, category, message):
+        self.source_log.append(SourceLog(category=category, message=message))
 
-    def add_to_log(self, category, message, commit=False):
-        session = orm.object_session(self)
-        log = SourceLog()
-        log.source_id = self.oid
-        log.category = category
-        log.message = message
-        session.add(log)
-        if commit:
-            session.commit()
-
-    def get_logs(self):
-        """  Find logs for source """
-        session = orm.object_session(self) or Session()
-        article = session.query(SourceLog).\
-            filter(SourceLog.source_id == self.oid).\
-            order_by(SourceLog.date.desc()).all()
-        return article
+    def get_last_article(self):
+        return self.articles.order_by(Article.updated.desc()).first()
 
     def get_filters(self):
-        """  Find all (globals/locals) filters for source """
-        session = orm.object_session(self) or Session()
-        fltrs = session.query(Filter)
-        if self.conf.get('filter.apply_global', True):
-            fltrs = fltrs.filter(or_(Filter.source_id == self.oid,
-                                     Filter.source_id == None))
-        else:
-            fltrs = fltrs.filter(Filter.source_id == self.oid)
+        apply_global = self.conf.get('filter.apply_global', True)
+        if not apply_global:
+            return self.filters
+        session = orm.object_session(self)
+        fltrs = session.query(Filter).\
+            filter(or_(Filter.source_id == self.oid,
+                       Filter.source_id == None))
         return fltrs
 
 
@@ -294,51 +231,8 @@ class Filter(BaseModelMixin, Base):
 
     source = orm.relationship(
         Source,
-        backref=orm.backref("filters", cascade="all, delete-orphan"))
-
-
-class Article(BaseModelMixin, Base):
-    """One Article object"""
-
-    __tablename__ = "articles"
-
-    # database id
-    oid = Column(Integer, primary_key=True)
-    # publish date
-    published = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    # last update date
-    updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    # article read?
-    read = Column(Integer, default=0)
-    title = Column(Unicode)
-    summary = Column(Unicode)
-    content = Column(Unicode)
-    # internal id (hash)
-    internal_id = Column(Unicode, index=True)
-    link = Column(Unicode)
-    author = Column(Unicode)
-    meta = Column(jsonobj.JSONEncodedDict)
-    score = Column(Integer, default=0)
-    starred = Column(Boolean, default=False)
-
-    # tags
-    source_id = Column(Integer, ForeignKey("sources.oid"))
-
-    source = orm.\
-            relationship(Source,
-                         backref=orm.backref("articles",
-                                             cascade="all, delete-orphan"))
-
-    @staticmethod
-    def compute_id(link, title, author, source_id):
-        if link:
-            return link
-        return"".join(map(hash, (title, author, source_id)))
-
-
-Index('idx_articles_chs', Article.source_id, Article.internal_id, Article.oid)
-Index('idx_articles_read', Article.source_id, Article.read, Article.updated,
-      Article.oid)
+        backref=orm.backref("filters", cascade="all, delete-orphan",
+                            lazy='dynamic'))
 
 
 class SourceLog(BaseModelMixin, Base):
@@ -353,7 +247,7 @@ class SourceLog(BaseModelMixin, Base):
     message = Column(Unicode)
 
     source_id = Column(Integer, ForeignKey("sources.oid"))
-    source = orm.\
-            relationship(Source,
-                         backref=orm.backref("source_log",
-                                             cascade="all, delete-orphan"))
+    source = orm.relationship(
+        Source,
+        backref=orm.backref("source_log", cascade="all, delete-orphan",
+                            order_by="SourceLog.date"))

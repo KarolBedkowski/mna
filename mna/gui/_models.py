@@ -16,7 +16,9 @@ import logging
 
 from PyQt4 import QtCore, QtGui
 
+from mna.model import db
 from mna.model import dbobjects as DBO
+from mna.logic import groups
 
 _LOG = logging.getLogger(__name__)
 
@@ -80,7 +82,7 @@ class GroupTreeNode(TreeNode):
 
         :param oid: id object to update
         """
-        group = DBO.Group.get(session=session, oid=self.oid)
+        group = db.get_one(DBO.Group, session=session, oid=self.oid)
         self.caption = group.name
         if recursive:
             for child in self.children:
@@ -96,7 +98,7 @@ class SourceTreeNode(TreeNode):
                                              source.unread)
 
     def update(self, session=None, _recursive=False):
-        item = DBO.Source.get(session=session, oid=self.oid)
+        item = db.get_one(DBO.Source, session=session, oid=self.oid)
         self.caption = item.title
         self.unread = item.unread
 
@@ -113,12 +115,11 @@ class TreeModel(QtCore.QAbstractItemModel):
         """ Refresh whole tree model from database. """
         self.layoutAboutToBeChanged.emit()
         self.root.clear()
-        session = DBO.Session()
-        for group in list(DBO.Group.all(session=session)):
+        session = db.Session()
+        for group in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(None, group)
             obj.children.extend(SourceTreeNode(obj, source)
                                 for source in group.sources)
-            obj.update(session)
             self.root.children.append(obj)
         self.layoutChanged.emit()
 

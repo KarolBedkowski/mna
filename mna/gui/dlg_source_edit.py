@@ -21,6 +21,7 @@ from mna.gui import frm_sett_main
 from mna.gui import filter_conf
 from mna.logic import sources
 from mna import plugins
+from mna.model import db
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
@@ -31,13 +32,14 @@ assert resources_rc
 class DlgSourceEdit(QtGui.QDialog):
     """ Main Window class. """
 
-    def __init__(self, parent=None, source=None):
-        _LOG.info("DlgSourceEdit.init: %r", source)
+    def __init__(self, parent=None, source_oid=None):
+        _LOG.info("DlgSourceEdit.init: %r", source_oid)
         QtGui.QDialog.__init__(self, parent)
         self._ui = dlg_source_edit_ui.Ui_DlgSourceEdit()
         self._ui.setupUi(self)
         self._bind()
-        self._source = source
+        source = db.get_one(DBO.Source, oid=source_oid)
+        self.source = source
         self._setup(source)
         self.setWindowTitle(source.title)
         self._to_window(source)
@@ -64,7 +66,7 @@ class DlgSourceEdit(QtGui.QDialog):
         if not self._validate():
             return
         if self._from_window():
-            sources.save_source(self._source)
+            sources.save_source(self.source)
             return QtGui.QDialog.done(self, result)
 
     def _to_window(self, source):
@@ -91,7 +93,7 @@ class DlgSourceEdit(QtGui.QDialog):
         self._fill_filters()
 
     def _from_window(self):
-        source = self._source
+        source = self.source
         if not self._frm_sett_main.from_window(source):
             return False
         if hasattr(self._curr_src_frame, 'from_window'):
@@ -126,15 +128,14 @@ class DlgSourceEdit(QtGui.QDialog):
     def _fill_filters(self):
         lv_filters = self._ui.lv_filters
         lv_filters.clear()
-        for fltr in DBO.Session().query(DBO.Filter).\
-                filter(DBO.Filter.source_id == self._source.oid):
+        for fltr in db.get_all(DBO.Filter, source_id=self.source.oid):
             fltr_class = plugins.FILTERS[fltr.name]
             itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
             itm.setData(QtCore.Qt.UserRole, fltr.oid)
             lv_filters.addItem(itm)
 
     def _on_add_filter(self):
-        if filter_conf.add_filter(self, self._source.oid):
+        if filter_conf.add_filter(self, self.source.oid):
             self._fill_filters()
 
     def _on_remove_filter(self):

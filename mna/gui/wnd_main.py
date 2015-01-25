@@ -28,10 +28,9 @@ from mna.gui import dlg_source_info
 from mna.gui import dlg_preferences
 from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
-from mna.model import dbobjects as DBO
-from mna.logic import groups, sources
+from mna.model import db
+from mna.logic import groups, sources, articles as larts
 from mna.common import messenger
-from mna import plugins
 
 _ = gettext.gettext
 _LOG = logging.getLogger(__name__)
@@ -68,11 +67,7 @@ class WndMain(QtGui.QMainWindow):
         self._bind()
         self._set_window_pos_size()
         self._ui.table_articles.sortByColumn(4, QtCore.Qt.AscendingOrder)
-        # expand previous nodes
-        for oid in self._appconfig.get('wnd_main.tree.expanded') or []:
-            idx = self._tree_model.find_oid_index(oid)
-            if idx:
-                self._ui.tree_subscriptions.expand(idx[0])
+        self._restore_expanded_tree_nodes()
 
     def _bind(self):
         self._ui.action_refresh.triggered.connect(self._on_action_refresh)
@@ -137,16 +132,14 @@ class WndMain(QtGui.QMainWindow):
         if node is None:
             return
         if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
-            dlg = dlg_source_edit.DlgSourceEdit(self, source)
+            dlg = dlg_source_edit.DlgSourceEdit(self, node.oid)
             if dlg.exec_() == QtGui.QDialog.Accepted:
-                messenger.MESSENGER.emit_source_updated(source.oid,
-                                                      source.group_id)
+                messenger.MESSENGER.emit_source_updated(
+                    dlg.source.oid, dlg.source.group_id)
         elif isinstance(node, _models.GroupTreeNode):
-            group = DBO.Group.get(oid=node.oid)
-            dlg = dlg_edit_group.DlgEditGroup(self, group)
+            dlg = dlg_edit_group.DlgEditGroup(self, node.oid)
             if dlg.exec_() == QtGui.QDialog.Accepted:
-                messenger.MESSENGER.emit_group_updated(group.oid)
+                messenger.MESSENGER.emit_group_updated(node.oid)
         else:
             raise RuntimeError("invalid object type %r", node)
 
@@ -169,12 +162,10 @@ class WndMain(QtGui.QMainWindow):
 #            model.select(parent)
 
         if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
-            if sources.delete_source(source):
+            if sources.delete_source(node.oid):
                 self._refresh_tree()
         elif isinstance(node, _models.GroupTreeNode):
-            group = DBO.Group.get(oid=node.oid)
-            if groups.delete_group(group):
+            if groups.delete_group(node.oid):
                 self._refresh_tree()
         else:
             raise RuntimeError("invalid object type %r", node)
@@ -185,8 +176,7 @@ class WndMain(QtGui.QMainWindow):
         node = self._tree_model.node_from_index(index)
         if node is None or not isinstance(node, _models.SourceTreeNode):
             return
-        source = DBO.Source.get(oid=node.oid)
-        dlg = dlg_source_info.DlgSourceInfo(self, source)
+        dlg = dlg_source_info.DlgSourceInfo(self, node.oid)
         dlg.exec_()
 
     def _on_article_list_clicked(self, index):
@@ -196,9 +186,9 @@ class WndMain(QtGui.QMainWindow):
         _LOG.debug("_on_article_list_clicked %r %r", item.oid, index.column())
         article = None
         if index.column() == 0:  # readed
-            article = list(sources.toggle_articles_read([item.oid]))[0]
+            article = list(larts.toggle_articles_read([item.oid]))[0]
         elif index.column() == 1:  # starred
-            article = list(sources.toggle_articles_starred([item.oid]))[0]
+            article = list(larts.toggle_articles_starred([item.oid]))[0]
         if article:
             self._list_model.update_item(article)
             self._tree_model.update_source(article.source_id,
@@ -209,19 +199,10 @@ class WndMain(QtGui.QMainWindow):
         index = self._ui.table_articles.selectionModel().currentIndex()
         item = self._list_model.node_from_index(index)
         _LOG.debug("_on_article_list_selchng %r %r", item.oid, index.column())
-        article = None
-        article = DBO.Article.get(oid=item.oid)
-        if self._last_presenter[0] == article.source_id:
-            presenter = self._last_presenter[1]
-        else:
-            source_cfg = DBO.Source.get(oid=article.source_id)
-            source = plugins.SOURCES.get(source_cfg.name)
-            presenter = source.presenter(source)
-            self._last_presenter = (article.source_id, presenter)
-        content = presenter.to_gui(article)
+        session = db.Session()
+        article, content = larts.get_article_content(item.oid, True,
+                                                     session=session)
         self._ui.article_view.setHtml(content)
-        article.read = 1
-        article.save(True)
         self._list_model.update_item(article)
         self._tree_model.update_source(article.source_id,
                                        article.source.group_id)
@@ -243,7 +224,9 @@ class WndMain(QtGui.QMainWindow):
             webbrowser.open(unicode(url.toString()))
 
     def _refresh_tree(self):
+        self._save_expanded_tree_nodes()
         self._tree_model.refresh()
+        self._restore_expanded_tree_nodes()
 
     @QtCore.pyqtSlot(int, int)
     def _on_source_updated(self, source_id, group_id):
@@ -301,8 +284,8 @@ class WndMain(QtGui.QMainWindow):
             for source_oid, group_oid in sources_to_mark:
                 # send signals only for real updated sources
                 if src_updated[source_oid] > 0:
-                    messenger.MESSENGER.emit_source_updated(source_oid,
-                                                          group_oid)
+                    messenger.MESSENGER.emit_source_updated(
+                        source_oid, group_oid)
             messenger.MESSENGER.emit_group_updated(sources_to_mark[0][1])
 
     def _on_toggle_read_action(self):
@@ -312,7 +295,7 @@ class WndMain(QtGui.QMainWindow):
                     for index in rows]
         if not articles:
             return
-        toggled = list(sources.toggle_articles_read(articles))
+        toggled = list(larts.toggle_articles_read(articles))
         if not toggled:
             return
         updated_sources = {}
@@ -336,19 +319,18 @@ class WndMain(QtGui.QMainWindow):
         self._ui.table_articles.selectionModel().clearSelection()
         unread_only = self._ui.show_unread_action.isChecked()
         if isinstance(node, _models.SourceTreeNode):
-            source = DBO.Source.get(oid=node.oid)
+            articles = larts.get_articles_by_source(node.oid, unread_only)
         elif isinstance(node, _models.GroupTreeNode):
-            source = DBO.Group.get(oid=node.oid)
+            articles = larts.get_articles_by_group(node.oid, unread_only)
         else:
             raise RuntimeError("invalid tree item: %r", node)
-        articles = source.get_articles(unread_only)
         self._list_model.set_items(articles)
         self._ui.table_articles.resizeColumnsToContents()
 
     def _set_window_pos_size(self):
         appcfg = self._appconfig
         width = appcfg.get('wnd_main.width')
-        height = appcfg.get('wnd_main.hright')
+        height = appcfg.get('wnd_main.height')
         if width and height:
             self.resize(width, height)
         sp1 = appcfg.get('wnd_main.splitter1')
@@ -365,7 +347,17 @@ class WndMain(QtGui.QMainWindow):
         appcfg['wnd_main.splitter1'] = self._ui.splitter.sizes()
         appcfg['wnd_main.splitter2'] = self._ui.splitter_2.sizes()
         # save expanded tree items
+        self._save_expanded_tree_nodes()
+
+    def _save_expanded_tree_nodes(self):
         expanded = [self._tree_model.node_from_index(itm).oid
                     for itm in self._tree_model.persistentIndexList()
                     if self._ui.tree_subscriptions.isExpanded(itm)]
-        appcfg['wnd_main.tree.expanded'] = expanded
+        self._appconfig['wnd_main.tree.expanded'] = expanded
+
+    def _restore_expanded_tree_nodes(self):
+        # expand previous nodes
+        for oid in self._appconfig.get('wnd_main.tree.expanded') or []:
+            idx = self._tree_model.find_oid_index(oid)
+            if idx:
+                self._ui.tree_subscriptions.expand(idx[0])

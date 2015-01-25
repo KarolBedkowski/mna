@@ -20,6 +20,7 @@ from mna.gui import resources_rc
 from mna.gui import dlg_edit_group_ui
 from mna.logic import groups
 from mna.model import dbobjects as DBO
+from mna.model import db
 
 _LOG = logging.getLogger(__name__)
 
@@ -29,16 +30,17 @@ assert resources_rc
 class DlgEditGroup(QtGui.QDialog):
     """ Main Window class. """
 
-    def __init__(self, parent=None, group=None):
+    def __init__(self, parent=None, group_oid=None):
         QtGui.QDialog.__init__(self, parent)
         self._ui = dlg_edit_group_ui. Ui_DlgEditGroup()
         self._ui.setupUi(self)
         self._bind()
-        if group:
+        if group_oid:
+            group = db.get_one(DBO.Group, oid=group_oid)
             self.setWindowTitle("Edit %s Group" % group.name)
         else:
-            self.setWindowTitle("New Group")
             group = DBO.Group()
+            self.setWindowTitle("New Group")
         self._group = group
         self._to_window()
 

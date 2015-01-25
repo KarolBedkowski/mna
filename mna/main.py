@@ -18,7 +18,7 @@ import logging
 _LOG = logging.getLogger(__name__)
 
 import sip
-sip.setapi("QString",2)
+sip.setapi("QString", 2)
 
 
 from mna import version
@@ -90,7 +90,7 @@ def run():
     main_worker.terminate()
 
     # cleanup
-    from mna.logic import sources
-    sources.delete_old_articles()
+    from mna.logic import articles
+    articles.delete_old_articles()
 
     config.save()

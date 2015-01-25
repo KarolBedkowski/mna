@@ -75,7 +75,7 @@ class SimplePresenter(object):
             use some template system
         """
         _LOG.debug("SimplePresenter: %s - render %r", self.name,
-                   article)
+                   article.oid)
         css = appconfig.AppConfig().get('view.base_css')
         result = ["<!doctype html><html><head>",
                   '<meta charset="UTF-8">',
