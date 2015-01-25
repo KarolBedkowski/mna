@@ -37,10 +37,10 @@ def mark_source_read(source_ids, read=True):
     session = db.Session()
     for sid in source_ids:
         _LOG.debug("mark_source_read(%r, %r)", sid, read)
-        s_cnt = session.query(DBO.Article).\
-                filter(DBO.Article.source_id == sid,
-                       DBO.Article.read == (0 if read else 1)).\
-                update({'read': (1 if read else 0)})
+        s_cnt = db.get_all(DBO.Article, session=session,
+                           source_id=sid, read=(0 if read else 1)).\
+            with_lockmode('update').\
+            update({'read': (1 if read else 0)})
         cnt += s_cnt
         results[sid] = s_cnt
     session.commit()
