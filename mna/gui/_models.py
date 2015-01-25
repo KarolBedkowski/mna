@@ -18,6 +18,7 @@ from PyQt4 import QtCore, QtGui
 
 from mna.model import db
 from mna.model import dbobjects as DBO
+from mna.logic import groups
 
 _LOG = logging.getLogger(__name__)
 
@@ -115,11 +116,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.layoutAboutToBeChanged.emit()
         self.root.clear()
         session = db.Session()
-        for group in list(db.get_all(DBO.Group, session=session)):
+        for group in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(None, group)
             obj.children.extend(SourceTreeNode(obj, source)
                                 for source in group.sources)
-            obj.update(session)
             self.root.children.append(obj)
         self.layoutChanged.emit()
 

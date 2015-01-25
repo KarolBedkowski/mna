@@ -127,7 +127,8 @@ class Source(BaseModelMixin, Base):
 
     group = orm.relationship(
         Group,
-        backref=orm.backref("sources", cascade="all, delete-orphan"))
+        backref=orm.backref("sources", cascade="all, delete-orphan",
+                            order_by="Source.title"))
 
     def force_refresh(self):
         self.next_refresh = datetime.datetime.now()
