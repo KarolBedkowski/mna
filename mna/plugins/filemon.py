@@ -166,7 +166,7 @@ class FileSource(base.AbstractSource):
             self.cfg.add_log('info', "Not found new articles")
             return []
         self.cfg.add_log('info',
-                      "Found %d new articles" % len(articles))
+                         "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
@@ -186,7 +186,7 @@ class FileSource(base.AbstractSource):
                 return srcfile.read()
         except IOError, err:
             self.cfg.add_log('error',
-                          "Error loading file: " + str(err))
+                             "Error loading file: " + str(err))
             raise base.GetArticleException("Load file error: %s" % err)
         return None
 

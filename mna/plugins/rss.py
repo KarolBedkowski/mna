@@ -101,7 +101,7 @@ class RssSource(base.AbstractSource):
                 articles = articles[-max_articles_to_load:]
                 self.cfg.add_log('info',
                                  "Loaded only %d articles (limit)." %
-                                  len(articles))
+                                 len(articles))
         return articles
 
     def _create_article(self, feed, session, last_refreshed):

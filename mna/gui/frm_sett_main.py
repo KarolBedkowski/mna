@@ -26,30 +26,30 @@ _LOG = logging.getLogger(__name__)
 class FrmSettMain(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        self.ui = frm_sett_main_ui.Ui_FrmSettMain()
-        self.ui.setupUi(self)
+        self._ui = frm_sett_main_ui.Ui_FrmSettMain()
+        self._ui.setupUi(self)
         self._setup()
 
     def _setup(self):
         for group in db.get_all(DBO.Group):
-            self.ui.c_group.addItem(group.name, group.oid)
+            self._ui.c_group.addItem(group.name, group.oid)
 
     def validate(self):
         try:
-            _validators.validate_empty_string(self.ui.e_title, 'Title')
+            _validators.validate_empty_string(self._ui.e_title, 'Title')
         except _validators.ValidationError:
             return False
         return True
 
     def from_window(self, source):
-        source.title = unicode(self.ui.e_title.text())
-        group_idx = self.ui.c_group.currentIndex()
-        group_id = self.ui.c_group.itemData(group_idx).toInt()[0]
+        source.title = unicode(self._ui.e_title.text())
+        group_idx = self._ui.c_group.currentIndex()
+        group_id = self._ui.c_group.itemData(group_idx).toInt()[0]
         source.group_id = group_id
         return True
 
     def to_window(self, source):
-        self.ui.e_title.setText(source.title or "")
+        self._ui.e_title.setText(source.title or "")
         if source.group_id:
-            group_idx = self.ui.c_group.findData(source.group_id)
-            self.ui.c_group.setCurrentIndex(group_idx)
+            group_idx = self._ui.c_group.findData(source.group_id)
+            self._ui.c_group.setCurrentIndex(group_idx)
