@@ -192,16 +192,16 @@ class Article(BaseModelMixin, Base):
     # database id
     oid = Column(Integer, primary_key=True)
     # publish date
-    published = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    published = Column(DateTime, default=datetime.datetime.utcnow)
     # last update date
-    updated = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    updated = Column(DateTime, default=datetime.datetime.utcnow)
     # article read?
     read = Column(Integer, default=0)
     title = Column(Unicode)
     summary = Column(Unicode)
     content = Column(Unicode)
     # internal id (hash)
-    internal_id = Column(Unicode, index=True)
+    internal_id = Column(Unicode)
     link = Column(Unicode)
     author = Column(Unicode)
     meta = Column(jsonobj.JSONEncodedDict)
@@ -211,11 +211,11 @@ class Article(BaseModelMixin, Base):
     # tags
     source_id = Column(Integer, ForeignKey("sources.oid"))
 
-    source = orm.\
-            relationship(Source,
-                         backref=orm.backref("articles",
-                                             cascade="all, delete-orphan",
-                                             lazy='dynamic'))
+    source = orm.relationship(
+        Source,
+        backref=orm.backref("articles",
+                            cascade="all, delete-orphan",
+                            lazy='dynamic'))
 
     @staticmethod
     def compute_id(link, title, author, source_id):
@@ -224,9 +224,9 @@ class Article(BaseModelMixin, Base):
         return"".join(map(hash, (title, author, source_id)))
 
 
-Index('idx_articles_chs', Article.source_id, Article.internal_id, Article.oid)
-Index('idx_articles_read', Article.source_id, Article.read, Article.updated,
-      Article.oid)
+Index('idx_articles_chs', Article.source_id, Article.internal_id)
+Index('idx_articles_read', Article.source_id, Article.read, Article.updated)
+Index('idx_articles_updated', Article.updated)
 
 
 class SourceLog(BaseModelMixin, Base):
