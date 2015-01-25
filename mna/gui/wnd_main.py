@@ -196,9 +196,9 @@ class WndMain(QtGui.QMainWindow):
         _LOG.debug("_on_article_list_clicked %r %r", item.oid, index.column())
         article = None
         if index.column() == 0:  # readed
-            article = list(sources.toggle_articles_read([item.oid]))[0]
+            article = list(larts.toggle_articles_read([item.oid]))[0]
         elif index.column() == 1:  # starred
-            article = list(sources.toggle_articles_starred([item.oid]))[0]
+            article = list(larts.toggle_articles_starred([item.oid]))[0]
         if article:
             self._list_model.update_item(article)
             self._tree_model.update_source(article.source_id,
@@ -313,7 +313,7 @@ class WndMain(QtGui.QMainWindow):
                     for index in rows]
         if not articles:
             return
-        toggled = list(sources.toggle_articles_read(articles))
+        toggled = list(larts.toggle_articles_read(articles))
         if not toggled:
             return
         updated_sources = {}
