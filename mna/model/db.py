@@ -196,16 +196,18 @@ def get_one(clazz, session=None, **kwargs):
     return (session or Session()).query(clazz).filter_by(**kwargs).first()
 
 
-def get_all(clazz, order_by=None, session=None):
+def get_all(clazz, order_by=None, session=None, **kwargs):
     """ Return all objects this class.
 
     Args:
         order_by: optional order_by query argument
+        session: optional current sqlalchemy session
+        **kwargs: optional filters
     """
     session = session or Session()
     query = session.query(clazz)
-    if hasattr(clazz, 'deleted'):
-        query = query.filter(clazz.deleted.is_(None))
+    if kwargs:
+        query = query.filter_by(**kwargs)
     if order_by:
         query = query.order_by(order_by)
     return query  # pylint: disable=E1101
