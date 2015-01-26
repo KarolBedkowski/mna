@@ -84,9 +84,11 @@ def get_title(html, encoding):
     for tag in ('//head/title', '//h1', '//h2'):
         titles = tree.xpath(tag)
         if titles:
-            title = titles[0].text.strip()
+            title = titles[0].text
             if title:
-                return title
+                title = title.strip()
+                if title:
+                    return title
 
     # title not found, use page text
     html = etree.tostring(tree, encoding='UTF-8', method="text")
