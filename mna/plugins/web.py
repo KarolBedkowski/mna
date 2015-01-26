@@ -152,6 +152,8 @@ class FrmSettWeb(QtGui.QFrame):
             self._ui.sb_similarity_ratio.value() / 100.0
         if self._ui.rb_scan_page.isChecked():
             source.conf["mode"] = "page"
+        elif self._ui.rb_scan_one_part.isChecked():
+            source.conf["mode"] = "page_one_part"
         else:
             source.conf["mode"] = "part"
         return True
@@ -161,11 +163,16 @@ class FrmSettWeb(QtGui.QFrame):
         self._ui.e_xpath.setPlainText(source.conf.get("xpath") or "")
         self._ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
                                                or 0.5) * 100.0)
-        scan_part = source.conf.get("mode") == "part"
-        self._ui.rb_scan_page.setChecked(not scan_part)
-        self._ui.rb_scan_page.toggled.emit(not scan_part)
-        self._ui.rb_scan_parts.setChecked(scan_part)
-        self._ui.rb_scan_parts.toggled.emit(scan_part)
+        mode = source.conf.get("mode")
+        if mode == "page":
+            self._ui.rb_scan_page.setChecked(True)
+            self._ui.rb_scan_page.toggled.emit(True)
+        elif mode == "page_one_part":
+            self._ui.rb_scan_one_part.setChecked(True)
+            self._ui.rb_scan_one_part.toggled.emit(True)
+        else:
+            self._ui.rb_scan_parts.setChecked(True)
+            self._ui.rb_scan_parts.toggled.emit(True)
 
     def _on_btn_xpath_sel(self):
         dlg = _DlgSettWebXPath(self, self._ui.e_url.text(),
@@ -186,7 +193,8 @@ class WebSource(base.AbstractSource):
         if not url:
             return []
 
-        _LOG.info("WebSource.get_items from %r - %r", url, self.cfg.conf)
+        _LOG.info("WebSource.get_items %r from %r - %r", self.cfg.oid,
+                  url, self.cfg.conf)
 
         try:
             info, page = download_page(url)
@@ -200,9 +208,14 @@ class WebSource(base.AbstractSource):
 
         articles = []
         selector_xpath = self.cfg.conf.get('xpath')
-        if self.cfg.conf.get("mode") == "part" and selector_xpath:
+        mode = self.cfg.conf.get("mode")
+        if mode == "part" and selector_xpath:
             articles = (self._process_part(part, info, session)
                         for part in get_page_part(info, page, selector_xpath))
+        elif mode == "page_one_part" and selector_xpath:
+            parts = list(get_page_part(info, page, selector_xpath))
+            if parts:
+                articles = [self._process_page(parts[0], info, session)]
         else:
             articles = (self._process_page(part, info, session)
                         for part in get_page_part(info, page, "//html"))
