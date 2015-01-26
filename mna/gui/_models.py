@@ -215,7 +215,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def node_from_index(self, index):
         """Retrieves the tree node with a given index."""
-        if index.isValid():
+        if index and index.isValid():
             return index.internalPointer()
         return self.root
 
