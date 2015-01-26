@@ -333,27 +333,25 @@ class _DlgSettWebXPath(QtGui.QDialog):
         self._ui.e_xpath.setPlainText(message)
 
 
+# based on http://stackoverflow.com/questions/2631820/im-storing-click-coordinates-in-my-db-and-then-reloading-them-later-and-showing/2631931#2631931
 _SEL_ELEM_JS = """
 function getXPath(element) {
-    var val = element.value,
-        xpath = '';
-    for (; element && element.nodeType == 1; element = element.parentNode) {
-        var elems = element.parentNode.getElementsByTagName(element.tagName);
-        var id=0;
-        for (var idx = 0; idx < elems.length; idx++) {
-            if (elems[idx] == element) {
-                id = idx + 1;
-                break;
-            }
+    if (element.id !== '')
+        return 'id("' + element.id + '")';
+    if (element === document.body)
+        return element.tagName;
+    var ix = 0;
+    var siblings = element.parentNode.childNodes;
+    for (var i= 0; i < siblings.length; i++) {
+        var sibling = siblings[i];
+        if (sibling===element) {
+            return getPathTo(element.parentNode) + '/' + \
+                element.tagName + '[' + (ix + 1) + ']';
         }
-        if (id > 1) {
-            id = '[' + id + ']';
-        } else {
-            id = '';
+        if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+            ix++;
         }
-        xpath = '/' + element.tagName.toLowerCase() + id + xpath;
     }
-    return xpath;
 }
 
 function clickListener(e) {
