@@ -14,14 +14,16 @@ import datetime
 import logging
 import itertools
 import difflib
+import base64
 
 from lxml import etree
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 
 from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
+from mna.plugins import dlg_sett_web_xpath_ui
 from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
@@ -132,6 +134,7 @@ class FrmSettWeb(QtGui.QFrame):
         QtGui.QFrame.__init__(self, parent)
         self._ui = frm_sett_web_ui.Ui_FrmSettWeb()
         self._ui.setupUi(self)
+        self._ui.b_path_sel.clicked.connect(self._on_btn_xpath_sel)
 
     def validate(self):
         try:
@@ -163,6 +166,13 @@ class FrmSettWeb(QtGui.QFrame):
         self._ui.rb_scan_page.toggled.emit(not scan_part)
         self._ui.rb_scan_parts.setChecked(scan_part)
         self._ui.rb_scan_parts.toggled.emit(scan_part)
+
+    def _on_btn_xpath_sel(self):
+        dlg = _DlgSettWebXPath(self, self._ui.e_url.text(),
+                               self._ui.e_xpath.toPlainText())
+        if dlg.exec_() == QtGui.QDialog.Accepted:
+            self._ui.e_url.setText(dlg.url)
+            self._ui.e_xpath.setPlainText(dlg.xpath)
 
 
 class WebSource(base.AbstractSource):
@@ -264,3 +274,99 @@ class WebSource(base.AbstractSource):
                       last_refreshed)
             return False
         return True
+
+
+class _DlgSettWebXPath(QtGui.QDialog):
+    """ Select web page element dialog. """
+
+    def __init__(self, parent, url, xpath=None):
+        QtGui.QDialog.__init__(self, parent)
+        self._ui = dlg_sett_web_xpath_ui. Ui_DlgSettWebXPath()
+        self._ui.setupUi(self)
+        self._ui.e_xpath.setPlainText(xpath or "")
+        self._ui.web_page.loadFinished.connect(self._on_web_page_loaded)
+        self._ui.b_go.pressed.connect(self._on_btn_go)
+        self._set_url(url)
+
+    @property
+    def url(self):
+        return self._ui.e_url.text().strip()
+
+    def _set_url(self, url):
+        if not url:
+            self._ui.e_url.setText("")
+            return
+        if url and not url.startswith('http://') and \
+                not url.startswith('https://'):
+            url = 'http://' + url
+        self._ui.e_url.setText(url)
+        self._ui.web_page.load(QtCore.QUrl(url))
+
+    @property
+    def xpath(self):
+        return self._ui.e_xpath.toPlainText()
+
+    def done(self, result):
+        if result == QtGui.QDialog.Accepted:
+            if not self.url:
+                self._ui.e_url.focus();
+                return False
+        return QtGui.QDialog.done(self, result)
+
+    def _on_btn_go(self):
+        self._set_url(self.url)
+
+    def _on_web_page_loaded(self, res):
+        if not res:
+            _LOG.info("_DlgSettWebXPath._on_web_page_loaded failed")
+            return
+        page = self._ui.web_page.page()
+        frame = page.mainFrame()
+        frame.addToJavaScriptWindowObject('click_handler', self)
+        frame.evaluateJavaScript(_SEL_ELEM_JS)
+        css = "data:text/css;charset=utf-8;base64," + base64.encodestring(_CSS)
+        page.settings().setUserStyleSheetUrl(QtCore.QUrl(css))
+
+    @QtCore.pyqtSlot(str)
+    def click(self, message):
+        """ handle custom clicks in web page """
+        self._ui.e_xpath.setPlainText(message)
+
+
+_SEL_ELEM_JS = """
+function getXPath(element) {
+    var val = element.value,
+        xpath = '';
+    for (; element && element.nodeType == 1; element = element.parentNode) {
+        var elems = element.parentNode.getElementsByTagName(element.tagName);
+        var id=0;
+        for (var idx = 0; idx < elems.length; idx++) {
+            if (elems[idx] == element) {
+                id = idx + 1;
+                break;
+            }
+        }
+        if (id > 1) {
+            id = '[' + id + ']';
+        } else {
+            id = '';
+        }
+        xpath = '/' + element.tagName.toLowerCase() + id + xpath;
+    }
+    return xpath;
+}
+
+function clickListener(e) {
+    e.preventDefault();
+    var clickedElement = (window.event) ? window.event.srcElement : e.target;
+    var value = getXPath(clickedElement);
+    click_handler.click(value);
+}
+
+document.onclick = clickListener;
+
+"""
+
+_CSS = """
+*:hover {border: 1px solid red !important;}
+"""
