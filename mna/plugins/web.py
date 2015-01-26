@@ -78,6 +78,12 @@ def create_checksum(data):
     return md5.hexdigest().lower()
 
 
+def create_config_hash(source):
+    conf = source.conf
+    return create_checksum("|".join((conf['url'], conf['mode'],
+                                     conf['xpath'])))
+
+
 def get_title(html, encoding):
     parser = etree.HTMLParser(encoding=encoding, remove_blank_text=True,
                               remove_comments=True, remove_pis=True)
@@ -120,6 +126,12 @@ def accept_page(page, session, source, threshold):
     # find last article
     last = source.get_last_article()
     if last:
+        if last.meta:
+            # check for parameters changed
+            last_conf_hash = last.meta.get('conf')
+            if not last_conf_hash or \
+                    last_conf_hash != create_config_hash(source):
+                return True
         similarity = articles_similarity(last.content, page)
         _LOG.debug("similarity: %r %r", similarity, threshold)
         if similarity > threshold:
@@ -253,6 +265,7 @@ class WebSource(base.AbstractSource):
         art.updated = datetime.datetime.now()
         art.published = info.get('_last-modified')
         art.link = self.cfg.conf.get('url')
+        art.meta = {'conf': create_config_hash(self.cfg)}
         return art
 
     def _limit_articles(self, articles, max_load):
@@ -322,7 +335,7 @@ class _DlgSettWebXPath(QtGui.QDialog):
     def done(self, result):
         if result == QtGui.QDialog.Accepted:
             if not self.url:
-                self._ui.e_url.focus();
+                self._ui.e_url.focus()
                 return False
         return QtGui.QDialog.done(self, result)
 
@@ -346,7 +359,8 @@ class _DlgSettWebXPath(QtGui.QDialog):
         self._ui.e_xpath.setPlainText(message)
 
 
-# based on http://stackoverflow.com/questions/2631820/im-storing-click-coordinates-in-my-db-and-then-reloading-them-later-and-showing/2631931#2631931
+# based on http://stackoverflow.com/questions/2631820/im-storing-click-
+# coordinates-in-my-db-and-then-reloading-them-later-and-showing/2631931#2631931
 _SEL_ELEM_JS = """
 function getXPath(element) {
     if (element.id !== '')
