@@ -366,9 +366,12 @@ class WndMain(QtGui.QMainWindow):
         self._save_expanded_tree_nodes()
 
     def _save_expanded_tree_nodes(self):
-        expanded = [self._tree_model.node_from_index(itm).oid
-                    for itm in self._tree_model.persistentIndexList()
-                    if self._ui.tree_subscriptions.isExpanded(itm)]
+        _LOG.debug('_save_expanded_tree_nodes')
+        model = self._tree_model
+        expanded = [item.oid
+                    for row, item in enumerate(model.root.children)
+                    if self._ui.tree_subscriptions.isExpanded(
+                        model.index(row, 0, None))]
         self._appconfig['wnd_main.tree.expanded'] = expanded
 
     def _restore_expanded_tree_nodes(self):
