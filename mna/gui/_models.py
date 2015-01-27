@@ -140,9 +140,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.root.children.append(self._starred)
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
-            obj = GroupTreeNode(None, group_oid, group_name)
+            obj = GroupTreeNode(self.root, group_oid, group_name)
             obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
                             for s_oid, s_title, s_unread in group]
+            obj.unread = sum(cld.unread for cld in obj.children)
             self.root.children.append(obj)
         self.layoutChanged.emit()
 
