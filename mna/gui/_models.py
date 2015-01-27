@@ -72,6 +72,13 @@ class TreeNode(object):
         """The position of this node in the parent's list of children."""
         return self.parent.children.index(self) if self.parent else 0
 
+    def get_font(self):
+        if self.unread:
+            font = QtGui.QFont()
+            font.setBold(True)
+            return font
+        return QtCore.QVariant()
+
 
 class GroupTreeNode(TreeNode):
     """ Group node """
@@ -107,6 +114,9 @@ class SpecialTreeNode(TreeNode):
     def update(self, session, _recursive=False):
         if self.oid == SPECIAL_STARRED:
             self.unread = articles.get_starred_count(session)
+
+    def get_font(self):
+        return QtCore.QVariant()
 
 
 class TreeModel(QtCore.QAbstractItemModel):
@@ -163,14 +173,9 @@ class TreeModel(QtCore.QAbstractItemModel):
         if role == QtCore.Qt.DisplayRole:
             return QtCore.QVariant(str(self.node_from_index(index)))
         elif role == QtCore.Qt.FontRole:
-            node = self.node_from_index(index)
-            if node.unread:
-                font = QtGui.QFont()
-                font.setBold(True)
-                return font
+            return self.node_from_index(index).get_font()
         elif role == ID_ROLE:
-            node = self.node_from_index(index)
-            return node.oid
+            return self.node_from_index(index).oid
         return QtCore.QVariant()
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
@@ -232,15 +237,27 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 
 class ListItem(object):
-    def __init__(self, title=None, oid=None, read=None, updated=None,
-                 source=None, starred=None, score=None):
-        self.title = title
-        self.oid = oid
-        self.read = read
-        self.updated = updated
-        self.source = source
-        self.starred = starred
-        self.score = score
+    __slots__ = ('oid', '_cols', 'font', 'color')
+
+    def __init__(self, src):
+        self.oid = src.oid
+        self.font = QtCore.QVariant()
+        self.color = QtCore.QVariant()
+        self.update(src)
+
+    def update(self, src):
+        if not src.read:
+            self.font = QtGui.QFont()
+            self.font.setBold(True)
+        self.color = _score_to_color(src.score)
+        self._cols = [
+            QtCore.QVariant(u"✔" if src.read else ""),  # read
+            QtCore.QVariant(u"★" if src.starred else ""),  # starred
+            QtCore.QVariant(src.source.title),  # source
+            QtCore.QVariant(src.title),  # title
+            QtCore.QDateTime(src.updated),  # updated
+            QtCore.QVariant(src.score)  # score
+        ]
 
     def __str__(self):
         return self.title
@@ -248,6 +265,9 @@ class ListItem(object):
     def __repr__(self):
         return "<ListItem %r; %r, %r, %r>" % (self.title, self.oid,
                                               self.read, self.updated)
+
+    def get_value(self, col):
+        return self._cols[col]
 
 
 class ListModel(QtCore.QAbstractTableModel):
@@ -261,19 +281,13 @@ class ListModel(QtCore.QAbstractTableModel):
     def set_items(self, items):
         _LOG.debug("ListModel.set_items(len=%d)", len(items))
         self.layoutAboutToBeChanged.emit()
-        self.items = [ListItem(item.title, item.oid, item.read,
-                               item.updated, item.source.title, item.starred,
-                               item.score)
-                      for item in items]
+        self.items = [ListItem(item) for item in items]
         self.layoutChanged.emit()
 
     def update_item(self, item):
         for row, itm in enumerate(self.items):
             if itm.oid == item.oid:
-                itm.title = item.title
-                itm.read = item.read
-                itm.updated = item.updated
-                itm.starred = item.starred
+                itm.update(item)
                 self.dataChanged.emit(self.index(row, 0), self.index(row, 3))
                 return True
         return False
@@ -294,37 +308,24 @@ class ListModel(QtCore.QAbstractTableModel):
         if not index.isValid():
             return QtCore.QVariant()
         if role == QtCore.Qt.DisplayRole:
-            row = self.items[index.row()]
-            col = index.column()
-            if col == 0:
-                return QtCore.QVariant(u"✔" if row.read else "")
-            elif col == 1:
-                return QtCore.QVariant(u"★" if row.starred else "")
-            elif col == 2:
-                return QtCore.QVariant(row.source)
-            elif col == 3:
-                return QtCore.QVariant(row.title)
-            elif col == 4:
-                return QtCore.QDateTime(row.updated)
-            elif col == 5:
-                return QtCore.QVariant(row.score)
+            return self.items[index.row()].get_value(index.column())
         elif role == QtCore.Qt.FontRole:
-            row = self.items[index.row()]
-            if not row.read:
-                font = QtGui.QFont()
-                font.setBold(True)
-                return font
+            return self.items[index.row()].font
         elif role == QtCore.Qt.TextColorRole:
-            row = self.items[index.row()]
-            if row.score > 9:
-                return QtGui.QColor(0, 0, 200)
-            elif row.score > 25:
-                return QtGui.QColor(0, 200, 0)
-            elif row.score > 75:
-                return QtGui.QColor(200, 0, 0)
-            elif row.score < -10:
-                return QtGui.QColor(50, 50, 50)
+            return self.items[index.row()].color
         return QtCore.QVariant()
 
     def node_from_index(self, index):
         return self.items[index.row()]
+
+
+def _score_to_color(score):
+    if score > 9:
+        return QtGui.QColor(0, 0, 200)
+    elif score > 25:
+        return QtGui.QColor(0, 200, 0)
+    elif score > 75:
+        return QtGui.QColor(200, 0, 0)
+    elif score < -10:
+        return QtGui.QColor(50, 50, 50)
+    return QtCore.QVariant()
