@@ -82,13 +82,7 @@ class GroupTreeNode(TreeNode):
 
         :param oid: id object to update
         """
-        group = db.get_one(DBO.Group, session=session, oid=self.oid)
-        self.caption = group.name
-        if recursive:
-            for child in self.children:
-                child.update(session, recursive)
-        self.unread = sum(child.get_unread_count()
-                          for child in self.children)
+        self.caption, self.unread = groups.get_group_info(session, self.oid)
 
 
 class SourceTreeNode(TreeNode):

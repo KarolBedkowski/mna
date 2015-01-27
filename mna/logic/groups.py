@@ -61,3 +61,11 @@ def get_group_sources_tree(session):
         order_by(DBO.Group.name, DBO.Source.name)
     for group, group_items in itertools.groupby(res, lambda x: x[0:2]):
         yield group, (item[2:] for item in group_items)
+
+
+def get_group_info(session, group_id):
+    """ Get group info (title, unread count) """
+    session = session or db.Session()
+    res = session.query(DBO.Group.name, DBO.Group.unread).\
+        filter(DBO.Group.oid == group_id).first()
+    return res
