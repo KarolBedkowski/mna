@@ -17,7 +17,7 @@ import logging
 from PyQt4 import QtCore, QtGui
 
 from mna.model import db
-from mna.logic import groups, sources
+from mna.logic import groups, sources, articles
 
 _LOG = logging.getLogger(__name__)
 
@@ -104,6 +104,10 @@ class SpecialTreeNode(TreeNode):
     def __init__(self, parent, title, sid):
         super(SpecialTreeNode, self).__init__(parent, title, sid)
 
+    def update(self, session, _recursive=False):
+        if self.oid == SPECIAL_STARRED:
+            self.unread = articles.get_starred_count(session)
+
 
 class TreeModel(QtCore.QAbstractItemModel):
     """ Groups & sources tree model.
@@ -111,17 +115,19 @@ class TreeModel(QtCore.QAbstractItemModel):
     def __init__(self, parent=None):
         super(TreeModel, self).__init__(parent)
         self.root = TreeNode(None, 'root', -1, -1)
+        self._starred = None
         self.refresh()
 
     def refresh(self):
         """ Refresh whole tree model from database. """
         self.layoutAboutToBeChanged.emit()
         self.root.clear()
+        session = db.Session()
         self.root.children.append(SpecialTreeNode(
             self.root, "All", SPECIAL_ALL))
-        self.root.children.append(SpecialTreeNode(
-            self.root, "Starred", SPECIAL_STARRED))
-        session = db.Session()
+        self._starred = SpecialTreeNode(self.root, "Starred", SPECIAL_STARRED)
+        self._starred.update(session)
+        self.root.children.append(self._starred)
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(None, group_oid, group_name)
@@ -146,6 +152,7 @@ class TreeModel(QtCore.QAbstractItemModel):
             source_id
         source.update(session, False)
         group.update(session, False)
+        self._starred.update(session)
         self.layoutChanged.emit()
 
     def data(self, index, role):

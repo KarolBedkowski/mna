@@ -253,3 +253,10 @@ def get_article_content(article_oid, mark_read=True, session=None):
         article.read = 1
         db.save(article, True)
     return article, content
+
+
+def get_starred_count(session=None):
+    """ Count all starred articles """
+    session = session or db.Session()
+    res = session.query(DBO.Article.oid).filter_by(starred=1).count()
+    return res
