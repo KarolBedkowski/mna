@@ -17,7 +17,6 @@ import logging
 from PyQt4 import QtCore, QtGui
 
 from mna.model import db
-from mna.model import dbobjects as DBO
 from mna.logic import groups, sources
 
 _LOG = logging.getLogger(__name__)
@@ -38,6 +37,8 @@ class TreeNode(object):
         return len(self.children)
 
     def __str__(self):
+        if self.unread:
+            return self.caption + " (" + str(self.unread) + ")"
         return self.caption
 
     def __repr__(self):
@@ -153,10 +154,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return QtCore.QVariant()
         if role == QtCore.Qt.DisplayRole:
-            node = self.node_from_index(index)
-            if index.column() == 1:
-                return QtCore.QVariant(str(node.unread) if node.unread else "")
-            return QtCore.QVariant(str(node))
+            return QtCore.QVariant(str(self.node_from_index(index)))
         elif role == QtCore.Qt.FontRole:
             node = self.node_from_index(index)
             if node.unread:
@@ -177,8 +175,6 @@ class TreeModel(QtCore.QAbstractItemModel):
            with the specified orientation."""
         if orientation == QtCore.Qt.Horizontal and \
                 role == QtCore.Qt.DisplayRole:
-            if section == 1:
-                return QtCore.QVariant('Unread')
             return QtCore.QVariant('Title')
         return QtCore.QVariant()
 
@@ -188,7 +184,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def columnCount(self, parent):
         """The number of columns for the children of the given index."""
-        return 2
+        return 1
 
     def rowCount(self, parent):
         """The number of rows of the given index."""
