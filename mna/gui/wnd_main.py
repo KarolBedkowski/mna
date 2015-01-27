@@ -75,7 +75,8 @@ class WndMain(QtGui.QMainWindow):
                 connect(self._on_toggle_read_action)
         self._ui.action_preferences.triggered.\
                 connect(self._on_action_preferences)
-        self._ui.tree_subscriptions.clicked.connect(self._on_tree_clicked)
+        self._ui.tree_subscriptions.selectionModel().selectionChanged.connect(
+            self._on_tree_selection_changed)
         self._ui.table_articles.selectionModel().\
                 selectionChanged.connect(self._on_article_list_selchng)
         self._ui.table_articles.clicked.\
@@ -107,8 +108,11 @@ class WndMain(QtGui.QMainWindow):
     def _on_action_refresh(self):
         sources.force_refresh_all()
 
-    def _on_tree_clicked(self, index):
+    def _on_tree_selection_changed(self, index):
         """ Handle group/source selection."""
+        if not index.count():
+            return
+        index = index.indexes()[0]
         node = self._tree_model.node_from_index(index)
         assert node.oid
         self._show_articles(node)
@@ -296,6 +300,7 @@ class WndMain(QtGui.QMainWindow):
                     messenger.MESSENGER.emit_source_updated(
                         source_oid, group_oid)
             messenger.MESSENGER.emit_group_updated(sources_to_mark[0][1])
+        self._select_next_unread_source()
 
     def _on_toggle_read_action(self):
         """ Toggle selected articles read. """
@@ -380,3 +385,31 @@ class WndMain(QtGui.QMainWindow):
             idx = self._tree_model.find_oid_index(oid)
             if idx:
                 self._ui.tree_subscriptions.expand(idx[0])
+
+    def _select_next_unread_source(self):
+        # current selected
+        model = self._ui.tree_subscriptions.selectionModel()
+        curr_index = model.currentIndex()
+        item = self._tree_model.node_from_index(curr_index)
+        if isinstance(item, _models.SourceTreeNode):
+            # try to find next unread node in this group
+            curr_row = curr_index.row()
+            group = item.parent
+            for row in (range(curr_row + 1, len(group)) +
+                        range(0, curr_row - 1)):
+                if group.child_at_row(row).unread:
+                    index = self._tree_model.index(row, 0,
+                                                   curr_index.parent())
+                    model.setCurrentIndex(
+                        index, QtGui.QItemSelectionModel.ClearAndSelect)
+                    return
+            item = group
+        # try to go to next group
+        curr_row = item.row()
+        root = self._tree_model.root
+        for row in range(curr_row + 1, len(root)) + range(2, curr_row - 1):
+            if root.child_at_row(row).unread:
+                index = self._tree_model.index(row, 0, None)
+                model.setCurrentIndex(
+                    index, QtGui.QItemSelectionModel.ClearAndSelect)
+                return
