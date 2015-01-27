@@ -335,7 +335,7 @@ class WndMain(QtGui.QMainWindow):
             if node.oid == _models.SPECIAL_ALL:
                 articles = larts.get_all_articles(unread_only)
             elif node.oid == _models.SPECIAL_STARRED:
-                articles = larts.get_starred_articles(unread_only)
+                articles = larts.get_starred_articles(False)
             else:
                 raise RuntimeError("invalid special tree item: %r", node)
         else:
