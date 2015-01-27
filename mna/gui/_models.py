@@ -18,7 +18,7 @@ from PyQt4 import QtCore, QtGui
 
 from mna.model import db
 from mna.model import dbobjects as DBO
-from mna.logic import groups
+from mna.logic import groups, sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -74,8 +74,8 @@ class TreeNode(object):
 
 class GroupTreeNode(TreeNode):
     """ Group node """
-    def __init__(self, parent, group):
-        super(GroupTreeNode, self).__init__(parent, group.name, group.oid)
+    def __init__(self, parent, group_oid, group_name):
+        super(GroupTreeNode, self).__init__(parent, group_name, group_oid)
 
     def update(self, session=None, recursive=False):
         """ Update node or find children and update when found.
@@ -93,14 +93,11 @@ class GroupTreeNode(TreeNode):
 
 class SourceTreeNode(TreeNode):
     """ Group node """
-    def __init__(self, parent, source):
-        super(SourceTreeNode, self).__init__(parent, source.title, source.oid,
-                                             source.unread)
+    def __init__(self, parent, title, oid, unread):
+        super(SourceTreeNode, self).__init__(parent, title, oid, unread)
 
     def update(self, session=None, _recursive=False):
-        item = db.get_one(DBO.Source, session=session, oid=self.oid)
-        self.caption = item.title
-        self.unread = item.unread
+        self.caption, self.unread = sources.get_source_info(session, self.oid)
 
 
 SPECIAL_STARRED = -1
@@ -130,10 +127,11 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.root.children.append(SpecialTreeNode(
             self.root, "Starred", SPECIAL_STARRED))
         session = db.Session()
-        for group in groups.get_group_sources_tree(session):
-            obj = GroupTreeNode(None, group)
-            obj.children.extend(SourceTreeNode(obj, source)
-                                for source in group.sources)
+        for (group_oid, group_name), group \
+                in groups.get_group_sources_tree(session):
+            obj = GroupTreeNode(None, group_oid, group_name)
+            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
+                            for s_oid, s_title, s_unread in group]
             self.root.children.append(obj)
         self.layoutChanged.emit()
 

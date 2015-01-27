@@ -67,3 +67,10 @@ def force_refresh_all():
     session = db.Session()
     session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
     session.commit()
+
+
+def get_source_info(session, source_oid):
+    session = session or db.Session()
+    title, unread = session.query(DBO.Source.title, DBO.Source.unread).\
+        filter(DBO.Source.oid == source_oid).first()
+    return title, unread

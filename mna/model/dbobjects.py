@@ -187,7 +187,7 @@ class Source(BaseModelMixin, Base):
 
     @unread.expression
     def unread(cls):
-        return select([func.count(Article)]).\
+        return select([func.count(Article.oid)]).\
             where(and_(Article.source_id == cls.oid, Article.read == 0)).\
             label('unread_count')
 
