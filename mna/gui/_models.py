@@ -17,8 +17,7 @@ import logging
 from PyQt4 import QtCore, QtGui
 
 from mna.model import db
-from mna.model import dbobjects as DBO
-from mna.logic import groups
+from mna.logic import groups, sources
 
 _LOG = logging.getLogger(__name__)
 
@@ -38,6 +37,8 @@ class TreeNode(object):
         return len(self.children)
 
     def __str__(self):
+        if self.unread:
+            return self.caption + " (" + str(self.unread) + ")"
         return self.caption
 
     def __repr__(self):
@@ -74,33 +75,24 @@ class TreeNode(object):
 
 class GroupTreeNode(TreeNode):
     """ Group node """
-    def __init__(self, parent, group):
-        super(GroupTreeNode, self).__init__(parent, group.name, group.oid)
+    def __init__(self, parent, group_oid, group_name):
+        super(GroupTreeNode, self).__init__(parent, group_name, group_oid)
 
     def update(self, session=None, recursive=False):
         """ Update node or find children and update when found.
 
         :param oid: id object to update
         """
-        group = db.get_one(DBO.Group, session=session, oid=self.oid)
-        self.caption = group.name
-        if recursive:
-            for child in self.children:
-                child.update(session, recursive)
-        self.unread = sum(child.get_unread_count()
-                          for child in self.children)
+        self.caption, self.unread = groups.get_group_info(session, self.oid)
 
 
 class SourceTreeNode(TreeNode):
     """ Group node """
-    def __init__(self, parent, source):
-        super(SourceTreeNode, self).__init__(parent, source.title, source.oid,
-                                             source.unread)
+    def __init__(self, parent, title, oid, unread):
+        super(SourceTreeNode, self).__init__(parent, title, oid, unread)
 
     def update(self, session=None, _recursive=False):
-        item = db.get_one(DBO.Source, session=session, oid=self.oid)
-        self.caption = item.title
-        self.unread = item.unread
+        self.caption, self.unread = sources.get_source_info(session, self.oid)
 
 
 SPECIAL_STARRED = -1
@@ -130,10 +122,11 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.root.children.append(SpecialTreeNode(
             self.root, "Starred", SPECIAL_STARRED))
         session = db.Session()
-        for group in groups.get_group_sources_tree(session):
-            obj = GroupTreeNode(None, group)
-            obj.children.extend(SourceTreeNode(obj, source)
-                                for source in group.sources)
+        for (group_oid, group_name), group \
+                in groups.get_group_sources_tree(session):
+            obj = GroupTreeNode(None, group_oid, group_name)
+            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
+                            for s_oid, s_title, s_unread in group]
             self.root.children.append(obj)
         self.layoutChanged.emit()
 
@@ -161,10 +154,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return QtCore.QVariant()
         if role == QtCore.Qt.DisplayRole:
-            node = self.node_from_index(index)
-            if index.column() == 1:
-                return QtCore.QVariant(str(node.unread) if node.unread else "")
-            return QtCore.QVariant(str(node))
+            return QtCore.QVariant(str(self.node_from_index(index)))
         elif role == QtCore.Qt.FontRole:
             node = self.node_from_index(index)
             if node.unread:
@@ -185,8 +175,6 @@ class TreeModel(QtCore.QAbstractItemModel):
            with the specified orientation."""
         if orientation == QtCore.Qt.Horizontal and \
                 role == QtCore.Qt.DisplayRole:
-            if section == 1:
-                return QtCore.QVariant('Unread')
             return QtCore.QVariant('Title')
         return QtCore.QVariant()
 
@@ -196,7 +184,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def columnCount(self, parent):
         """The number of columns for the children of the given index."""
-        return 2
+        return 1
 
     def rowCount(self, parent):
         """The number of rows of the given index."""

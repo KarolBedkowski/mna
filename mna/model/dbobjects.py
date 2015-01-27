@@ -86,6 +86,20 @@ class Group(BaseModelMixin, Base):
     oid = Column(Integer, primary_key=True)
     name = Column(Unicode)
 
+    @hybrid_property
+    def unread(self):
+        return orm.object_session(self).query(Article).\
+            join(Source).\
+            filter(Source.group_id == self.oid, Article.read == 0).\
+            count()
+
+    @unread.expression
+    def unread(cls):
+        return select([func.count(Article.oid)]).\
+            where(and_(Article.source_id == Source.oid, Article.read == 0,
+                       Source.group_id == cls.oid)).\
+            label('unread_count')
+
     def is_valid(self):
         return bool(self.name)
 
@@ -187,7 +201,7 @@ class Source(BaseModelMixin, Base):
 
     @unread.expression
     def unread(cls):
-        return select([func.count(Article)]).\
+        return select([func.count(Article.oid)]).\
             where(and_(Article.source_id == cls.oid, Article.read == 0)).\
             label('unread_count')
 
