@@ -197,13 +197,15 @@ def toggle_articles_read(articles_oid):
     art1 = db.get_one(DBO.Article, session=sess, oid=articles_oid[0])
     read = art1.read = not art1.read
     yield art1
-    for art_oid in articles_oid[1:]:
-        art = db.get_one(DBO.Article, session=sess, oid=art_oid)
-        if art.read != read:
-            art.read = read
-            yield art
-
+    to_update = [res[0] for res
+                 in sess.query(DBO.Article.oid).
+                 filter(DBO.Article.oid.in_(articles_oid[1:]),
+                        DBO.Article.read != read).all()]
+    sess.query(DBO.Article).filter(DBO.Article.oid.in_(to_update)).\
+        update({'read': read}, synchronize_session=False)
     sess.commit()
+    for art in sess.query(DBO.Article).filter(DBO.Article.oid.in_(to_update)):
+        yield art
 
 
 def toggle_articles_starred(articles_oid):
