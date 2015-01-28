@@ -332,15 +332,19 @@ class WndMain(QtGui.QMainWindow):
                    node.oid)
         self._ui.table_articles.selectionModel().clearSelection()
         unread_only = self._ui.show_unread_action.isChecked()
+        session = db.Session()
         if isinstance(node, _models.SourceTreeNode):
-            articles = larts.get_articles_by_source(node.oid, unread_only)
+            articles = larts.get_articles_by_source(node.oid, unread_only,
+                                                    session=session)
         elif isinstance(node, _models.GroupTreeNode):
-            articles = larts.get_articles_by_group(node.oid, unread_only)
+            articles = larts.get_articles_by_group(node.oid, unread_only,
+                                                   session=session)
         elif isinstance(node, _models.SpecialTreeNode):
             if node.oid == _models.SPECIAL_ALL:
-                articles = larts.get_all_articles(unread_only)
+                articles = larts.get_all_articles(unread_only, session=session)
             elif node.oid == _models.SPECIAL_STARRED:
-                articles = larts.get_starred_articles(False)
+                articles = larts.get_starred_articles(False,
+                                                      session=session)
             else:
                 raise RuntimeError("invalid special tree item: %r", node)
         else:

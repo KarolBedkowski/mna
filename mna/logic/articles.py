@@ -22,7 +22,8 @@ from mna import plugins
 _LOG = logging.getLogger(__name__)
 
 
-def get_articles_by_group(group_oid, unread_only=False, sorting=None):
+def get_articles_by_group(group_oid, unread_only=False, sorting=None,
+                          session=None):
     """ Get list articles for all sources in current group.
 
     Args:
@@ -36,7 +37,7 @@ def get_articles_by_group(group_oid, unread_only=False, sorting=None):
     _LOG.debug('get_articles_by_group(%r, %r, %r)', group_oid, unread_only,
                sorting)
     assert isinstance(group_oid, (int, long)), "Invalid argument"
-    session = db.Session()
+    session = session or db.Session()
     articles = session.query(DBO.Article).\
                 join(DBO.Article.source).\
                 filter(DBO.Source.group_id == group_oid)
@@ -49,7 +50,8 @@ def get_articles_by_group(group_oid, unread_only=False, sorting=None):
     return list(articles)
 
 
-def get_articles_by_source(source_oid, unread_only=False, sorting=None):
+def get_articles_by_source(source_oid, unread_only=False, sorting=None,
+                           session=None):
     """ Get list articles for source. If `unread_only` filter articles by
         `read` flag.
 
@@ -64,7 +66,7 @@ def get_articles_by_source(source_oid, unread_only=False, sorting=None):
     _LOG.debug('get_articles_by_source(%r, %r, %r)', source_oid, unread_only,
                sorting)
     assert isinstance(source_oid, (int, long)), "Invalid argument"
-    session = db.Session()
+    session = session or db.Session()
     articles = session.query(DBO.Article).\
         filter(DBO.Article.source_id == source_oid)
     if unread_only:
@@ -76,7 +78,7 @@ def get_articles_by_source(source_oid, unread_only=False, sorting=None):
     return list(articles)
 
 
-def get_all_articles(unread_only=False, sorting=None):
+def get_all_articles(unread_only=False, sorting=None, session=None):
     """ Get list of all articles for source. If `unread_only` filter articles by
         `read` flag.
 
@@ -88,7 +90,7 @@ def get_all_articles(unread_only=False, sorting=None):
         list of Article objects
     """
     _LOG.debug('get_all_articles(%r, %r)', unread_only, sorting)
-    session = db.Session()
+    session = session or db.Session()
     articles = session.query(DBO.Article)
     if unread_only:
         articles = articles.filter(DBO.Article.read == 0)
@@ -99,7 +101,7 @@ def get_all_articles(unread_only=False, sorting=None):
     return list(articles)
 
 
-def get_starred_articles(unread_only=False, sorting=None):
+def get_starred_articles(unread_only=False, sorting=None, session=None):
     """ Get list of starred articles for source. If `unread_only` filter
     articles by `read` flag.
 
@@ -111,7 +113,7 @@ def get_starred_articles(unread_only=False, sorting=None):
         list of Article objects
     """
     _LOG.debug('get_starred_articles(%r, %r)', unread_only, sorting)
-    session = db.Session()
+    session = session = db.Session()
     articles = session.query(DBO.Article).filter(DBO.Article.starred == 1)
     if unread_only:
         articles = articles.filter(DBO.Article.read == 0)
