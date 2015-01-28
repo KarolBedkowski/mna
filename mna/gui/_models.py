@@ -247,7 +247,9 @@ class ListItem(object):
         self.update(src)
 
     def update(self, src):
-        if not src.read:
+        if src.read:
+            self.font = QtCore.QVariant()
+        else:
             self.font = QtGui.QFont()
             self.font.setBold(True)
         self.color = _score_to_color(src.score)
