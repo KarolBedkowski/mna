@@ -90,7 +90,11 @@ class GroupTreeNode(TreeNode):
 
         :param oid: id object to update
         """
-        self.caption, self.unread = groups.get_group_info(session, self.oid)
+        if recursive:
+            self.caption, self.unread = groups.get_group_info(
+                session, self.oid)
+        else:
+            self.unread = sum(cld.unread for cld in self.children)
 
 
 class SourceTreeNode(TreeNode):
