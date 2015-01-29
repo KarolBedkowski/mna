@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>910</width>
-    <height>674</height>
+    <height>673</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -109,7 +109,7 @@
    <addaction name="menuArticles"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QToolBar" name="tb_mark_read">
+  <widget class="QToolBar" name="toolbar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -123,6 +123,7 @@
    <addaction name="separator"/>
    <addaction name="a_mark_read"/>
    <addaction name="a_show_all"/>
+   <addaction name="separator"/>
   </widget>
   <action name="a_update">
    <property name="icon">

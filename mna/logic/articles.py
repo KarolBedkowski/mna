@@ -11,7 +11,7 @@ __version__ = "2014-06-15"
 import logging
 import datetime
 
-from sqlalchemy import func, orm
+from sqlalchemy import func, orm, or_
 
 from mna.lib import appconfig
 from mna.model import db
@@ -263,4 +263,18 @@ def get_starred_count(session=None):
     """ Count all starred articles """
     session = session or db.Session()
     res = session.query(DBO.Article.oid).filter_by(starred=1).count()
+    return res
+
+
+def search_text(text, session=None):
+    text = text.strip()
+    if not text:
+        return []
+    text = '%' + text.lower().replace('%', '%%') + '%'
+    session = session or db.Session()
+    res = session.query(DBO.Article).\
+        filter(or_(func.lower(DBO.Article.title).like(text),
+                   func.lower(DBO.Article.summary).like(text),
+                   func.lower(DBO.Article.content).like(text),
+                   func.lower(DBO.Article.author).like(text)))
     return res

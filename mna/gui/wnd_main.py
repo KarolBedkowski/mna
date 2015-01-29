@@ -64,6 +64,13 @@ class WndMain(QtGui.QMainWindow):
         # handle links
         self._ui.article_view.page().setLinkDelegationPolicy(
             QtWebKit.QWebPage.DelegateAllLinks)
+
+        # add search field to toolbar
+        self._t_search = QtGui.QLineEdit(self)
+        self._t_search.setPlaceholderText(self.tr("Search"))
+        self._t_search.setMaximumWidth(200)
+        self._ui.toolbar.addWidget(self._t_search)
+
         self._bind()
         self._set_window_pos_size()
         self._ui.table_articles.sortByColumn(4, QtCore.Qt.AscendingOrder)
@@ -91,6 +98,7 @@ class WndMain(QtGui.QMainWindow):
 
         self._ui.a_show_all.triggered.\
                 connect(self._on_show_unread_action)
+        self._t_search.returnPressed.connect(self._on_search_return)
 
     def closeEvent(self, event):
         self._save_window_pos_size()
@@ -325,6 +333,12 @@ class WndMain(QtGui.QMainWindow):
         node = self.selected_tree_item
         self._show_articles(node)
 
+    def _on_search_return(self):
+        # switch to search item
+        index = self._tree_model.index(2, 0, None)
+        model = self._ui.tree_subscriptions.selectionModel()
+        model.setCurrentIndex(index, QtGui.QItemSelectionModel.ClearAndSelect)
+
     def _show_articles(self, node):
         _LOG.debug("WndMain._show_articles(%r(oid=%r))", type(node),
                    node.oid)
@@ -343,6 +357,9 @@ class WndMain(QtGui.QMainWindow):
             elif node.oid == _models.SPECIAL_STARRED:
                 articles = larts.get_starred_articles(False,
                                                       session=session)
+            elif node.oid == _models.SPECIAL_SEARCH:
+                text = self._t_search.text()
+                articles = list(larts.search_text(text, session))
             else:
                 raise RuntimeError("invalid special tree item: %r", node)
         else:
@@ -409,7 +426,7 @@ class WndMain(QtGui.QMainWindow):
         # try to go to next group
         curr_row = item.row()
         root = self._tree_model.root
-        for row in range(curr_row + 1, len(root)) + range(2, curr_row - 1):
+        for row in range(curr_row + 1, len(root)) + range(3, curr_row - 1):
             if root.child_at_row(row).unread:
                 index = self._tree_model.index(row, 0, None)
                 model.setCurrentIndex(

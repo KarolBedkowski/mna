@@ -108,6 +108,7 @@ class SourceTreeNode(TreeNode):
 
 SPECIAL_STARRED = -1
 SPECIAL_ALL = -2
+SPECIAL_SEARCH = -3
 
 
 class SpecialTreeNode(TreeNode):
@@ -142,6 +143,8 @@ class TreeModel(QtCore.QAbstractItemModel):
         self._starred = SpecialTreeNode(self.root, "Starred", SPECIAL_STARRED)
         self._starred.update(session)
         self.root.children.append(self._starred)
+        self.root.children.append(SpecialTreeNode(
+            self.root, "Search", SPECIAL_SEARCH))
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(self.root, group_oid, group_name)
