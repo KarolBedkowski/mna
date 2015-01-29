@@ -82,9 +82,9 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="action_preferences"/>
+    <addaction name="a_preferences"/>
     <addaction name="separator"/>
-    <addaction name="action_exit"/>
+    <addaction name="a_exit"/>
    </widget>
    <widget class="QMenu" name="menu_add">
     <property name="title">
@@ -97,17 +97,19 @@
     <property name="title">
      <string>Articles</string>
     </property>
-    <addaction name="mark_all_read_action"/>
+    <addaction name="a_update"/>
+    <addaction name="separator"/>
+    <addaction name="a_mark_read"/>
     <addaction name="action_toggle_selected_articles_read"/>
     <addaction name="separator"/>
-    <addaction name="show_unread_action"/>
+    <addaction name="a_show_all"/>
    </widget>
    <addaction name="menu_file"/>
-   <addaction name="menuArticles"/>
    <addaction name="menu_add"/>
+   <addaction name="menuArticles"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QToolBar" name="tool_bar">
+  <widget class="QToolBar" name="tb_mark_read">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -117,21 +119,31 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_refresh"/>
+   <addaction name="a_update"/>
+   <addaction name="separator"/>
+   <addaction name="a_mark_read"/>
+   <addaction name="a_show_all"/>
   </widget>
-  <action name="action_refresh">
+  <action name="a_update">
    <property name="icon">
     <iconset resource="resources.qrc">
      <normaloff>:/main/reload.svg</normaloff>:/main/reload.svg</iconset>
    </property>
    <property name="text">
-    <string>Refresh</string>
+    <string>Update</string>
    </property>
    <property name="toolTip">
     <string>Refresh all subscriptions</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
   </action>
-  <action name="action_exit">
+  <action name="a_exit">
+   <property name="icon">
+    <iconset theme="exit" resource="resources.qrc">
+     <normaloff>:/main/exit.svg</normaloff>:/main/exit.svg</iconset>
+   </property>
    <property name="text">
     <string>Exit</string>
    </property>
@@ -144,33 +156,9 @@
     <string>Add group</string>
    </property>
   </action>
-  <action name="add_rss_action">
-   <property name="text">
-    <string>Add RSS</string>
-   </property>
-  </action>
   <action name="add_src_action">
    <property name="text">
-    <string>Add Source</string>
-   </property>
-  </action>
-  <action name="mark_all_read_action">
-   <property name="text">
-    <string>Mark &amp;all read</string>
-   </property>
-   <property name="shortcut">
-    <string>Alt+A</string>
-   </property>
-  </action>
-  <action name="show_unread_action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Show unread only</string>
+    <string>Add source</string>
    </property>
   </action>
   <action name="action_toggle_selected_articles_read">
@@ -181,9 +169,44 @@
     <string>Alt+R</string>
    </property>
   </action>
-  <action name="action_preferences">
+  <action name="a_preferences">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/preferences-system.svg</normaloff>:/main/preferences-system.svg</iconset>
+   </property>
    <property name="text">
     <string>Preferences</string>
+   </property>
+  </action>
+  <action name="a_mark_read">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/mark_read.svg</normaloff>:/main/mark_read.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Mark read</string>
+   </property>
+   <property name="shortcut">
+    <string>M</string>
+   </property>
+  </action>
+  <action name="a_show_all">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/art_read_hide.svg</normaloff>
+     <normalon>:/main/art_read_show.svg</normalon>
+     <disabledon>:/main/art_read_show.svg</disabledon>
+     <activeon>:/main/art_read_show.svg</activeon>
+     <selectedon>:/main/art_read_show.svg</selectedon>:/main/art_read_hide.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Show all articles</string>
+   </property>
+   <property name="toolTip">
+    <string>Show all articles</string>
    </property>
   </action>
  </widget>
@@ -197,5 +220,22 @@
  <resources>
   <include location="resources.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>a_exit</sender>
+   <signal>activated()</signal>
+   <receiver>WndMain</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>454</x>
+     <y>336</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

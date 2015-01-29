@@ -70,11 +70,10 @@ class WndMain(QtGui.QMainWindow):
         self._restore_expanded_tree_nodes()
 
     def _bind(self):
-        self._ui.action_refresh.triggered.connect(self._on_action_refresh)
+        self._ui.a_update.triggered.connect(self._on_action_refresh)
         self._ui.action_toggle_selected_articles_read.triggered.\
                 connect(self._on_toggle_read_action)
-        self._ui.action_preferences.triggered.\
-                connect(self._on_action_preferences)
+        self._ui.a_preferences.triggered.connect(self._on_action_preferences)
         self._ui.tree_subscriptions.selectionModel().selectionChanged.connect(
             self._on_tree_selection_changed)
         self._ui.table_articles.selectionModel().\
@@ -85,13 +84,12 @@ class WndMain(QtGui.QMainWindow):
         self._ui.add_src_action.triggered.connect(self._on_add_src_action)
         self._ui.article_view.linkClicked.connect(self._on_article_view_link)
         # handle article list selection changes
-        self._ui.mark_all_read_action.triggered.\
-                connect(self._on_mark_all_read_action)
+        self._ui.a_mark_read.triggered.connect(self._on_mark_all_read_action)
         messenger.MESSENGER.source_updated.connect(self._on_source_updated)
         messenger.MESSENGER.group_updated.connect(self._on_group_updated)
         messenger.MESSENGER.announce.connect(self._on_announce)
 
-        self._ui.show_unread_action.triggered.\
+        self._ui.a_show_all.triggered.\
                 connect(self._on_show_unread_action)
 
     def closeEvent(self, event):
@@ -331,7 +329,7 @@ class WndMain(QtGui.QMainWindow):
         _LOG.debug("WndMain._show_articles(%r(oid=%r))", type(node),
                    node.oid)
         self._ui.table_articles.selectionModel().clearSelection()
-        unread_only = self._ui.show_unread_action.isChecked()
+        unread_only = not self._ui.a_show_all.isChecked()
         session = db.Session()
         if isinstance(node, _models.SourceTreeNode):
             articles = larts.get_articles_by_source(node.oid, unread_only,
