@@ -62,32 +62,26 @@ class RssSource(base.AbstractSource):
         if not url:
             return []
 
-        _LOG.info("RssSource.get_items from %r", url)
+        _LOG.info("RssSource: src=%d get_items from %r", self.cfg.oid, url)
         doc = feedparser.parse(url)
         if not doc or doc.get('status') >= 400:
             self.cfg.add_log('error', "Error loading RSS feed: " +
                              doc.get('status'))
-            _LOG.error("RssSource: error getting items from %s, %r, %r",
-                       url, doc, self.cfg)
+            _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
+                       self.cfg.oid, url, doc, self.cfg)
             raise base.GetArticleException("Get rss feed error: %r" %
                                            doc.get('status'))
 
-        last_refreshed = self.cfg.last_refreshed
-        if last_refreshed and (self.cfg.max_articles_to_load > 0 or
-                               (self.cfg.max_articles_to_load == 0 and
-                                max_load > 0)):
-            max_age_to_load = self.cfg.max_age_to_load or max_age_load
-            # if max_age_to_load defined - set limit last_refreshed
-            last_refreshed = \
-                    max(last_refreshed,
-                        datetime.datetime.now() -
-                        datetime.timedelta(days=max_age_to_load))
-
+        min_date_to_load = self._get_min_date_to_load(max_age_load)
+        _LOG.debug("RssSource: src=%d min_date_to_load=%s", self.cfg.oid,
+                   min_date_to_load)
         articles = filter(None,
-                          (self._create_article(feed, session, last_refreshed)
+                          (self._create_article(feed, session,
+                                                min_date_to_load)
                            for feed in doc.get('entries') or []))
 
-        _LOG.debug("RssSource: loaded %d articles", len(articles))
+        _LOG.debug("RssSource: src=%d loaded %d articles",
+                   self.cfg.oid, len(articles))
         if not articles:
             self.cfg.add_log('info', "Not found new articles")
             return []
@@ -97,19 +91,22 @@ class RssSource(base.AbstractSource):
                 (self.cfg.max_articles_to_load == 0 and max_load > 0):
             max_articles_to_load = self.cfg.max_articles_to_load or max_load
             if len(articles) > max_articles_to_load:
-                _LOG.debug("WebSource: loaded >max_articles - truncating")
+                _LOG.debug("RssSource: src=%d loaded >max_articles - "
+                           "truncating", self.cfg.oid)
                 articles = articles[-max_articles_to_load:]
                 self.cfg.add_log('info',
                                  "Loaded only %d articles (limit)." %
                                  len(articles))
         return articles
 
-    def _create_article(self, feed, session, last_refreshed):
+    def _create_article(self, feed, session, min_date_to_load):
         published = _ts2datetime(feed.get('published_parsed'))
         updated = _ts2datetime(feed.get('updated_parsed'))
         updated = updated or published or datetime.datetime.now()
-        if last_refreshed and updated < last_refreshed:
-            return None
+        if min_date_to_load and updated < min_date_to_load:
+            _LOG.debug("RssSource: src=%d updated=%s < min_date_to_load=%s",
+                       self.cfg.oid, updated, min_date_to_load)
+            # return None
 
         internal_id = feed.get('id') or \
                 DBO.Article.compute_id(feed.get('link'),
@@ -120,9 +117,11 @@ class RssSource(base.AbstractSource):
                          source_id=self.cfg.oid,
                          internal_id=internal_id)
         if art:
-            _LOG.debug("Article already in db: %r", internal_id)
+            _LOG.debug("RssSource: src=%d Article already in db: %r",
+                       self.cfg.oid, internal_id)
             if art.updated > updated:
-                _LOG.debug("Article is not updated, skipping")
+                _LOG.debug("RssSource: src=%d Article is not updated, "
+                           "skipping", self.cfg.oid)
                 return None
 
         art = art or DBO.Article()
@@ -135,3 +134,22 @@ class RssSource(base.AbstractSource):
         art.published = published or datetime.datetime.now()
         art.link = feed.get('link')
         return art
+
+    def _get_min_date_to_load(self, global_max_age):
+        min_date_to_load = self.cfg.last_refreshed
+        max_age_to_load = self.cfg.max_age_to_load
+
+        if max_age_to_load == 0:  # use global settings
+            max_age_to_load = global_max_age
+        elif max_age_to_load == -1:  # no limit; use last refresh
+            return min_date_to_load
+
+        if max_age_to_load:  # limit exists
+            limit = datetime.datetime.now() - datetime.timedelta(
+                days=max_age_to_load)
+            if min_date_to_load:
+                min_date_to_load = max(limit, min_date_to_load)
+            else:
+                min_date_to_load = limit
+
+        return min_date_to_load
