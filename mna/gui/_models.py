@@ -132,6 +132,12 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.root = TreeNode(None, 'root', -1, -1)
         self._starred = None
         self.refresh()
+        # special group position
+        self.specials = {
+            SPECIAL_ALL: 0,
+            SPECIAL_STARRED: 1,
+            SPECIAL_SEARCH: 2,
+        }
 
     def refresh(self):
         """ Refresh whole tree model from database. """

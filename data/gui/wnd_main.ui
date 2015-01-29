@@ -20,12 +20,12 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QTreeView" name="tree_subscriptions"/>
+      <widget class="QTreeView" name="tv_subs"/>
       <widget class="QSplitter" name="splitter">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QTableView" name="table_articles">
+       <widget class="QTableView" name="tv_articles">
         <property name="alternatingRowColors">
          <bool>true</bool>
         </property>
@@ -90,8 +90,8 @@
     <property name="title">
      <string>Add</string>
     </property>
-    <addaction name="add_group_action"/>
-    <addaction name="add_src_action"/>
+    <addaction name="a_add_group"/>
+    <addaction name="a_add_source"/>
    </widget>
    <widget class="QMenu" name="menuArticles">
     <property name="title">
@@ -100,7 +100,7 @@
     <addaction name="a_update"/>
     <addaction name="separator"/>
     <addaction name="a_mark_read"/>
-    <addaction name="action_toggle_selected_articles_read"/>
+    <addaction name="a_toggle_sel_articles_read"/>
     <addaction name="separator"/>
     <addaction name="a_show_all"/>
    </widget>
@@ -152,17 +152,17 @@
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="add_group_action">
+  <action name="a_add_group">
    <property name="text">
     <string>Add group</string>
    </property>
   </action>
-  <action name="add_src_action">
+  <action name="a_add_source">
    <property name="text">
     <string>Add source</string>
    </property>
   </action>
-  <action name="action_toggle_selected_articles_read">
+  <action name="a_toggle_sel_articles_read">
    <property name="text">
     <string>Toggle selected articles read</string>
    </property>
