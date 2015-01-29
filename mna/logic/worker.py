@@ -36,7 +36,7 @@ class Worker(QtCore.QRunnable):
         QtCore.QRunnable.__init__(self)
         self.source_id = source_id
         self.aconf = appconfig.AppConfig()
-        self._p_name = "Worker%d" % id(self)
+        self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
 
     def run(self):
         session = db.Session()
@@ -47,7 +47,7 @@ class Worker(QtCore.QRunnable):
         # find pluign
         source_cls = plugins.SOURCES.get(source_cfg.name)
         if not source_cls:
-            _LOG.error("%s: unknown source: %s in %r", self._p_name,
+            _LOG.error("%s unknown source: %s in %r", self._p_name,
                        source_cls, source_cfg)
             source_cfg.enabled = False
             _on_error(session, source_cfg, "unknown source")
@@ -75,20 +75,20 @@ class Worker(QtCore.QRunnable):
                             if source_cfg.conf.get('filter.use_default_score') \
                             else source_cfg.conf.get('filter.min_score', 0)
                         if score < min_score:
-                            _LOG.debug('%s: article %r to low score (min: %d)',
+                            _LOG.debug('%s article %r to low score (min: %d)',
                                        self._p_name, article, min_score)
                             continue
 
                 session.merge(article)
         except base.GetArticleException, err:
             # some processing error occurred
-            _LOG.exception("%s: Load articles from %s/%s error: %r",
+            _LOG.exception("%s Load articles from %s/%s error: %r",
                            self._p_name, source_cfg.name, source_cfg.title,
                            err)
             _on_error(session, source_cfg, str(err))
             return 0
         else:
-            _LOG.debug("%s: Loaded %d from %s/%s", self._p_name, cnt,
+            _LOG.debug("%s Loaded %d from %s/%s", self._p_name, cnt,
                        source_cfg.name, source_cfg.title)
         now = datetime.datetime.now()
         source_cfg.next_refresh = now + \
@@ -97,13 +97,13 @@ class Worker(QtCore.QRunnable):
         session.commit()
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
                       cnt)
-        _LOG.debug("%s: finished", self._p_name)
+        _LOG.debug("%s finished", self._p_name)
 
     def _load_filters(self, source_cfg, session):
         for fltr in source_cfg.get_filters():
             fltr_cls = plugins.FILTERS.get(fltr.name)
             if not fltr_cls:
-                _LOG.error("%s: unknown filter: %s in %r", self._p_name,
+                _LOG.error("%s unknown filter: %s in %r", self._p_name,
                            fltr.name, fltr.oid)
                 _on_error(session, source_cfg, "unknown filter")
                 return
