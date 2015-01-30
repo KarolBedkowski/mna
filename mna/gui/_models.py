@@ -245,11 +245,15 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def index(self, row, column, parent):
         """Creates an index in the model for a given node and returns it."""
-        branch = self.node_from_index(parent)
+        assert parent is None or isinstance(parent, QtCore.QModelIndex), \
+            "Invalid parent argument: %r" % parent
+        branch = self.root if not parent else self.node_from_index(parent)
         return self.createIndex(row, column, branch.child_at_row(row))
 
     def node_from_index(self, index):
         """Retrieves the tree node with a given index."""
+        assert isinstance(index, QtCore.QModelIndex), \
+            "Invalid index argument: %r" % index
         if index and index.isValid():
             return index.internalPointer()
         return self.root
