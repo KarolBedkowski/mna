@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """ Dialog - information about source.
 
-Copyright (c) Karol Będkowski, 2014
+Copyright (c) Karol Będkowski, 2014-2015
 
 This file is part of mna
 Licence: GPLv2+
 """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2013-04-28"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-30"
 
 import logging
 
@@ -34,7 +34,6 @@ class DlgSourceInfo(QtGui.QDialog):
         self._ui = dlg_source_info_ui.Ui_DlgSourceInfo()
         self._ui.setupUi(self)
         self._setup(source_oid)
-        self._bind()
 
     def _setup(self, source_oid):
         session = db.Session()
@@ -77,6 +76,3 @@ class DlgSourceInfo(QtGui.QDialog):
         self._ui.lv_logs.resizeColumnToContents(0)
         self._ui.lv_logs.resizeColumnToContents(1)
         self._ui.lv_logs.resizeColumnToContents(2)
-
-    def _bind(self):
-        pass

@@ -79,6 +79,27 @@ class TreeNode(object):
             return font
         return QtCore.QVariant()
 
+    def get_first_unread(self, start=0, wrap=True, skip=0):
+        """ Find first child with unread articles.
+
+        Args:
+            start (int): start searching from given row
+            wrap (bool): if start > 0 also search in previous rows
+            skip (int): optional, skips first `skip` rows
+
+        Return:
+            (row number, node)
+        """
+        assert start < len(self.children), 'Invalid start pos: %d' % start
+        for row, child in enumerate(self.children[start:], start):
+            if child.unread:
+                return row, child
+        if wrap:
+            for row, child in enumerate(self.children[skip:start], skip):
+                if child.unread:
+                    return row, child
+        return None, None
+
 
 class GroupTreeNode(TreeNode):
     """ Group node """
@@ -132,6 +153,12 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.root = TreeNode(None, 'root', -1, -1)
         self._starred = None
         self.refresh()
+        # special group position
+        self.specials = {
+            SPECIAL_ALL: 0,
+            SPECIAL_STARRED: 1,
+            SPECIAL_SEARCH: 2,
+        }
 
     def refresh(self):
         """ Refresh whole tree model from database. """
@@ -218,11 +245,15 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def index(self, row, column, parent):
         """Creates an index in the model for a given node and returns it."""
-        branch = self.node_from_index(parent)
+        assert parent is None or isinstance(parent, QtCore.QModelIndex), \
+            "Invalid parent argument: %r" % parent
+        branch = self.root if not parent else self.node_from_index(parent)
         return self.createIndex(row, column, branch.child_at_row(row))
 
     def node_from_index(self, index):
         """Retrieves the tree node with a given index."""
+        assert isinstance(index, QtCore.QModelIndex), \
+            "Invalid index argument: %r" % index
         if index and index.isValid():
             return index.internalPointer()
         return self.root

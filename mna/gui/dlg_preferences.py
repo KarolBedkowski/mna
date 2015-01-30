@@ -9,7 +9,7 @@ Licence: GPLv2+
 
 __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2015"
-__version__ = "2015-01-12"
+__version__ = "2015-01-30"
 
 import logging
 
@@ -84,8 +84,7 @@ class DlgPreferences(QtGui.QDialog):
         aconf['articles.max_age_load'] = self_ui.sb_max_age_load.value()
         aconf['articles.keep_older'] = self_ui.sb_art_keep_age.value()
         aconf['articles.keep_num'] = self_ui.sb_art_keep_num.value()
-        aconf['articles.update_interval'] = \
-                self_ui.sb_update_interval.value()
+        aconf['articles.update_interval'] = self_ui.sb_update_interval.value()
         aconf['filter.min_score'] = self_ui.sp_minial_score.value()
         aconf['view.base_css'] = self_ui.t_base_css.toPlainText()
         return True

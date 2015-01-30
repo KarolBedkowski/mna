@@ -126,7 +126,10 @@ class RssSource(base.AbstractSource):
 
         art = art or DBO.Article()
         art.internal_id = internal_id
-        art.content = feed.get('value')
+        if 'content' in feed:
+            art.content = feed.content[0].value
+        else:
+            art.content = feed.get('value')
         art.summary = feed.get('summary')
         art.score = self.cfg.initial_score
         art.title = feed.get('title')
