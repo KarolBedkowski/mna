@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """ Main application window.
 
-Copyright (c) Karol Będkowski, 2014
+Copyright (c) Karol Będkowski, 2014-2015
 
 This file is part of mna
 Licence: GPLv2+
 """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2013-04-28"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-30"
 
 import logging
 
@@ -34,7 +34,6 @@ class DlgEditGroup(QtGui.QDialog):
         QtGui.QDialog.__init__(self, parent)
         self._ui = dlg_edit_group_ui. Ui_DlgEditGroup()
         self._ui.setupUi(self)
-        self._bind()
         if group_oid:
             group = db.get_one(DBO.Group, oid=group_oid)
             self.setWindowTitle("Edit %s Group" % group.name)
@@ -44,30 +43,26 @@ class DlgEditGroup(QtGui.QDialog):
         self._group = group
         self._to_window()
 
-    def _bind(self):
-        self._ui.cancel_btn.clicked.connect(self._on_btn_cancel)
-        self._ui.add_btn.clicked.connect(self._on_btn_add)
+    def done(self, result):
+        if result != QtGui.QDialog.Accepted:
+            return QtGui.QDialog.done(self, result)
 
-    def _on_btn_cancel(self):
-        self.close()
-
-    def _on_btn_add(self):
         try:
             self._validate()
         except _validators.ValidationError, err:
-            QtGui.QMessageBox.information(self, self.tr("Validation error"),
-                                          self.tr("Please correct field ") +
-                                          str(err))
+            QtGui.QMessageBox.information(
+                self, self.tr("Validation error"),
+                self.tr("Please correct field ") + unicode(err))
             return
         self._from_window()
         try:
             groups.save_group(self._group)
         except groups.GroupSaveError, err:
-            QtGui.QMessageBox.information(self, self.tr("Validation error"),
-                                          self.tr("Error saving group: ") +
-                                          unicode(err))
+            QtGui.QMessageBox.information(
+                self, self.tr("Validation error"),
+                self.tr("Error saving group: ") + unicode(err))
             return
-        self.accept()
+        return QtGui.QDialog.done(self, result)
 
     def _to_window(self):
         self._ui.name_edit.setText(self._group.name or '')
@@ -76,5 +71,4 @@ class DlgEditGroup(QtGui.QDialog):
         self._group.name = unicode(self._ui.name_edit.text()).strip()
 
     def _validate(self):
-        _validators.validate_empty_string(self._ui.name_edit,
-                                          "name")
+        _validators.validate_empty_string(self._ui.name_edit, "name")
