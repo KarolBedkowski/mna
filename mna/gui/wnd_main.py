@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 """ Main application window.
 
-Copyright (c) Karol Będkowski, 2014
+Copyright (c) Karol Będkowski, 2014-2015
 
 This file is part of mna
 Licence: GPLv2+
 """
 
 __author__ = u"Karol Będkowski"
-__copyright__ = u"Copyright (c) Karol Będkowski, 2014"
-__version__ = "2013-04-28"
+__copyright__ = u"Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-30"
 
 import os
 import sys
-import gettext
 import logging
 import webbrowser
 
@@ -32,7 +31,6 @@ from mna.model import db
 from mna.logic import groups, sources, articles as larts
 from mna.common import messenger
 
-_ = gettext.gettext
 _LOG = logging.getLogger(__name__)
 
 assert resources_rc

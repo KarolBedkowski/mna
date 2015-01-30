@@ -36,7 +36,6 @@ class WzdAddSrc(QtGui.QWizard):
         self._ui = wzd_add_src_ui.Ui_WizardAddSource()
         self._ui.setupUi(self)
         self._setup()
-        self._bind()
 
     def _setup(self):
         self._curr_src_frame = None
@@ -48,11 +47,8 @@ class WzdAddSrc(QtGui.QWizard):
         self._frm_edit_main = frm_sett_main.FrmSettMain(self)
         self._ui.l_main_opt.addWidget(self._frm_edit_main)
         aconf = appconfig.AppConfig()
-        self._ui.e_interval.\
-                setValue(aconf.get('articles.update_interval', 60))
-
-    def _bind(self):
-        pass
+        self._ui.e_interval.setValue(
+            aconf.get('articles.update_interval', 60))
 
     def initializePage(self, page):
         if page == 1:  # source specific settings

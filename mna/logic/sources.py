@@ -4,8 +4,8 @@
 """ Sources logic """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-15"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-30"
 
 
 import logging
@@ -70,6 +70,7 @@ def force_refresh_all():
 
 
 def get_source_info(session, source_oid):
+    """ Get title and unread count for source. """
     session = session or db.Session()
     title, unread = session.query(DBO.Source.title, DBO.Source.unread).\
         filter(DBO.Source.oid == source_oid).first()

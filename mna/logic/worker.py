@@ -4,8 +4,8 @@
 """ Worker """
 
 __author__ = u"Karol Będkowski"
-__copyright__ = u"Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-15"
+__copyright__ = u"Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-30"
 
 import logging
 import datetime
