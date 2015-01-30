@@ -87,8 +87,6 @@ class SimplePresenter(object):
         result.extend(_sp_build_author(article))
         result.extend(_sp_build_published(article))
         result.append('</header>')
-        if article.summary and article.content:
-            result.append("<p><i>" + article.summary + r"</i></p>")
         if article.summary or article.content:
             result.append("<article><p>" + (article.content or article.summary)
                           + r"</p></article>")
