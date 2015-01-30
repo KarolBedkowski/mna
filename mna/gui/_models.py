@@ -79,6 +79,27 @@ class TreeNode(object):
             return font
         return QtCore.QVariant()
 
+    def get_first_unread(self, start=0, wrap=True, skip=0):
+        """ Find first child with unread articles.
+
+        Args:
+            start (int): start searching from given row
+            wrap (bool): if start > 0 also search in previous rows
+            skip (int): optional, skips first `skip` rows
+
+        Return:
+            (row number, node)
+        """
+        assert start < len(self.children), 'Invalid start pos: %d' % start
+        for row, child in enumerate(self.children[start:], start):
+            if child.unread:
+                return row, child
+        if wrap:
+            for row, child in enumerate(self.children[skip:start], skip):
+                if child.unread:
+                    return row, child
+        return None, None
+
 
 class GroupTreeNode(TreeNode):
     """ Group node """

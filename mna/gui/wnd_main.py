@@ -243,7 +243,8 @@ class WndMain(QtGui.QMainWindow):
             sources_to_mark = [(child.oid, node.oid)
                                for child in node.children]
         else:
-            raise RuntimeError("invalid object type %r", node)
+            self._select_next_unread_source()
+            return
         updated, src_updated = sources.mark_source_read(
             [src[0] for src in sources_to_mark])
         # when updated - emit signals for refresh tree/list
@@ -404,21 +405,28 @@ class WndMain(QtGui.QMainWindow):
             # try to find next unread node in this group
             curr_row = curr_index.row()
             group = item.parent
-            for row in (range(curr_row + 1, len(group)) +
-                        range(0, curr_row - 1)):
-                if group.child_at_row(row).unread:
-                    index = self._subs_model.index(row, 0,
-                                                   curr_index.parent())
-                    model.setCurrentIndex(
-                        index, QtGui.QItemSelectionModel.ClearAndSelect)
-                    return
-            item = group
-        # try to go to next group
-        curr_row = item.row()
-        root = self._subs_model.root
-        for row in range(curr_row + 1, len(root)) + range(3, curr_row - 1):
-            if root.child_at_row(row).unread:
-                index = self._subs_model.index(row, 0, None)
+            row, node = group.get_first_unread(curr_row)
+            if row is not None:
+                index = self._subs_model.index(row, 0, curr_index.parent())
                 model.setCurrentIndex(
                     index, QtGui.QItemSelectionModel.ClearAndSelect)
                 return
+            # select first unread source in next group
+            sel_group = group.row()
+            row, group = self._subs_model.root.get_first_unread(
+                sel_group, True, 3)
+            if row is not None:
+                # found group with unread articles, select first unread source
+                row, node = group.get_first_unread()
+                assert row is not None, 'found unread group but no sources'
+                index = self._subs_model.createIndex(row, 0, node)
+                model.setCurrentIndex(
+                    index, QtGui.QItemSelectionModel.ClearAndSelect)
+            return
+        # try to go to next group
+        curr_row = item.row()
+        row, _ = self._subs_model.root.get_first_unread(curr_row, True, 3)
+        if row is not None:
+            index = self._subs_model.index(row, 0, None)
+            model.setCurrentIndex(
+                index, QtGui.QItemSelectionModel.ClearAndSelect)
