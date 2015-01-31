@@ -280,8 +280,10 @@ class WndMain(QtGui.QMainWindow):
         dlg.exec_()
 
     def _on_action_show_all(self):
-        node = self._selected_subscription
-        self._show_articles(node)
+        unread_only = not self._ui.a_show_all.isChecked()
+        model = self._arts_list_model
+        model.set_data_source(unread_only=unread_only)
+        model.refresh()
 
     def _on_search_return(self):
         # switch to search item
@@ -308,13 +310,11 @@ class WndMain(QtGui.QMainWindow):
             return
         self._subs_model.update_source(source_id, group_id)
         # refresh article list when updated source is displayed
-        node = self._selected_subscription
-        if node is None:
-            return
-        if isinstance(node, subs_model.SourceTreeNode) and source_id == node.oid:
-            self._show_articles(node)
-        elif isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
-            self._show_articles(node)
+        model = self._arts_list_model
+        if model.ds_kind == arts_model.DS_SOURCE and model.ds_oid == source_id:
+            self._arts_list_model.refresh()
+        elif model.ds_kind == arts_model.DS_GROUP and model.ds_oid == group_id:
+            self._arts_list_model.refresh()
 
     @QtCore.pyqtSlot(unicode)
     def _on_announce(self, message):
@@ -329,7 +329,7 @@ class WndMain(QtGui.QMainWindow):
         if node is None:
             return
         if isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
-            self._show_articles(node)
+            self._arts_list_model.refresh()
 
     def _refresh_tree(self):
         """ Refresh tree; keep expanded nodes """
@@ -341,26 +341,25 @@ class WndMain(QtGui.QMainWindow):
         _LOG.debug("WndMain._show_articles(%r(oid=%r))", type(node), node.oid)
         self._ui.tv_articles.selectionModel().clearSelection()
         unread_only = not self._ui.a_show_all.isChecked()
-        session = db.Session()
+        model = self._arts_list_model
         if isinstance(node, subs_model.SourceTreeNode):
-            articles = larts.get_articles_by_source(
-                node.oid, unread_only, session=session)
+            model.set_data_source(arts_model.DS_SOURCE, node.oid, unread_only)
         elif isinstance(node, subs_model.GroupTreeNode):
-            articles = larts.get_articles_by_group(
-                node.oid, unread_only, session=session)
+            model.set_data_source(arts_model.DS_GROUP, node.oid, unread_only)
         elif isinstance(node, subs_model.SpecialTreeNode):
             if node.oid == subs_model.SPECIAL_ALL:
-                articles = larts.get_all_articles(unread_only, session=session)
+                model.set_data_source(arts_model.DS_ALL, None, unread_only)
             elif node.oid == subs_model.SPECIAL_STARRED:
-                articles = larts.get_starred_articles(False, session=session)
+                model.set_data_source(arts_model.DS_STARRED)
             elif node.oid == subs_model.SPECIAL_SEARCH:
                 text = self._t_search.text()
-                articles = list(larts.search_text(text, session))
+                model.set_data_source(arts_model.DS_SEARCH, text)
             else:
                 raise RuntimeError("invalid special tree item: %r", node)
         else:
             raise RuntimeError("invalid tree item: %r", node)
-        self._arts_list_model.set_items(articles)
+        session = db.Session()
+        model.refresh(session)
         self._ui.tv_articles.resizeColumnsToContents()
 
     def _set_window_pos_size(self):

@@ -16,6 +16,8 @@ import logging
 
 from PyQt4 import QtCore, QtGui
 
+from mna.logic import articles
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -55,6 +57,13 @@ class ListItem(object):
         return self._cols[col]
 
 
+DS_SOURCE = 1
+DS_GROUP = 2
+DS_STARRED = 3
+DS_ALL = 4
+DS_SEARCH = 4
+
+
 class ListModel(QtCore.QAbstractTableModel):
 
     _HEADERS = ("R.", "S.", "Source", "Title", "Date", "Score")
@@ -62,11 +71,42 @@ class ListModel(QtCore.QAbstractTableModel):
     def __init__(self, parent=None):
         super(ListModel, self).__init__(parent)
         self.items = []
+        self.clear()
 
-    def set_items(self, items):
-        _LOG.debug("ListModel.set_items(len=%d)", len(items))
+    def clear(self):
+        self.ds_kind = None
+        self.ds_oid = None
+        self.ds_unread_only = False
+
+    def set_data_source(self, kind=None, oid=None, unread_only=None):
+        _LOG.info("set_data_source: %r, %r, %r", kind, oid, unread_only)
+        if kind is not None:
+            self.ds_kind = kind
+        if oid is not None:
+            self.ds_oid = oid
+        if unread_only is not None:
+            self.ds_unread_only = unread_only
+
+    def refresh(self, session=None, scroll_to_unread=None):
+        """ Refresh all items according to data sources. """
         self.layoutAboutToBeChanged.emit()
-        self.items = [ListItem(item) for item in items]
+        arts = []
+        if self.ds_kind == DS_SOURCE:
+            arts = articles.get_articles_by_source(
+                self.ds_oid, self.ds_unread_only, session=session)
+        elif self.ds_kind == DS_GROUP:
+            arts = articles.get_articles_by_group(
+                self.ds_oid, self.ds_unread_only, session=session)
+        elif self.ds_kind == DS_ALL:
+            arts = articles.get_all_articles(self.ds_unread_only,
+                                             session=session)
+        elif self.ds_kind == DS_STARRED:
+            arts = articles.get_starred_articles(False, session=session)
+        elif self.ds_kind == DS_SEARCH:
+            arts = articles.search_text(self.ds_oid, session=session)
+        else:
+            raise RuntimeError("invalid ds_kind=%r" % self.ds_kind)
+        self.items = [ListItem(item) for item in arts]
         self.layoutChanged.emit()
 
     def update_item(self, item):
