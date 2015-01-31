@@ -293,7 +293,15 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         index = self._subs_model.get_index_of_special(
             subs_model.SPECIAL_SEARCH)
         model = self._ui.tv_subs.selectionModel()
-        model.setCurrentIndex(index, QtGui.QItemSelectionModel.ClearAndSelect)
+        if model.currentIndex() == index:
+            text = self._t_search.text()
+            amodel = self._arts_list_model
+            amodel.set_data_source(arts_model.DS_SEARCH, text)
+            session = db.Session()
+            amodel.refresh(session)
+        else:
+            model.setCurrentIndex(
+                index, QtGui.QItemSelectionModel.ClearAndSelect)
 
     def _on_art_link_clicked(self, url):
         url = unicode(url.toString())

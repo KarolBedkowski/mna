@@ -64,7 +64,7 @@ DS_SOURCE = 1
 DS_GROUP = 2
 DS_STARRED = 3
 DS_ALL = 4
-DS_SEARCH = 4
+DS_SEARCH = 5
 
 
 class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
