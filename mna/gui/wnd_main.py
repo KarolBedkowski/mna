@@ -18,7 +18,7 @@ import webbrowser
 
 from PyQt4 import QtGui, QtWebKit, QtCore
 
-from mna.gui import _models
+from mna.gui._models import arts_model, subs_model
 from mna.gui import resources_rc
 from mna.gui import wnd_main_ui
 from mna.gui import dlg_edit_group
@@ -52,10 +52,10 @@ class WndMain(QtGui.QMainWindow):
     def _setup_ui(self):
         # models
         # group & sources tree
-        self._subs_model = _models.TreeModel()
+        self._subs_model = subs_model.TreeModel()
         self._ui.tv_subs.setModel(self._subs_model)
         # articles list with sorting proxy
-        self._arts_list_model = _models.ListModel()
+        self._arts_list_model = arts_model.ListModel()
         self._list_model_proxy = QtGui.QSortFilterProxyModel(self)
         self._list_model_proxy.setSourceModel(self._arts_list_model)
         self._ui.tv_articles.setModel(self._list_model_proxy)
@@ -130,7 +130,7 @@ class WndMain(QtGui.QMainWindow):
     def _on_subs_contextmenu(self, position):
         """ Show context menu for subscriptions tree """
         selected = self._selected_subscription
-        if isinstance(selected, _models.SpecialTreeNode):
+        if isinstance(selected, subs_model.SpecialTreeNode):
             # no menu on special nodes
             return
         menu = QtGui.QMenu()
@@ -138,21 +138,21 @@ class WndMain(QtGui.QMainWindow):
                 connect(self._on_subs_cmenu_edit)
         menu.addAction(self.tr("Delete")).triggered.\
                 connect(self._on_subs_cmenu_del)
-        if isinstance(selected, _models.SourceTreeNode):
+        if isinstance(selected, subs_model.SourceTreeNode):
             menu.addAction(self.tr("Info")).triggered.\
                     connect(self._on_subs_cmenu_info)
         menu.exec_(self._ui.tv_subs.viewport(). mapToGlobal(position))
 
     def _on_subs_cmenu_edit(self):
         node = self._selected_subscription
-        assert node and not isinstance(node, _models.SpecialTreeNode), \
+        assert node and not isinstance(node, subs_model.SpecialTreeNode), \
             'Invalid node'
-        if isinstance(node, _models.SourceTreeNode):
+        if isinstance(node, subs_model.SourceTreeNode):
             dlg = dlg_source_edit.DlgSourceEdit(self, node.oid)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 messenger.MESSENGER.emit_source_updated(
                     dlg.source.oid, dlg.source.group_id)
-        elif isinstance(node, _models.GroupTreeNode):
+        elif isinstance(node, subs_model.GroupTreeNode):
             dlg = dlg_edit_group.DlgEditGroup(self, node.oid)
             if dlg.exec_() == QtGui.QDialog.Accepted:
                 messenger.MESSENGER.emit_group_updated(node.oid)
@@ -161,7 +161,7 @@ class WndMain(QtGui.QMainWindow):
 
     def _on_subs_cmenu_del(self):
         node = self._selected_subscription
-        assert node and not isinstance(node, _models.SpecialTreeNode), \
+        assert node and not isinstance(node, subs_model.SpecialTreeNode), \
             'Invalid node'
         if QtGui.QMessageBox.question(self, self.tr("Delete"),
                                       self.tr("Delete selected item?"),
@@ -173,10 +173,10 @@ class WndMain(QtGui.QMainWindow):
         model = self._ui.tv_subs.selectionModel()
         model.clearSelection()
 
-        if isinstance(node, _models.SourceTreeNode):
+        if isinstance(node, subs_model.SourceTreeNode):
             if sources.delete_source(node.oid):
                 self._refresh_tree()
-        elif isinstance(node, _models.GroupTreeNode):
+        elif isinstance(node, subs_model.GroupTreeNode):
             if groups.delete_group(node.oid):
                 self._refresh_tree()
         else:
@@ -184,7 +184,7 @@ class WndMain(QtGui.QMainWindow):
 
     def _on_subs_cmenu_info(self):
         node = self._selected_subscription
-        if node is None or not isinstance(node, _models.SourceTreeNode):
+        if node is None or not isinstance(node, subs_model.SourceTreeNode):
             return
         dlg = dlg_source_info.DlgSourceInfo(self, node.oid)
         dlg.exec_()
@@ -235,9 +235,9 @@ class WndMain(QtGui.QMainWindow):
         node = self._selected_subscription
         if node is None:
             return
-        if isinstance(node, _models.SourceTreeNode):
+        if isinstance(node, subs_model.SourceTreeNode):
             sources_to_mark = [(node.oid, node.parent.oid)]
-        elif isinstance(node, _models.GroupTreeNode):
+        elif isinstance(node, subs_model.GroupTreeNode):
             sources_to_mark = [(child.oid, node.oid)
                                for child in node.children]
         else:
@@ -282,7 +282,7 @@ class WndMain(QtGui.QMainWindow):
 
     def _on_search_return(self):
         # switch to search item
-        row = self._subs_model.specials[_models.SPECIAL_SEARCH]
+        row = self._subs_model.specials[subs_model.SPECIAL_SEARCH]
         index = self._subs_model.index(row, 0, None)
         model = self._ui.tv_subs.selectionModel()
         model.setCurrentIndex(index, QtGui.QItemSelectionModel.ClearAndSelect)
@@ -304,9 +304,9 @@ class WndMain(QtGui.QMainWindow):
         node = self._selected_subscription
         if node is None:
             return
-        if isinstance(node, _models.SourceTreeNode) and source_id == node.oid:
+        if isinstance(node, subs_model.SourceTreeNode) and source_id == node.oid:
             self._show_articles(node)
-        elif isinstance(node, _models.GroupTreeNode) and group_id == node.oid:
+        elif isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
             self._show_articles(node)
 
     @QtCore.pyqtSlot(unicode)
@@ -321,7 +321,7 @@ class WndMain(QtGui.QMainWindow):
         node = self._selected_subscription
         if node is None:
             return
-        if isinstance(node, _models.GroupTreeNode) and group_id == node.oid:
+        if isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
             self._show_articles(node)
 
     def _refresh_tree(self):
@@ -335,18 +335,18 @@ class WndMain(QtGui.QMainWindow):
         self._ui.tv_articles.selectionModel().clearSelection()
         unread_only = not self._ui.a_show_all.isChecked()
         session = db.Session()
-        if isinstance(node, _models.SourceTreeNode):
+        if isinstance(node, subs_model.SourceTreeNode):
             articles = larts.get_articles_by_source(
                 node.oid, unread_only, session=session)
-        elif isinstance(node, _models.GroupTreeNode):
+        elif isinstance(node, subs_model.GroupTreeNode):
             articles = larts.get_articles_by_group(
                 node.oid, unread_only, session=session)
-        elif isinstance(node, _models.SpecialTreeNode):
-            if node.oid == _models.SPECIAL_ALL:
+        elif isinstance(node, subs_model.SpecialTreeNode):
+            if node.oid == subs_model.SPECIAL_ALL:
                 articles = larts.get_all_articles(unread_only, session=session)
-            elif node.oid == _models.SPECIAL_STARRED:
+            elif node.oid == subs_model.SPECIAL_STARRED:
                 articles = larts.get_starred_articles(False, session=session)
-            elif node.oid == _models.SPECIAL_SEARCH:
+            elif node.oid == subs_model.SPECIAL_SEARCH:
                 text = self._t_search.text()
                 articles = list(larts.search_text(text, session))
             else:
@@ -399,7 +399,7 @@ class WndMain(QtGui.QMainWindow):
         model = self._ui.tv_subs.selectionModel()
         curr_index = model.currentIndex()
         item = self._subs_model.node_from_index(curr_index)
-        if isinstance(item, _models.SourceTreeNode):
+        if isinstance(item, subs_model.SourceTreeNode):
             # try to find next unread node in this group
             curr_row = curr_index.row()
             group = item.parent
