@@ -211,16 +211,26 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
 
     def _on_art_sel_changed(self, _index):
         """ Handle article selection -  show article in HtmlView. """
+        session = db.Session()
+        if self._current_article:
+            # mark previous article read
+            a_oid = self._current_article.oid
+            article = larts.mark_article_read(a_oid, session)
+            self._arts_list_model.update_item(article)
+
         item = self._selected_article
         _LOG.debug("_on_art_sel_changed %r", item.oid)
-        session = db.Session()
         article, content = larts.get_article_content(
-            item.oid, True, session=session)
-        self._current_article = article
+            item.oid, False, session=session)
         self._ui.article_view.setHtml(content)
-        self._arts_list_model.update_item(article)
         self._subs_model.update_source(
             article.source_id, article.source.group_id)
+        if self._current_article:
+            pre_a = self._current_article
+            if pre_a.source_id != article.source_id:
+                self._subs_model.update_source(
+                    pre_a.source_id, pre_a.source.group_id)
+        self._current_article = article
 
     def _on_action_update(self):  # pylint: disable=no-self-use
         sources.force_refresh_all()
