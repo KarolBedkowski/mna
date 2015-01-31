@@ -18,6 +18,7 @@ import logging
 from PyQt4 import QtCore, QtGui
 
 from mna.logic import articles
+from mna.model import db
 
 _LOG = logging.getLogger(__name__)
 
@@ -91,12 +92,13 @@ class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
         if unread_only is not None:
             self.ds_unread_only = unread_only
 
-    def refresh(self, session=None):
+    def refresh(self):
         """ Refresh all items according to data sources. """
         _LOG.info("refresh: %r, %r, %r", self.ds_kind, self.ds_oid,
                   self.ds_unread_only)
         self.layoutAboutToBeChanged.emit()  # pylint: disable=no-member
         arts = []
+        session = db.Session()
         if self.ds_kind == DS_SOURCE:
             arts = articles.get_articles_by_source(
                 self.ds_oid, self.ds_unread_only, session=session)

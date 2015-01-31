@@ -297,8 +297,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             text = self._t_search.text()
             amodel = self._arts_list_model
             amodel.set_data_source(arts_model.DS_SEARCH, text)
-            session = db.Session()
-            amodel.refresh(session)
+            amodel.refresh()
         else:
             model.setCurrentIndex(
                 index, QtGui.QItemSelectionModel.ClearAndSelect)
@@ -369,8 +368,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
                 raise RuntimeError("invalid special tree item: %r", node)
         else:
             raise RuntimeError("invalid tree item: %r", node)
-        session = db.Session()
-        model.refresh(session)
+        model.refresh()
         self._ui.tv_articles.resizeColumnsToContents()
 
     def _set_window_pos_size(self):
