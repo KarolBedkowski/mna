@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=invalid-name
 """ Qt models - subscriptions and groups models
 
 Copyright (c) Karol Będkowski, 2014-2015
@@ -9,10 +10,11 @@ Licence: GPLv2+
 
 __author__ = u"Karol Będkowski"
 __copyright__ = u"Copyright (c) Karol Będkowski, 2014-2015"
-__version__ = "2013-04-28"
+__version__ = "2015-01-31"
 
 
 import logging
+import weakref
 
 from PyQt4 import QtCore, QtGui
 
@@ -22,23 +24,20 @@ from mna.logic import groups, sources, articles
 _LOG = logging.getLogger(__name__)
 
 
-ID_ROLE = QtCore.Qt.UserRole + 1
+ID_ROLE = QtCore.Qt.UserRole + 1  # pylint:disable=no-member
 
 
-class TreeNode(object):
+class _TreeNode(object):
     def __init__(self, parent, caption=None, oid=None, unread=None):
         self.clear()
-        self.parent = parent
+        self.parent = weakref.proxy(parent) if parent else None
         self.caption = caption
         self.oid = oid
         self.unread = unread
 
-    def __len__(self):
-        return len(self.children)
-
     def __str__(self):
         if self.unread:
-            return self.caption + " (" + str(self.unread) + ")"
+            return self.caption + "  (" + str(self.unread) + ")"
         return self.caption
 
     def __repr__(self):
@@ -53,19 +52,13 @@ class TreeNode(object):
         """ Get count of unread articles in subtree. """
         return self.unread
 
-    def update(self, session=None, recursive=False):
-        pass
-
-    def get_child(self, oid):
+    def find_child_by_oid(self, oid):
         for child in self.children:
             if child.oid == oid:
                 return child
-        _LOG.error("TreeNode.get_child(oid=%r) not found in %r", oid, self)
+        _LOG.error("_TreeNode.find_child_by_oid(oid=%r) not found in %r",
+                   oid, self)
         return None
-
-    def child_at_row(self, row):
-        """The row-th child of this node."""
-        return self.children[row]
 
     def row(self):
         """The position of this node in the parent's list of children."""
@@ -73,10 +66,10 @@ class TreeNode(object):
 
     def get_font(self):
         if self.unread:
-            font = QtGui.QFont()
+            font = QtGui.QFont()  # pylint:disable=no-member
             font.setBold(True)
             return font
-        return QtCore.QVariant()
+        return QtCore.QVariant()  # pylint:disable=no-member
 
     def get_first_unread(self, start=0, wrap=True, skip=0):
         """ Find first child with unread articles.
@@ -100,29 +93,27 @@ class TreeNode(object):
         return None, None
 
 
-class GroupTreeNode(TreeNode):
+class GroupTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, group_oid, group_name):
         super(GroupTreeNode, self).__init__(parent, group_name, group_oid)
 
-    def update(self, session=None, recursive=False):
-        """ Update node or find children and update when found.
+    def update(self, session=None):
+        """ Update group caption and unread counter from database. """
+        self.caption, self.unread = groups.get_group_info(session, self.oid)
 
-        :param oid: id object to update
-        """
-        if recursive:
-            self.caption, self.unread = groups.get_group_info(
-                session, self.oid)
-        else:
-            self.unread = sum(cld.unread for cld in self.children)
+    def update_unread(self):
+        """ Update unread items count from children. """
+        self.unread = sum(cld.unread for cld in self.children)
 
 
-class SourceTreeNode(TreeNode):
+class SourceTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, title, oid, unread):
         super(SourceTreeNode, self).__init__(parent, title, oid, unread)
 
-    def update(self, session=None, _recursive=False):
+    def update(self, session=None):
+        """ Update source caption and unread counter from database. """
         self.caption, self.unread = sources.get_source_info(session, self.oid)
 
 
@@ -131,74 +122,88 @@ SPECIAL_ALL = -2
 SPECIAL_SEARCH = -3
 
 
-class SpecialTreeNode(TreeNode):
+class SpecialTreeNode(_TreeNode):
     """Special node (all nodes, stared, etc). """
     def __init__(self, parent, title, sid):
         super(SpecialTreeNode, self).__init__(parent, title, sid)
 
-    def update(self, session, _recursive=False):
+    def update(self, session):
         if self.oid == SPECIAL_STARRED:
             self.unread = articles.get_starred_count(session)
 
     def get_font(self):
-        return QtCore.QVariant()
+        return QtCore.QVariant()  # pylint:disable=no-member
 
 
-class TreeModel(QtCore.QAbstractItemModel):
+class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
     """ Groups & sources tree model.
     """
     def __init__(self, parent=None):
-        super(TreeModel, self).__init__(parent)
-        self.root = TreeNode(None, 'root', -1, -1)
+        # pylint:disable=no-member
+        QtCore.QAbstractItemModel.__init__(self, parent)
+        self.root = _TreeNode(None, 'root', -1, -1)
         self._starred = None
+        self._specials_pos = {}
+        self._specials = {}
         self.refresh()
-        # special group position
-        self.specials = {
-            SPECIAL_ALL: 0,
-            SPECIAL_STARRED: 1,
-            SPECIAL_SEARCH: 2,
-        }
 
-    def refresh(self):
+    def _create_specials(self, root):
+        """ Create special groups """
+
+        def append_special(caption, oid):
+            node = SpecialTreeNode(root, caption, oid)
+            root.children.append(node)
+            self._specials[oid] = node
+            self._specials_pos[oid] = len(root.children) - 1
+
+        append_special("All", SPECIAL_ALL)
+        append_special("Starred", SPECIAL_STARRED)
+        append_special("Search", SPECIAL_SEARCH)
+
+    def refresh(self, session=None):
         """ Refresh whole tree model from database. """
-        self.layoutAboutToBeChanged.emit()
+        self.layoutAboutToBeChanged.emit()  # pylint:disable=no-member
         self.root.clear()
-        session = db.Session()
-        self.root.children.append(SpecialTreeNode(
-            self.root, "All", SPECIAL_ALL))
-        self._starred = SpecialTreeNode(self.root, "Starred", SPECIAL_STARRED)
-        self._starred.update(session)
-        self.root.children.append(self._starred)
-        self.root.children.append(SpecialTreeNode(
-            self.root, "Search", SPECIAL_SEARCH))
+        session = session or db.Session()
+        self._create_specials(self.root)
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(self.root, group_oid, group_name)
             obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
                             for s_oid, s_title, s_unread in group]
-            obj.unread = sum(cld.unread for cld in obj.children)
+            obj.update_unread()
             self.root.children.append(obj)
-        self.layoutChanged.emit()
+        self.update_specials(session)
+        self.layoutChanged.emit()  # pylint:disable=no-member
 
     def update_group(self, group_id, session=None):
-        self.layoutAboutToBeChanged.emit()
-        child = self.root.get_child(group_id)
+        self.layoutAboutToBeChanged.emit()  # pylint:disable=no-member
+        child = self.root.find_child_by_oid(group_id)
         if child is not None:
-            child.update(session, True)
-        self.layoutChanged.emit()
+            child.update(session)
+        self.layoutChanged.emit()  # pylint:disable=no-member
 
     def update_source(self, source_id, group_id, session=None):
-        self.layoutAboutToBeChanged.emit()
-        group = self.root.get_child(group_id)
+        self.layoutAboutToBeChanged.emit()  # pylint:disable=no-member
+        group = self.root.find_child_by_oid(group_id)
         assert group is not None
-        source = group.get_child(source_id)
+        source = group.find_child_by_oid(source_id)
         assert source is not None, 'cant find source %r in tree model' % \
             source_id
-        source.update(session, False)
-        group.update(session, False)
-        self._starred.update(session)
-        self.layoutChanged.emit()
+        source.update(session)
+        group.update_unread()
+        self.update_specials(session)
+        self.layoutChanged.emit()  # pylint:disable=no-member
 
+    def update_specials(self, session):
+        for spec in self._specials.itervalues():
+            spec.update(session)
+
+    def get_index_of_special(self, special_id):
+        row = self._specials_pos[special_id]
+        return self.index(row, 0, None)
+
+    # pylint:disable=no-member
     def data(self, index, role):
         """Returns the data stored under the given role for the item referred
            to by the index."""
@@ -212,11 +217,12 @@ class TreeModel(QtCore.QAbstractItemModel):
             return self.node_from_index(index).oid
         return QtCore.QVariant()
 
-    def setData(self, index, value, role=QtCore.Qt.DisplayRole):
+    # pylint:disable=no-member,no-self-use
+    def setData(self, _index, _value, _role=None):
         """Sets the role data for the item at index to value."""
         return False
 
-    def headerData(self, section, orientation, role):
+    def headerData(self, _section, orientation, role):
         """Returns the data for the given role and section in the header
            with the specified orientation."""
         if orientation == QtCore.Qt.Horizontal and \
@@ -224,17 +230,17 @@ class TreeModel(QtCore.QAbstractItemModel):
             return QtCore.QVariant('Title')
         return QtCore.QVariant()
 
-    def flags(self, index):
+    def flags(self, _index):
         """Returns the item flags for the given index. """
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
-    def columnCount(self, parent):
+    def columnCount(self, _parent):
         """The number of columns for the children of the given index."""
         return 1
 
     def rowCount(self, parent):
         """The number of rows of the given index."""
-        return len(self.node_from_index(parent))
+        return len(self.node_from_index(parent).children)
 
     def hasChildren(self, index):
         """Finds out if a node has children."""
@@ -247,7 +253,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         assert parent is None or isinstance(parent, QtCore.QModelIndex), \
             "Invalid parent argument: %r" % parent
         branch = self.root if not parent else self.node_from_index(parent)
-        return self.createIndex(row, column, branch.child_at_row(row))
+        return self.createIndex(row, column, branch.children[row])
 
     def node_from_index(self, index):
         """Retrieves the tree node with a given index."""

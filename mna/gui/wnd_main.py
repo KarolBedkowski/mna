@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=invalid-name
 """ Main application window.
 
 Copyright (c) Karol Będkowski, 2014-2015
@@ -37,21 +38,23 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class WndMain(QtGui.QMainWindow):
+# pylint: disable=too-few-public-methods
+class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
     """ Main Window class. """
 
     def __init__(self, parent=None):
-        QtGui.QMainWindow.__init__(self, parent)
+        QtGui.QMainWindow.__init__(self, parent)  # pylint: disable=no-member
         self._appconfig = AppConfig()
         self._current_article = None
         self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
-        self._setup_ui()
+        self._setup()
         self._bind()
         self._set_window_pos_size()
         self._restore_expanded_tree_nodes()
 
-    def _setup_ui(self):
+    # pylint: disable=no-member
+    def _setup(self):
         # models
         # group & sources tree
         self._subs_model = subs_model.TreeModel()
@@ -165,10 +168,10 @@ class WndMain(QtGui.QMainWindow):
         node = self._selected_subscription
         assert node and not isinstance(node, subs_model.SpecialTreeNode), \
             'Invalid node'
-        if QtGui.QMessageBox.question(self, self.tr("Delete"),
-                                      self.tr("Delete selected item?"),
-                                      QtGui.QMessageBox.Yes,
-                                      QtGui.QMessageBox.No) \
+        if QtGui.QMessageBox.question(
+                self, self.tr("Delete"),
+                self.tr("Delete selected item?"),
+                QtGui.QMessageBox.Yes, QtGui.QMessageBox.No) \
                 == QtGui.QMessageBox.No:
             return
 
@@ -206,7 +209,7 @@ class WndMain(QtGui.QMainWindow):
             self._subs_model.update_source(
                 article.source_id, article.source.group_id)
 
-    def _on_art_sel_changed(self, index):
+    def _on_art_sel_changed(self, _index):
         """ Handle article selection -  show article in HtmlView. """
         item = self._selected_article
         _LOG.debug("_on_art_sel_changed %r", item.oid)
@@ -219,7 +222,7 @@ class WndMain(QtGui.QMainWindow):
         self._subs_model.update_source(
             article.source_id, article.source.group_id)
 
-    def _on_action_update(self):
+    def _on_action_update(self):  # pylint: disable=no-self-use
         sources.force_refresh_all()
 
     def _on_action_add_group(self):
@@ -287,8 +290,8 @@ class WndMain(QtGui.QMainWindow):
 
     def _on_search_return(self):
         # switch to search item
-        row = self._subs_model.specials[subs_model.SPECIAL_SEARCH]
-        index = self._subs_model.index(row, 0, None)
+        index = self._subs_model.get_index_of_special(
+            subs_model.SPECIAL_SEARCH)
         model = self._ui.tv_subs.selectionModel()
         model.setCurrentIndex(index, QtGui.QItemSelectionModel.ClearAndSelect)
 

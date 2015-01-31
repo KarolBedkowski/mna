@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=invalid-name
 """ Qt models - article list
 
 Copyright (c) Karol Będkowski, 2014-2015
@@ -26,15 +27,17 @@ class ListItem(object):
 
     def __init__(self, src):
         self.oid = src.oid
-        self.font = QtCore.QVariant()
-        self.color = QtCore.QVariant()
+        self._cols = []
+        self.font = QtCore.QVariant()  # pylint: disable=no-member
+        self.color = QtCore.QVariant()  # pylint: disable=no-member
         self.update(src)
 
+    # pylint: disable=no-member
     def update(self, src):
         if src.read:
-            self.font = QtCore.QVariant()
+            self.font = QtCore.QVariant()  # pylint: disable=no-member
         else:
-            self.font = QtGui.QFont()
+            self.font = QtGui.QFont()  # pylint: disable=no-member
             self.font.setBold(True)
         self.color = _score_to_color(src.score)
         self._cols = [
@@ -64,12 +67,13 @@ DS_ALL = 4
 DS_SEARCH = 4
 
 
-class ListModel(QtCore.QAbstractTableModel):
+class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
 
     _HEADERS = ("R.", "S.", "Source", "Title", "Date", "Score")
 
     def __init__(self, parent=None):
-        super(ListModel, self).__init__(parent)
+        # pylint: disable=no-member
+        QtCore.QAbstractTableModel.__init__(self, parent)
         self.items = []
         self.clear()
 
@@ -87,9 +91,11 @@ class ListModel(QtCore.QAbstractTableModel):
         if unread_only is not None:
             self.ds_unread_only = unread_only
 
-    def refresh(self, session=None, scroll_to_unread=None):
+    def refresh(self, session=None):
         """ Refresh all items according to data sources. """
-        self.layoutAboutToBeChanged.emit()
+        _LOG.info("refresh: %r, %r, %r", self.ds_kind, self.ds_oid,
+                  self.ds_unread_only)
+        self.layoutAboutToBeChanged.emit()  # pylint: disable=no-member
         arts = []
         if self.ds_kind == DS_SOURCE:
             arts = articles.get_articles_by_source(
@@ -107,28 +113,31 @@ class ListModel(QtCore.QAbstractTableModel):
         else:
             raise RuntimeError("invalid ds_kind=%r" % self.ds_kind)
         self.items = [ListItem(item) for item in arts]
-        self.layoutChanged.emit()
+        self.layoutChanged.emit()  # pylint: disable=no-member
 
     def update_item(self, item):
         for row, itm in enumerate(self.items):
             if itm.oid == item.oid:
                 itm.update(item)
+                # pylint: disable=no-member
                 self.dataChanged.emit(self.index(row, 0), self.index(row, 3))
                 return True
         return False
 
-    def rowCount(self, parent=QtCore.QModelIndex()):
+    def rowCount(self, _parent=None):
         return len(self.items)
 
-    def columnCount(self, parent):
+    def columnCount(self, _parent):  # pylint: disable=no-self-use
         return 6
 
+    # pylint: disable=no-member
     def headerData(self, col, orientation, role):
         if orientation == QtCore.Qt.Horizontal and \
                 role == QtCore.Qt.DisplayRole:
             return QtCore.QVariant(self._HEADERS[col])
         return QtCore.QVariant()
 
+    # pylint: disable=no-member
     def data(self, index, role):
         if not index.isValid():
             return QtCore.QVariant()
@@ -144,6 +153,7 @@ class ListModel(QtCore.QAbstractTableModel):
         return self.items[index.row()]
 
 
+# pylint: disable=no-member
 def _score_to_color(score):
     if score > 9:
         return QtGui.QColor(0, 0, 200)
