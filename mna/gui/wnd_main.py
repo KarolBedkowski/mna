@@ -15,6 +15,7 @@ import os
 import sys
 import logging
 import webbrowser
+import urllib2
 
 from PyQt4 import QtGui, QtWebKit, QtCore
 
@@ -42,6 +43,7 @@ class WndMain(QtGui.QMainWindow):
     def __init__(self, parent=None):
         QtGui.QMainWindow.__init__(self, parent)
         self._appconfig = AppConfig()
+        self._current_article = None
         self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
         self._setup_ui()
@@ -211,6 +213,7 @@ class WndMain(QtGui.QMainWindow):
         session = db.Session()
         article, content = larts.get_article_content(
             item.oid, True, session=session)
+        self._current_article = article
         self._ui.article_view.setHtml(content)
         self._arts_list_model.update_item(article)
         self._subs_model.update_source(
@@ -288,10 +291,14 @@ class WndMain(QtGui.QMainWindow):
         model.setCurrentIndex(index, QtGui.QItemSelectionModel.ClearAndSelect)
 
     def _on_art_link_clicked(self, url):
+        url = unicode(url.toString())
+        art_url = self._current_article.link
+        if art_url:
+            url = urllib2.urlparse.urljoin(art_url, url)
         if sys.platform.startswith('linux'):
-            os.popen('xdg-open "%s"' % unicode(url.toString()))
+            os.popen('xdg-open "%s"' % url)
         else:
-            webbrowser.open(unicode(url.toString()))
+            webbrowser.open(url)
 
     @QtCore.pyqtSlot(int, int)
     def _on_source_updated(self, source_id, group_id):
