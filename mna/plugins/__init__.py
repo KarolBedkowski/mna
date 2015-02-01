@@ -4,17 +4,18 @@
 """ Standard plugins """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-02"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-17"
 
 import pkgutil
 import logging
 
-from mna.plugins import _base as base
+from mna.model import base
 
 _LOG = logging.getLogger(__name__)
 MODULES = {}
 SOURCES = {}
+FILTERS = {}
 
 
 def load_plugins():
@@ -22,7 +23,7 @@ def load_plugins():
     if MODULES:
         return
     _LOG.info('Loading modules...')
-    _LOG.debug('Searching for standard modules...')
+    _LOG.debug('Searching for standard modules from %s... ', __path__[0])
     for modname, _ispkg in pkgutil.ImpImporter(__path__[0]).iter_modules():
         if modname.startswith('_') or modname.endswith('_support'):
             continue
@@ -30,32 +31,26 @@ def load_plugins():
             continue
         _LOG.debug('Loading module %s', modname)
         try:
-            __import__('.' + modname, fromlist=[modname])
-        except ImportError:
+            __import__(__package__ + '.' + modname, fromlist=[modname])
+        except (ImportError, ValueError):
             _LOG.exception("Load module %s error", modname)
 
-    SOURCES.update(_load_sources_from_subclass(base.BaseSource))
-    _LOG.info('Modules: %s', ', '.join(sorted(MODULES.keys())))
+    SOURCES.update(_load_sources_from_subclass(base.AbstractSource))
+    FILTERS.update(_load_sources_from_subclass(base.AbstractFilter))
+    _LOG.info('Sources: %s', ', '.join(sorted(SOURCES.keys())))
+    _LOG.info('Filters: %s', ', '.join(sorted(FILTERS.keys())))
 
 
 def _load_sources_from_subclass(base_class):
     for source_class in base_class.__subclasses__():
         if hasattr(source_class, 'DISABLED'):
             continue
-        name = source_class.__name__
         module = source_class.__module__
+        name = source_class.get_name()
         if name.startswith('Test') or module.endswith('_test') or \
                 module.endswith('_support'):
             continue
         _LOG.debug(' loading %s from %s', name, module)
-        try:
-            source_obj = source_class()
-            if name and not name.startswith('_'):
-                name = name.lower()
-                if name in MODULES:
-                    name = module + '.' + name
-                MODULES[name] = source_obj
-        except:
-            _LOG.exception('Loading %s from %s error', name, module)
-        else:
-            _load_sources_from_subclass(base_class)
+        yield (name, source_class)
+        if source_class.__subclasses__():
+            _load_sources_from_subclass(source_class)

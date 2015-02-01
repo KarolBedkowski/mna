@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>WndMain</class>
+ <widget class="QMainWindow" name="WndMain">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>910</width>
+    <height>673</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QSplitter" name="splitter_2">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QTreeView" name="tv_subs"/>
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="QTableView" name="tv_articles">
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::ExtendedSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
+        <property name="showGrid">
+         <bool>false</bool>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
+        </property>
+        <attribute name="horizontalHeaderVisible">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="horizontalHeaderCascadingSectionResizes">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>27</number>
+        </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderCascadingSectionResizes">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>20</number>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>10</number>
+        </attribute>
+       </widget>
+       <widget class="QWebView" name="article_view" native="true"/>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>910</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_file">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="a_preferences"/>
+    <addaction name="separator"/>
+    <addaction name="a_exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_add">
+    <property name="title">
+     <string>Add</string>
+    </property>
+    <addaction name="a_add_group"/>
+    <addaction name="a_add_source"/>
+   </widget>
+   <widget class="QMenu" name="menuArticles">
+    <property name="title">
+     <string>Articles</string>
+    </property>
+    <addaction name="a_update"/>
+    <addaction name="separator"/>
+    <addaction name="a_mark_read"/>
+    <addaction name="a_toggle_sel_articles_read"/>
+    <addaction name="separator"/>
+    <addaction name="a_show_all"/>
+   </widget>
+   <addaction name="menu_file"/>
+   <addaction name="menu_add"/>
+   <addaction name="menuArticles"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolbar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="a_update"/>
+   <addaction name="separator"/>
+   <addaction name="a_mark_read"/>
+   <addaction name="a_show_all"/>
+   <addaction name="separator"/>
+  </widget>
+  <action name="a_update">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/reload.svg</normaloff>:/main/reload.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Update</string>
+   </property>
+   <property name="toolTip">
+    <string>Refresh all subscriptions</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="a_exit">
+   <property name="icon">
+    <iconset theme="exit" resource="resources.qrc">
+     <normaloff>:/main/exit.svg</normaloff>:/main/exit.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Exit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="a_add_group">
+   <property name="text">
+    <string>Add group</string>
+   </property>
+  </action>
+  <action name="a_add_source">
+   <property name="text">
+    <string>Add source</string>
+   </property>
+  </action>
+  <action name="a_toggle_sel_articles_read">
+   <property name="text">
+    <string>Toggle selected articles read</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+R</string>
+   </property>
+  </action>
+  <action name="a_preferences">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/preferences-system.svg</normaloff>:/main/preferences-system.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Preferences</string>
+   </property>
+  </action>
+  <action name="a_mark_read">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/mark_read.svg</normaloff>:/main/mark_read.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Mark read</string>
+   </property>
+   <property name="shortcut">
+    <string>M</string>
+   </property>
+  </action>
+  <action name="a_show_all">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/main/art_read_hide.svg</normaloff>
+     <normalon>:/main/art_read_show.svg</normalon>
+     <disabledon>:/main/art_read_show.svg</disabledon>
+     <activeon>:/main/art_read_show.svg</activeon>
+     <selectedon>:/main/art_read_show.svg</selectedon>:/main/art_read_hide.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Show all articles</string>
+   </property>
+   <property name="toolTip">
+    <string>Show all articles</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QWebView</class>
+   <extends>QWidget</extends>
+   <header>QtWebKit/QWebView</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>a_exit</sender>
+   <signal>activated()</signal>
+   <receiver>WndMain</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>454</x>
+     <y>336</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

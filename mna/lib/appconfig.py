@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# pylint: disable-msg=C0103
+# pylint: disable=C0103
 """ Application configuration.
 
-Copyright (c) Karol Będkowski, 2007-2014
+Copyright (c) Karol Będkowski, 2007-2015
 
 This file is part of kPyLibs,mna
 
@@ -12,16 +12,18 @@ Foundation, version 2.
 """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-14"
+__copyright__ = "Copyright (c) Karol Będkowski, 2007-2015"
+__version__ = "2015-01-21"
 
 import sys
 import os
 import imp
 import logging
-import ConfigParser
-import base64
-import binascii
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from mna import configuration
 from mna.lib.singleton import Singleton
@@ -43,6 +45,8 @@ class AppConfig(Singleton):
         # pylint: disable=W0221
         _LOG.debug('AppConfig.__init__(%r, %r, %r)', filename, app_name,
                    main_dir)
+        self._defaults = {}
+        self.clear()
         self._user_home = os.path.expanduser('~')
         self.app_name = app_name
         self.main_is_frozen = is_frozen()
@@ -50,11 +54,32 @@ class AppConfig(Singleton):
         self.config_path = self._get_config_path(app_name)
         self.data_dir = self._get_data_dir()
         self._filename = os.path.join(self.config_path, filename)
-        self._config = ConfigParser.SafeConfigParser()
-        self.clear()
         _LOG.debug('AppConfig.__init__: frozen=%(main_is_frozen)r, '
                    'main_dir=%(main_dir)s, config=%(_filename)s, '
                    'data=%(data_dir)s', self.__dict__)
+
+    ###########################################################################
+
+    def __setitem__(self, key, value):
+        """ Set configuration value; if value == default value - remove. """
+        if key in self._defaults and value == self._defaults[key]:
+            if key in self._config:
+                del self._config[key]
+            return
+        self._config[key] = value
+
+    def __getitem__(self, key):
+        if key in self._config:
+            return self._config[key]
+        return self._defaults[key]
+
+    def __dellitem__(self, key):
+        self._config.__delitem__(key)
+
+    def get(self, key, default=None):
+        if key in self._config:
+            return self._config.get(key)
+        return self._defaults.get(key, default)
 
     ###########################################################################
 
@@ -65,12 +90,6 @@ class AppConfig(Singleton):
         self._runtime_params['DEBUG'] = value
 
     debug = property(_get_debug, _set_debug)
-
-    def r_set(self, key, value):
-        self._runtime_params[key] = value
-
-    def r_get(self, key, default=None):
-        self._runtime_params.get(key, default)
 
     ###########################################################################
 
@@ -93,36 +112,35 @@ class AppConfig(Singleton):
 
     def clear(self):
         """ Clear all data in object. """
-        self.last_open_files = []
-        for section in self._config.sections():
-            self._config.remove_section(section)
         self._runtime_params = {}
+        self._config = {}
 
     def load(self):
         """ Load application configuration file. """
-        if self.load_configuration_file(self._filename):
+        self._config = self.load_configuration_file(self._filename)
+        if self._config:
             self._after_load(self._config)
 
     def load_defaults(self, filename):
         """ Load default configuration file. """
         if filename:
-            self.load_configuration_file(filename)
+            self._defaults = self.load_configuration_file(filename)
 
-    def load_configuration_file(self, filename):
+    def load_configuration_file(self, filename):  # pylint:disable=no-self-use
         """ Load configuration file. """
         if not os.path.exists(filename):
             _LOG.warn("AppConfig.load_configuration_file: file %r not found",
                       filename)
-            return False
+            return {}
         _LOG.info('AppConfig.load_configuration_file: %r', filename)
+        conf = None
         try:
             with open(filename, 'r') as cfile:
-                self._config.readfp(cfile)
+                conf = json.load(cfile)
         except StandardError:
             _LOG.exception('AppConfig.load_configuration_file error')
-            return False
         _LOG.debug('AppConfig.load_configuration_file finished')
-        return True
+        return conf or {}
 
     def save(self):
         """ Save configuration. """
@@ -130,20 +148,10 @@ class AppConfig(Singleton):
         self._before_save(self._config)
         try:
             with open(self._filename, 'w') as cfile:
-                self._config.write(cfile)
+                json.dump(self._config, cfile)
         except StandardError:
             _LOG.exception('AppConfig.save error')
         _LOG.debug('AppConfig.save finished')
-
-    def add_last_open_file(self, filename):
-        """ Put filename into last files list.
-
-        Given filename is appended (moved if exists) on the beginning.
-        """
-        if filename in self.last_open_files:
-            self.last_open_files.remove(filename)
-        self.last_open_files.insert(0, filename)
-        self.last_open_files = self.last_open_files[:7]
 
     def get_data_file(self, filename):
         """ Get full path to file in data directory.
@@ -159,96 +167,6 @@ class AppConfig(Singleton):
             return path
         _LOG.warn('AppConfig.get_data_file(%s) not found', filename)
         return None
-
-    def get(self, section, key, default=None):
-        """ Get value from configuration.
-
-        Args:
-            section: section of configuration (string)
-            key: key name (string)
-            default: optional default value (default=None)
-        """
-        if (self._config.has_section(section)
-                and self._config.has_option(section, key)):
-            try:
-                return self._config.get(section, key)
-            except:  # catch all errors; pylint: disable=W0702
-                _LOG.exception('AppConfig.get(%s, %s, %r)', section, key,
-                               default)
-        return default
-
-    def get_items(self, section):
-        """ Get all key-value pairs in given config section.
-
-        Args:
-            section: section name (string)
-
-        Return:
-            List of (key, value) or None if section not found.
-        """
-        if self._config.has_section(section):
-            try:
-                return self._config.items(section)
-            except:  # catch all errors; pylint: disable=W0702
-                _LOG.exception('AppConfig.get(%s)', section)
-        return None
-
-    def get_secure(self, section, key, default=None):
-        """ Get "secure" stored value.
-
-        Args:
-            section: section of configuration (string)
-            key: key name (string)
-            default: optional default value (default=None)
-        """
-        value = self.get(section, key, default)
-        try:
-            value = base64.decodestring(value)
-        except binascii.Error:
-            _LOG.warn('AppConfig.get_secure error for (%r, %r, %r), %r',
-                      section, key, default, value)
-        return value
-
-    def set(self, section, key, val):
-        """ Store value in configuration.
-
-        Create section if necessary.
-
-        Args:
-            section: section of configuration (string)
-            key: key name (string)
-            val:  value to store.
-        """
-        if not self._config.has_section(section):
-            self._config.add_section(section)
-        self._config.set(section, key, repr(val))
-
-    def set_items(self, section, key, items):
-        """ Store values in configuration.
-
-        Create section if necessary.
-        Each item in items is stored as key+sequence number.
-
-        Args:
-            section: section of configuration (string)
-            key: key name (string)
-            items: values to store.
-        """
-        config = self._config
-        if config.has_section(section):
-            config.remove_section(section)
-        config.add_section(section)
-        for idx, item in enumerate(items):
-            config.set(section, '%s%05d' % (key, idx), repr(item))
-
-    def set_secure(self, section, key, val):
-        """ Store "secure" value in configuration.
-        Args:
-            section: section of configuration (string)
-            key: key name (string)
-            val: value to store.
-        """
-        self.set(section, key, base64.encodestring(val))
 
     def _get_main_dir(self):
         """ Find main application directory. """
@@ -281,47 +199,11 @@ class AppConfig(Singleton):
 
     def _after_load(self, config):
         """ Action to take after loaded configuration. """
-        if config.has_section('last_files'):
-            # load last files
-            self.last_open_files = [val[1] for val
-                                    in config.items('last_files')]
+        pass
 
     def _before_save(self, config):
         """ Action to take before save configuration. """
-        # store last files
-        if config.has_section('last_files'):
-            config.remove_section('last_files')
-        config.add_section('last_files')
-        last_open_files = self.last_open_files[:7]
-        for fidn, fname in enumerate(last_open_files):
-            config.set('last_files', 'file%d' % fidn, fname)
-
-
-class AppConfigWrapper(object):
-    """ Wrapper for AppConfig class that allow use it with validators.
-    Values are accessible by <section>/<key>."""
-    # pylint: disable=R0903
-
-    def __init__(self):
-        self._config = AppConfig()
-
-    def __getitem__(self, key):
-        key = key.split('/')
-        return self._config.get(key[0], key[1])
-
-    def __setitem__(self, key, value):
-        key = key.split('/')
-        self._config.set(key[0], key[1], value)
-
-    def __delitem__(self, _key):
         pass
-
-    def __len__(self):
-        return 0
-
-    def get(self, key, default=None):
-        key = key.split('/')
-        return self._config.get(key[0], key[1], default)
 
 
 def is_frozen():
@@ -335,13 +217,9 @@ def is_frozen():
 
 if __name__ == '__main__':
     acfg = AppConfig('test.cfg')
-    acfg.last_open_files = ['1', '2', 'q', 'w']
-    print id(acfg), acfg.last_open_files
     acfg.save()
 
     acfg.clear()
-    print id(acfg), acfg.last_open_files
 
     acfg = AppConfig('test.cfg')
     acfg.load()
-    print id(acfg), acfg.last_open_files

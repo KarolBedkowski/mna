@@ -11,11 +11,14 @@ __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-14"
 
-
+import sys
 import optparse
 import logging
 
 _LOG = logging.getLogger(__name__)
+
+import sip
+sip.setapi("QString", 2)  # pylint:disable=no-member
 
 
 from mna import version
@@ -24,12 +27,13 @@ from mna import version
 def _parse_opt():
     """ Parse cli options. """
     optp = optparse.OptionParser(version=version.NAME + version.VERSION)
-    group = optparse.OptionGroup(optp, "Creating tasks")
     group = optparse.OptionGroup(optp, "Debug options")
     group.add_option("--debug", "-d", action="store_true", default=False,
                      help="enable debug messages")
     group.add_option("--debug-sql", action="store_true", default=False,
                      help="enable sql debug messages")
+    group.add_option("--shell", action="store_true", default=False,
+                     help="start shell")
     optp.add_option_group(group)
     return optp.parse_args()[0]
 
@@ -57,5 +61,36 @@ def run():
     # connect to databse
     from mna.model import db
     db.connect(db.find_db_file(config), options.debug_sql)
+
+    # load plugins
+    from mna import plugins
+    plugins.load_plugins()
+
+    if options.shell:
+        # starting interactive shell
+        from IPython.terminal import ipapp
+        app = ipapp.TerminalIPythonApp.instance()
+        app.initialize(argv=[])
+        app.start()
+        return
+
+    from PyQt4 import QtGui
+    app = QtGui.QApplication(sys.argv)  # pylint:disable=no-member
+
+    from mna.logic import worker
+    main_worker = worker.MainWorker()
+    main_worker.start()  # pylint:disable=no-member
+
+    from mna.gui import wnd_main
+
+    window = wnd_main.WndMain()
+    window.show()  # pylint:disable=no-member
+    app.exec_()
+
+    main_worker.terminate()  # pylint:disable=no-member
+
+    # cleanup
+    from mna.logic import articles
+    articles.delete_old_articles()
 
     config.save()

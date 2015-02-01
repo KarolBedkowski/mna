@@ -2,36 +2,46 @@
 
 """ Database functions.
 
-Copyright (c) Karol Będkowski, 2014
+Copyright (c) Karol Będkowski, 2014-2015
 
 This file is part of mna
 Licence: GPLv2+
 """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-12"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-01-30"
 
 
 import os
 import time
 import sqlite3
 import logging
+import datetime
 
 import sqlalchemy
 from sqlalchemy.engine import Engine
+from sqlalchemy import orm
+# from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls
-from mna.model import dbobjects
+from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
+Session = orm.sessionmaker()  # pylint: disable=C0103
+
+
+def text_factory(text):
+    return unicode(text, 'utf-8', errors='replace')
 
 
 @sqlalchemy.event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    dbapi_connection.text_factory = text_factory
+#    cursor = dbapi_connection.cursor()
+#    cursor.execute("PRAGMA foreign_keys=ON")
+#    cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")
+#    cursor.close()
 
 
 def connect(filename, debug=False, *args, **kwargs):
@@ -46,13 +56,18 @@ def connect(filename, debug=False, *args, **kwargs):
         Sqlalchemy Session class
     """
     _LOG.info('connect %r', (filename, args, kwargs))
-    args = {'detect_types': sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES}
-    engine = sqlalchemy.create_engine("sqlite:///" + filename, echo=debug,
-                                      connect_args=args, native_datetime=True)
+    args = {'detect_types': sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+            'check_same_thread': False}
+
+    engine = sqlalchemy.create_engine("sqlite:///" + filename,
+                                      echo=False,
+                                      connect_args=args,
+                                      native_datetime=True,
+                                      isolation_level='SERIALIZABLE')
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
-    dbobjects.Session.configure(bind=engine)  # pylint: disable=E1120
+    Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:
         @sqlalchemy.event.listens_for(Engine, "before_cursor_execute")
@@ -67,13 +82,31 @@ def connect(filename, debug=False, *args, **kwargs):
                        (time.time() - context.app_query_start) * 1000)
 
     _LOG.info('Database create_all START')
-    dbobjects.Base.metadata.create_all(engine)
+    DBO.Base.metadata.create_all(engine)
     _LOG.info('Database create_all COMPLETED')
     # bootstrap
     _LOG.info('Database bootstrap START')
-    # session = dbobjects.Session()
+    session = Session()
+    _bootstrap_data(session)
+    session.commit()
     _LOG.info('Database bootstrap COMPLETED')
-    return dbobjects.Session
+    _LOG.info('Database cleanup START')
+    # remove processing tag
+    session.query(DBO.Source).filter(DBO.Source.processing == 1).\
+            update({"processing": False})
+    # delete old logs
+    log_del_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    session.query(DBO.SourceLog).filter(DBO.SourceLog.date < log_del_date).\
+            delete()
+    session.commit()
+
+    freelist_count = session.execute("PRAGMA freelist_count").fetchone()[0]
+    page_count = session.execute("PRAGMA page_count").fetchone()[0]
+    if freelist_count > 0.20 * page_count:
+        _LOG.debug('Database vacuum')
+        session.execute('PRAGMA incremental_vacuum(%d)' % (freelist_count / 2))
+    _LOG.info('Database cleanup COMPLETED')
+    return Session
 
 
 def find_db_file(config):
@@ -100,3 +133,122 @@ def find_db_file(config):
     if not os.path.isdir(db_dirname):
         os.mkdir(db_dirname)
     return db_filename
+
+
+def _bootstrap_data(session):
+    if count(DBO.Group) == 0:
+        # create default group
+        group = DBO.Group()
+        group.name = "Default Group"
+        session.add(group)
+        group = DBO.Group()
+        group.name = "OSS"
+        session.add(group)
+    if count(DBO.Source) == 0:
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Filmweb"
+        source.conf = {"url": r'http://www.filmweb.pl/rss/news'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Lifehacker"
+        source.conf = {"url": r'http://lifehacker.com/index.xml'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "New Scientist"
+        source.conf = {"url": r'http://feeds.newscientist.com/science-news'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Make"
+        source.conf = {"url": r'http://feeds.feedburner.com/makezineonline'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "Cnet"
+        source.conf = {"url": r'http://www.cnet.com/rss/all/'}
+        source.group_id = 1
+        session.add(source)
+        source = DBO.Source()
+        source.name = "mna.plugins.rss.RssSource"
+        source.title = "LinuxToday"
+        source.conf = {"url": r'http://linuxtoday.com/backend/biglt.rss'}
+        source.group_id = 2
+        session.add(source)
+
+
+def get_one(clazz, session=None, **kwargs):
+    """ Get one object with given attributes.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    _LOG.debug('get_one: %r %r', clazz, kwargs)
+    return (session or Session()).query(clazz).filter_by(**kwargs).first()
+
+
+def get_all(clazz, order_by=None, session=None, **kwargs):
+    """ Return all objects this class.
+
+    Args:
+        order_by: optional order_by query argument
+        session: optional current sqlalchemy session
+        **kwargs: optional filters
+    """
+    _LOG.debug('get_all: %r %r %r', clazz, order_by, kwargs)
+    session = session or Session()
+    query = session.query(clazz)
+    if kwargs:
+        query = query.filter_by(**kwargs)
+    if order_by:
+        query = query.order_by(order_by)
+    return query  # pylint: disable=E1101
+
+
+def count(clazz, session=None, **kwargs):
+    """ Count objects with given attributes.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    _LOG.debug('count: %r %r', clazz, kwargs)
+    return (session or Session()).query(clazz).filter_by(**kwargs).count()
+
+
+def save(obj, commit=False, session=None):
+    """ Save object into database. """
+    _LOG.debug('save: %r %r', obj, commit)
+    if session:
+        session.merge(obj)
+    else:
+        session = Session.object_session(obj) or Session()
+        session.add(obj)
+    if commit:
+        session.commit()
+    return session
+
+
+def delete(obj, commit=False, session=None):
+    """ Delete object from database. """
+    _LOG.debug('delete: %r %r', obj, commit)
+    if session:
+        session.merge(obj)
+    else:
+        session = Session.object_session(obj) or Session()
+        session.delete(obj)
+    if commit:
+        session.commit()

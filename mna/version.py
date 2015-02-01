@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """ Licence and version informations.
 
-Copyright (c) Karol Będkowski, 2014
+Copyright (c) Karol Będkowski, 2014-2015
 
 This file is part of mna
 Licence: GPLv2+
 """
 
 __author__ = "Karol Będkowski"
-__copyright__ = "Copyright (c) Karol Będkowski, 2014"
-__version__ = "2014-06-14"
+__copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
+__version__ = "2015-02-01"
 
 import gettext
 
@@ -17,13 +17,13 @@ _ = gettext.gettext
 
 SHORTNAME = "mna"
 NAME = _("mna")
-VERSION = "0.0.1"
-VERSION_INFO = (0, 0, 1, "alpha", 1)
-RELEASE = "2014-06-14"
+VERSION = "0.1.0"
+VERSION_INFO = (0, 1, 0, "alpha", 1)
+RELEASE = "2015-02-01"
 DESCRIPTION = _("""mna""")
 DEVELOPERS = u"""Karol Będkowski"""
 TRANSLATORS = u"""Karol Będkowski"""
-COPYRIGHT = u"Copyright (c) Karol Będkowski, 2014"
+COPYRIGHT = u"Copyright (c) Karol Będkowski, 2014-2015"
 LICENSE = _("""\
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

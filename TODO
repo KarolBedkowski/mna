@@ -1,0 +1,5 @@
+! usuniecie testowych danych z bootstrap
+
+* import OPML
+* mozliwosc aktualizacji tylko jednego src/grupy
+* zatrzymywanie aktualizacji
