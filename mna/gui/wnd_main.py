@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=invalid-name
 """ Main application window.
 
 Copyright (c) Karol Będkowski, 2014-2015
@@ -37,21 +38,23 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class WndMain(QtGui.QMainWindow):
+# pylint: disable=too-few-public-methods
+class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
     """ Main Window class. """
 
     def __init__(self, parent=None):
-        QtGui.QMainWindow.__init__(self, parent)
+        QtGui.QMainWindow.__init__(self, parent)  # pylint: disable=no-member
         self._appconfig = AppConfig()
         self._current_article = None
         self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
-        self._setup_ui()
+        self._setup()
         self._bind()
         self._set_window_pos_size()
         self._restore_expanded_tree_nodes()
 
-    def _setup_ui(self):
+    # pylint: disable=no-member
+    def _setup(self):
         # models
         # group & sources tree
         self._subs_model = subs_model.TreeModel()
@@ -165,15 +168,14 @@ class WndMain(QtGui.QMainWindow):
         node = self._selected_subscription
         assert node and not isinstance(node, subs_model.SpecialTreeNode), \
             'Invalid node'
-        if QtGui.QMessageBox.question(self, self.tr("Delete"),
-                                      self.tr("Delete selected item?"),
-                                      QtGui.QMessageBox.Yes,
-                                      QtGui.QMessageBox.No) \
+        if QtGui.QMessageBox.question(
+                self, self.tr("Delete"),
+                self.tr("Delete selected item?"),
+                QtGui.QMessageBox.Yes, QtGui.QMessageBox.No) \
                 == QtGui.QMessageBox.No:
             return
 
-        model = self._ui.tv_subs.selectionModel()
-        model.clearSelection()
+        self._ui.tv_subs.selectionModel().clearSelection()
 
         if isinstance(node, subs_model.SourceTreeNode):
             if sources.delete_source(node.oid):
@@ -206,20 +208,30 @@ class WndMain(QtGui.QMainWindow):
             self._subs_model.update_source(
                 article.source_id, article.source.group_id)
 
-    def _on_art_sel_changed(self, index):
+    def _on_art_sel_changed(self, _index):
         """ Handle article selection -  show article in HtmlView. """
+        session = db.Session()
+        if self._current_article:
+            # mark previous article read
+            a_oid = self._current_article.oid
+            article = larts.mark_article_read(a_oid, session)
+            self._arts_list_model.update_item(article)
+
         item = self._selected_article
         _LOG.debug("_on_art_sel_changed %r", item.oid)
-        session = db.Session()
         article, content = larts.get_article_content(
-            item.oid, True, session=session)
-        self._current_article = article
+            item.oid, False, session=session)
         self._ui.article_view.setHtml(content)
-        self._arts_list_model.update_item(article)
         self._subs_model.update_source(
             article.source_id, article.source.group_id)
+        if self._current_article:
+            pre_a = self._current_article
+            if pre_a.source_id != article.source_id:
+                self._subs_model.update_source(
+                    pre_a.source_id, pre_a.source.group_id)
+        self._current_article = article
 
-    def _on_action_update(self):
+    def _on_action_update(self):  # pylint: disable=no-self-use
         sources.force_refresh_all()
 
     def _on_action_add_group(self):
@@ -280,15 +292,24 @@ class WndMain(QtGui.QMainWindow):
         dlg.exec_()
 
     def _on_action_show_all(self):
-        node = self._selected_subscription
-        self._show_articles(node)
+        unread_only = not self._ui.a_show_all.isChecked()
+        model = self._arts_list_model
+        model.set_data_source(unread_only=unread_only)
+        model.refresh()
 
     def _on_search_return(self):
         # switch to search item
-        row = self._subs_model.specials[subs_model.SPECIAL_SEARCH]
-        index = self._subs_model.index(row, 0, None)
+        index = self._subs_model.get_index_of_special(
+            subs_model.SPECIAL_SEARCH)
         model = self._ui.tv_subs.selectionModel()
-        model.setCurrentIndex(index, QtGui.QItemSelectionModel.ClearAndSelect)
+        if model.currentIndex() == index:
+            text = self._t_search.text()
+            amodel = self._arts_list_model
+            amodel.set_data_source(arts_model.DS_SEARCH, text)
+            amodel.refresh()
+        else:
+            model.setCurrentIndex(
+                index, QtGui.QItemSelectionModel.ClearAndSelect)
 
     def _on_art_link_clicked(self, url):
         url = unicode(url.toString())
@@ -308,13 +329,23 @@ class WndMain(QtGui.QMainWindow):
             return
         self._subs_model.update_source(source_id, group_id)
         # refresh article list when updated source is displayed
-        node = self._selected_subscription
-        if node is None:
-            return
-        if isinstance(node, subs_model.SourceTreeNode) and source_id == node.oid:
-            self._show_articles(node)
-        elif isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
-            self._show_articles(node)
+        model = self._arts_list_model
+        if ((model.ds_kind == arts_model.DS_SOURCE and
+             model.ds_oid == source_id) or
+                (model.ds_kind == arts_model.DS_GROUP and
+                 model.ds_oid == group_id)):
+            sel_art = self._selected_article
+            if not sel_art:
+                self._arts_list_model.refresh()
+                return
+            # try to keep current selection
+            sel_art_oid = sel_art.oid
+            self._arts_list_model.refresh()
+            index = self._arts_list_model.get_index_by_oid(sel_art_oid)
+            if index:
+                self._ui.tv_articles.selectionModel().setCurrentIndex(
+                    index, QtGui.QItemSelectionModel.ClearAndSelect
+                    | QtGui.QItemSelectionModel.Rows)
 
     @QtCore.pyqtSlot(unicode)
     def _on_announce(self, message):
@@ -329,7 +360,7 @@ class WndMain(QtGui.QMainWindow):
         if node is None:
             return
         if isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
-            self._show_articles(node)
+            self._arts_list_model.refresh()
 
     def _refresh_tree(self):
         """ Refresh tree; keep expanded nodes """
@@ -341,27 +372,24 @@ class WndMain(QtGui.QMainWindow):
         _LOG.debug("WndMain._show_articles(%r(oid=%r))", type(node), node.oid)
         self._ui.tv_articles.selectionModel().clearSelection()
         unread_only = not self._ui.a_show_all.isChecked()
-        session = db.Session()
+        model = self._arts_list_model
         if isinstance(node, subs_model.SourceTreeNode):
-            articles = larts.get_articles_by_source(
-                node.oid, unread_only, session=session)
+            model.set_data_source(arts_model.DS_SOURCE, node.oid, unread_only)
         elif isinstance(node, subs_model.GroupTreeNode):
-            articles = larts.get_articles_by_group(
-                node.oid, unread_only, session=session)
+            model.set_data_source(arts_model.DS_GROUP, node.oid, unread_only)
         elif isinstance(node, subs_model.SpecialTreeNode):
             if node.oid == subs_model.SPECIAL_ALL:
-                articles = larts.get_all_articles(unread_only, session=session)
+                model.set_data_source(arts_model.DS_ALL, None, unread_only)
             elif node.oid == subs_model.SPECIAL_STARRED:
-                articles = larts.get_starred_articles(False, session=session)
+                model.set_data_source(arts_model.DS_STARRED)
             elif node.oid == subs_model.SPECIAL_SEARCH:
                 text = self._t_search.text()
-                articles = list(larts.search_text(text, session))
+                model.set_data_source(arts_model.DS_SEARCH, text)
             else:
                 raise RuntimeError("invalid special tree item: %r", node)
         else:
             raise RuntimeError("invalid tree item: %r", node)
-        self._arts_list_model.set_items(articles)
-        self._ui.tv_articles.resizeColumnsToContents()
+        model.refresh()
 
     def _set_window_pos_size(self):
         appcfg = self._appconfig
@@ -375,6 +403,11 @@ class WndMain(QtGui.QMainWindow):
         sp2 = appcfg.get('wnd_main.splitter2')
         if sp2:
             self._ui.splitter_2.setSizes(sp2)
+        cols_width = appcfg.get('wnd_main.arts.cols_width')
+        if cols_width:
+            cols_width = cols_width[:self._arts_list_model.columnCount(None)]
+            for idx, width in enumerate(cols_width):
+                self._ui.tv_articles.setColumnWidth(idx, width)
 
     def _save_window_pos_size(self):
         appcfg = self._appconfig
@@ -384,6 +417,11 @@ class WndMain(QtGui.QMainWindow):
         appcfg['wnd_main.splitter2'] = self._ui.splitter_2.sizes()
         # save expanded tree items
         self._save_expanded_tree_nodes()
+        # save column width
+        cols_width = [self._ui.tv_articles.columnWidth(col)
+                      for col
+                      in xrange(self._arts_list_model.columnCount(None))]
+        appcfg['wnd_main.arts.cols_width'] = cols_width
 
     def _save_expanded_tree_nodes(self):
         _LOG.debug('_save_expanded_tree_nodes')

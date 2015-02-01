@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=invalid-name
 """ Qt models - article list
 
 Copyright (c) Karol Będkowski, 2014-2015
@@ -16,6 +17,9 @@ import logging
 
 from PyQt4 import QtCore, QtGui
 
+from mna.logic import articles
+from mna.model import db
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -24,15 +28,17 @@ class ListItem(object):
 
     def __init__(self, src):
         self.oid = src.oid
-        self.font = QtCore.QVariant()
-        self.color = QtCore.QVariant()
+        self._cols = []
+        self.font = QtCore.QVariant()  # pylint: disable=no-member
+        self.color = QtCore.QVariant()  # pylint: disable=no-member
         self.update(src)
 
+    # pylint: disable=no-member
     def update(self, src):
         if src.read:
-            self.font = QtCore.QVariant()
+            self.font = QtCore.QVariant()  # pylint: disable=no-member
         else:
-            self.font = QtGui.QFont()
+            self.font = QtGui.QFont()  # pylint: disable=no-member
             self.font.setBold(True)
         self.color = _score_to_color(src.score)
         self._cols = [
@@ -55,40 +61,91 @@ class ListItem(object):
         return self._cols[col]
 
 
-class ListModel(QtCore.QAbstractTableModel):
+DS_SOURCE = 1
+DS_GROUP = 2
+DS_STARRED = 3
+DS_ALL = 4
+DS_SEARCH = 5
+
+
+class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
 
     _HEADERS = ("R.", "S.", "Source", "Title", "Date", "Score")
 
     def __init__(self, parent=None):
-        super(ListModel, self).__init__(parent)
+        # pylint: disable=no-member
+        QtCore.QAbstractTableModel.__init__(self, parent)
         self.items = []
+        self.clear()
 
-    def set_items(self, items):
-        _LOG.debug("ListModel.set_items(len=%d)", len(items))
-        self.layoutAboutToBeChanged.emit()
-        self.items = [ListItem(item) for item in items]
-        self.layoutChanged.emit()
+    def clear(self):
+        self.ds_kind = None
+        self.ds_oid = None
+        self.ds_unread_only = False
+
+    def set_data_source(self, kind=None, oid=None, unread_only=None):
+        _LOG.info("set_data_source: %r, %r, %r", kind, oid, unread_only)
+        if kind is not None:
+            self.ds_kind = kind
+        if oid is not None:
+            self.ds_oid = oid
+        if unread_only is not None:
+            self.ds_unread_only = unread_only
+
+    def refresh(self):
+        """ Refresh all items according to data sources. """
+        _LOG.info("refresh: %r, %r, %r", self.ds_kind, self.ds_oid,
+                  self.ds_unread_only)
+        self.layoutAboutToBeChanged.emit()  # pylint: disable=no-member
+        arts = []
+        session = db.Session()
+        if self.ds_kind == DS_SOURCE:
+            arts = articles.get_articles_by_source(
+                self.ds_oid, self.ds_unread_only, session=session)
+        elif self.ds_kind == DS_GROUP:
+            arts = articles.get_articles_by_group(
+                self.ds_oid, self.ds_unread_only, session=session)
+        elif self.ds_kind == DS_ALL:
+            arts = articles.get_all_articles(self.ds_unread_only,
+                                             session=session)
+        elif self.ds_kind == DS_STARRED:
+            arts = articles.get_starred_articles(False, session=session)
+        elif self.ds_kind == DS_SEARCH:
+            arts = articles.search_text(self.ds_oid, session=session)
+        else:
+            raise RuntimeError("invalid ds_kind=%r" % self.ds_kind)
+        self.items = [ListItem(item) for item in arts]
+        self.layoutChanged.emit()  # pylint: disable=no-member
 
     def update_item(self, item):
         for row, itm in enumerate(self.items):
             if itm.oid == item.oid:
                 itm.update(item)
+                # pylint: disable=no-member
                 self.dataChanged.emit(self.index(row, 0), self.index(row, 3))
                 return True
         return False
 
-    def rowCount(self, parent=QtCore.QModelIndex()):
+    def get_index_by_oid(self, oid):
+        for row, itm in enumerate(self.items):
+            if itm.oid == oid:
+                return self.index(row, 0)  # pylint: disable=no-member
+        return None
+
+    def rowCount(self, _parent=None):
         return len(self.items)
 
-    def columnCount(self, parent):
+    def columnCount(self, _parent):  # pylint: disable=no-self-use
         return 6
 
+    # pylint: disable=no-member
     def headerData(self, col, orientation, role):
         if orientation == QtCore.Qt.Horizontal and \
                 role == QtCore.Qt.DisplayRole:
             return QtCore.QVariant(self._HEADERS[col])
         return QtCore.QVariant()
 
+    # pylint: disable=no-member
     def data(self, index, role):
         if not index.isValid():
             return QtCore.QVariant()
@@ -98,12 +155,16 @@ class ListModel(QtCore.QAbstractTableModel):
             return self.items[index.row()].font
         elif role == QtCore.Qt.TextColorRole:
             return self.items[index.row()].color
+        elif role == QtCore.Qt.TextAlignmentRole:
+            if index.column() < 2:
+                return QtCore.Qt.AlignHCenter
         return QtCore.QVariant()
 
     def node_from_index(self, index):
         return self.items[index.row()]
 
 
+# pylint: disable=no-member
 def _score_to_color(score):
     if score > 9:
         return QtGui.QColor(0, 0, 200)

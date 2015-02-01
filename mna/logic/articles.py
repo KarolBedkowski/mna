@@ -188,11 +188,31 @@ def delete_old_articles():
     _LOG.info("delete_old_articles FINISHED")
 
 
-def toggle_articles_read(articles_oid):
+def mark_article_read(article_oid, session=None):
+    """ Set article read flag.
+
+    Args:
+        article_oid (int): article id
+        session: optional sqlalchemy session
+
+    Return:
+        Article
+    """
+    session = session or db.Session()
+    art = db.get_one(DBO.Article, session=session, oid=article_oid)
+    if not art.read:
+        art.read = 1
+        session.commit()
+    return art
+
+
+def toggle_articles_read(articles_oid, session=None):
     """ Toggle given by `articles_oid`  articles read flag.
     Generate changed `Article` object.
     """
-    sess = db.Session()
+    sess = session or db.Session()
+    if isinstance(articles_oid, (int, long)):
+        articles_oid = [articles_oid]
     # get status of first articles
     art1 = db.get_one(DBO.Article, session=sess, oid=articles_oid[0])
     read = art1.read = not art1.read
