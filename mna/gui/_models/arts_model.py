@@ -155,6 +155,9 @@ class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
             return self.items[index.row()].font
         elif role == QtCore.Qt.TextColorRole:
             return self.items[index.row()].color
+        elif role == QtCore.Qt.TextAlignmentRole:
+            if index.column() < 2:
+                return QtCore.Qt.AlignHCenter
         return QtCore.QVariant()
 
     def node_from_index(self, index):
