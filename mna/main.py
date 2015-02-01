@@ -18,7 +18,7 @@ import logging
 _LOG = logging.getLogger(__name__)
 
 import sip
-sip.setapi("QString", 2)
+sip.setapi("QString", 2)  # pylint:disable=no-member
 
 
 from mna import version
@@ -75,19 +75,19 @@ def run():
         return
 
     from PyQt4 import QtGui
-    app = QtGui.QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)  # pylint:disable=no-member
 
     from mna.logic import worker
     main_worker = worker.MainWorker()
-    main_worker.start()
+    main_worker.start()  # pylint:disable=no-member
 
     from mna.gui import wnd_main
 
     window = wnd_main.WndMain()
-    window.show()
+    window.show()  # pylint:disable=no-member
     app.exec_()
 
-    main_worker.terminate()
+    main_worker.terminate()  # pylint:disable=no-member
 
     # cleanup
     from mna.logic import articles

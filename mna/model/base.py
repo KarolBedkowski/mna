@@ -46,7 +46,7 @@ def _sp_build_published(article):
         yield "</small></p>"
 
 
-class SimplePresenter(object):
+class SimplePresenter(object):  # pylint:disable=too-few-public-methods
     """Base class for all presenters - converters `Article` content to html
     displayed in gui.
     """
@@ -110,7 +110,7 @@ class AbstractSource(object):
         self.cfg = cfg
         self.group_id = cfg.group_id
 
-    def get_items(self, session=None, max_load=-1, max_age_load=-1):
+    def get_items(self, session=None, max_load=-1, max_age_load=-1):  # pylint:disable=unused-argument,no-self-use
         return []
 
     @classmethod
@@ -135,7 +135,7 @@ class AbstractFilter(object):
         # configuration
         self.cfg = cfg
 
-    def filter(self, article):
+    def filter(self, article):  # pylint:disable=no-self-use
         """ Process article by filter """
         return article
 
@@ -150,7 +150,7 @@ class AbstractFilter(object):
         return {}
 
     @classmethod
-    def get_label(cls, cfg):
+    def get_label(cls, cfg):  # pylint:disable=unused-argument
         """ Get human name of filter type; can show params from `cfg` """
         return cls.name
 

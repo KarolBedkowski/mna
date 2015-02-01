@@ -28,11 +28,11 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class WzdAddSrc(QtGui.QWizard):
+class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
     """ Add new source wizard. """
 
     def __init__(self, parent=None):
-        QtGui.QWizard.__init__(self, parent)
+        QtGui.QWizard.__init__(self, parent)  # pylint:disable=no-member
         self._ui = wzd_add_src_ui.Ui_WizardAddSource()
         self._ui.setupUi(self)
         self._setup()
@@ -50,7 +50,7 @@ class WzdAddSrc(QtGui.QWizard):
         self._ui.e_interval.setValue(
             aconf.get('articles.update_interval', 60))
 
-    def initializePage(self, page):
+    def initializePage(self, page):  # pylint:disable=invalid-name
         if page == 1:  # source specific settings
             sel_source_type = self._ui.cb_source_type.currentIndex()
             src = unicode(self._ui.cb_source_type.itemData(sel_source_type).
@@ -71,14 +71,14 @@ class WzdAddSrc(QtGui.QWizard):
             if hasattr(src_cls, 'conf_panel_class'):
                 src_opt_frame = src_cls.conf_panel_class(self)
             else:
-                src_opt_frame = QtGui.QLabel("No options", self)
+                src_opt_frame = QtGui.QLabel("No options", self)  # pylint:disable=no-member
             self._ui.l_src_opt.addWidget(src_opt_frame)
             self._curr_src_frame = src_opt_frame
 
-    def validateCurrentPage(self):
-        if not self.currentPage().validatePage():
+    def validateCurrentPage(self):  # pylint:disable=invalid-name
+        if not self.currentPage().validatePage():  # pylint:disable=no-member
             return False
-        page = self.currentId()
+        page = self.currentId()  # pylint:disable=no-member
         if page == 0:  # main
             return self._frm_edit_main.validate()
         elif page == 1:  # source settings
@@ -91,9 +91,9 @@ class WzdAddSrc(QtGui.QWizard):
         return True
 
     def done(self, result):
-        if result == QtGui.QDialog.Accepted:
+        if result == QtGui.QDialog.Accepted:  # pylint:disable=no-member
             self._create_source()
-        return QtGui.QWizard.done(self, result)
+        return QtGui.QWizard.done(self, result)  # pylint:disable=no-member
 
     def _create_source(self):
         source = DBO.Source(name=self._curr_src, conf={})

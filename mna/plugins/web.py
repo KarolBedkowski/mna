@@ -57,15 +57,17 @@ def get_page_part(info, page, selector):
     """ Find all elements of `page` by `selector` xpath expression. """
     content_type = info.get('content-type')
     if content_type and content_type.startswith('text/html'):
+        # pylint: disable=no-member
         parser = etree.HTMLParser(encoding='UTF-8', remove_blank_text=True,
                                   remove_comments=True, remove_pis=True)
     else:
-        parser = etree.XMLParser(recover=True, encoding='UTF-8')
-    tree = etree.fromstring(page, parser)
+        parser = etree.XMLParser(recover=True, encoding='UTF-8')  # pylint:disable=no-member
+    tree = etree.fromstring(page, parser)  # pylint: disable=no-member
     for elem in itertools.chain(tree.xpath("//comment()"),
                                 tree.xpath("//script"),
                                 tree.xpath("//style")):
         elem.getparent().remove(elem)
+    # pylint: disable=no-member
     return (unicode(etree.tostring(elem, encoding='utf-8',
                                    method='html').strip(),
                     encoding='utf-8', errors="replace")
@@ -85,10 +87,11 @@ def create_config_hash(source):
 
 
 def get_title(html, encoding):
+    # pylint: disable=no-member
     parser = etree.HTMLParser(encoding=encoding, remove_blank_text=True,
                               remove_comments=True, remove_pis=True)
     # try to find title
-    tree = etree.fromstring(html, parser)
+    tree = etree.fromstring(html, parser)  # pylint: disable=no-member
     for tag in ('//head/title', '//h1', '//h2'):
         titles = tree.xpath(tag)
         if titles:
@@ -99,6 +102,7 @@ def get_title(html, encoding):
                     return title
 
     # title not found, use page text
+    # pylint: disable=no-member
     html = etree.tostring(tree, encoding='UTF-8', method="text")
     title = unicode(html.replace('\n', ' ').replace('\t', ' ').
                     replace('\r', ' ').strip(), 'UTF-8')
@@ -119,7 +123,7 @@ def accept_part(session, source_id, checksum):
                     source_id=source_id) == 0
 
 
-def accept_page(page, session, source, threshold):
+def accept_page(page, _session, source, threshold):
     """ Check is page change from last time, optionally check similarity ratio
         if `threshold`  given - reject pages with similarity ratio > threshold.
     """
@@ -141,9 +145,9 @@ def accept_page(page, session, source, threshold):
     return True
 
 
-class FrmSettWeb(QtGui.QFrame):
+class FrmSettWeb(QtGui.QFrame):  # pylint: disable=no-member
     def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
+        QtGui.QFrame.__init__(self, parent)  # pylint: disable=no-member
         self._ui = frm_sett_web_ui.Ui_FrmSettWeb()
         self._ui.setupUi(self)
         self._ui.b_path_sel.clicked.connect(self._on_btn_xpath_sel)
@@ -189,7 +193,7 @@ class FrmSettWeb(QtGui.QFrame):
     def _on_btn_xpath_sel(self):
         dlg = _DlgSettWebXPath(self, self._ui.e_url.text(),
                                self._ui.e_xpath.toPlainText())
-        if dlg.exec_() == QtGui.QDialog.Accepted:
+        if dlg.exec_() == QtGui.QDialog.Accepted:  # pylint: disable=no-member
             self._ui.e_url.setText(dlg.url)
             self._ui.e_xpath.setPlainText(dlg.xpath)
 
@@ -323,11 +327,11 @@ class WebSource(base.AbstractSource):
         return True
 
 
-class _DlgSettWebXPath(QtGui.QDialog):
+class _DlgSettWebXPath(QtGui.QDialog):  # pylint: disable=no-member
     """ Select web page element dialog. """
 
     def __init__(self, parent, url, xpath=None):
-        QtGui.QDialog.__init__(self, parent)
+        QtGui.QDialog.__init__(self, parent)  # pylint: disable=no-member
         self._ui = dlg_sett_web_xpath_ui. Ui_DlgSettWebXPath()
         self._ui.setupUi(self)
         self._ui.e_xpath.setPlainText(xpath or "")
@@ -347,18 +351,18 @@ class _DlgSettWebXPath(QtGui.QDialog):
                 not url.startswith('https://'):
             url = 'http://' + url
         self._ui.e_url.setText(url)
-        self._ui.web_page.load(QtCore.QUrl(url))
+        self._ui.web_page.load(QtCore.QUrl(url))  # pylint: disable=no-member
 
     @property
     def xpath(self):
         return self._ui.e_xpath.toPlainText()
 
     def done(self, result):
-        if result == QtGui.QDialog.Accepted:
+        if result == QtGui.QDialog.Accepted:  # pylint: disable=no-member
             if not self.url:
                 self._ui.e_url.focus()
                 return False
-        return QtGui.QDialog.done(self, result)
+        return QtGui.QDialog.done(self, result)  # pylint: disable=no-member
 
     def _on_btn_go(self):
         self._set_url(self.url)
@@ -372,9 +376,10 @@ class _DlgSettWebXPath(QtGui.QDialog):
         frame.addToJavaScriptWindowObject('click_handler', self)
         frame.evaluateJavaScript(_SEL_ELEM_JS)
         css = "data:text/css;charset=utf-8;base64," + base64.encodestring(_CSS)
+        # pylint: disable=no-member
         page.settings().setUserStyleSheetUrl(QtCore.QUrl(css))
 
-    @QtCore.pyqtSlot(str)
+    @QtCore.pyqtSlot(str)  # pylint: disable=no-member
     def click(self, message):
         """ handle custom clicks in web page """
         self._ui.e_xpath.setPlainText(message)

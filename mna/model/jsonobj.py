@@ -14,7 +14,7 @@ from sqlalchemy.types import TypeDecorator, VARCHAR
 from sqlalchemy.ext.mutable import Mutable
 
 
-class JSONEncodedDict(TypeDecorator):
+class JSONEncodedDict(TypeDecorator):  # pylint: disable=abstract-method
     "Represents an immutable structure as a json-encoded string."
 
     impl = VARCHAR

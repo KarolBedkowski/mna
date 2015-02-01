@@ -38,6 +38,7 @@ def get_articles_by_group(group_oid, unread_only=False, sorting=None,
                sorting)
     assert isinstance(group_oid, (int, long)), "Invalid argument"
     session = session or db.Session()
+    # pylint:disable=no-member
     articles = session.query(DBO.Article).\
                 join(DBO.Article.source).\
                 filter(DBO.Source.group_id == group_oid)
@@ -260,6 +261,7 @@ def get_article_content(article_oid, mark_read=True, session=None):
         (article, content as html)
     """
     session = session or db.Session()
+    # pylint:disable=no-member
     article = session.query(DBO.Article).\
         options(orm.undefer("content"),
                 orm.joinedload(DBO.Article.source)).\

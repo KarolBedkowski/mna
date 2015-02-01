@@ -16,6 +16,7 @@ __version__ = "2014-06-12"
 from PyQt4 import QtCore
 
 
+# pylint:disable=no-member
 class _Messenger(QtCore.QObject):
 
     source_updated = QtCore.pyqtSignal(int, int, name="updateSource")

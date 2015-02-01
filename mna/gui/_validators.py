@@ -14,13 +14,13 @@ __version__ = "2015-01-06"
 from PyQt4 import QtGui
 
 
-class EmptyStringValidator(QtGui.QValidator):
+class EmptyStringValidator(QtGui.QValidator):  # pylint:disable=no-member,no-init,too-few-public-methods
     """ Validate fields for empty values """
 
-    def validate(self, text, pos):
+    def validate(self, text, pos):  # pylint:disable=no-self-use
         if unicode(text).strip():
-            return QtGui.QValidator.Acceptable, pos
-        return QtGui.QValidator.Invalid, pos
+            return QtGui.QValidator.Acceptable, pos  # pylint:disable=no-member
+        return QtGui.QValidator.Invalid, pos  # pylint:disable=no-member
 
 
 class ValidationError(RuntimeError):

@@ -29,11 +29,12 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
+# pylint:disable=no-member,too-few-public-methods
 class DlgPreferences(QtGui.QDialog):
     """ Preferences dialog class. """
 
     def __init__(self, parent=None):
-        QtGui.QDialog.__init__(self, parent)
+        QtGui.QDialog.__init__(self, parent)  # pylint:disable=no-member
         self._ui = dlg_preferences_ui.Ui_DlgPreferences()
         self._ui.setupUi(self)
         self._appconf = appconfig.AppConfig()
@@ -46,14 +47,14 @@ class DlgPreferences(QtGui.QDialog):
         self._ui.lv_filters.itemActivated.connect(self._on_filters_act)
 
     def done(self, result):
-        if result != QtGui.QDialog.Accepted:
-            return QtGui.QDialog.done(self, result)
+        if result != QtGui.QDialog.Accepted:  # pylint:disable=no-member
+            return QtGui.QDialog.done(self, result)  # pylint:disable=no-member
         try:
             self._validate()
         except _validators.ValidationError:
             return
         if self._from_window():
-            return QtGui.QDialog.done(self, result)
+            return QtGui.QDialog.done(self, result)  # pylint:disable=no-member
 
     def _to_window(self):
         aconf = self._appconf
@@ -73,6 +74,7 @@ class DlgPreferences(QtGui.QDialog):
         lv_filters.clear()
         for fltr in db.get_all(DBO.Filter, source_id=None):
             fltr_class = plugins.FILTERS[fltr.name]
+            # pylint:disable=no-member
             itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
             itm.setData(QtCore.Qt.UserRole, fltr.oid)
             lv_filters.addItem(itm)
@@ -100,17 +102,17 @@ class DlgPreferences(QtGui.QDialog):
         item = self._ui.lv_filters.currentItem()
         if not item:
             return
-        fltr_id = item.data(QtCore.Qt.UserRole)
+        fltr_id = item.data(QtCore.Qt.UserRole)  # pylint:disable=no-member
         assert fltr_id, "Missing user data in item %r" % item
-        fltr_id, ok = fltr_id.toInt()
-        assert ok, "Invalid id in item: %r" % fltr_id
+        fltr_id, cok = fltr_id.toInt()
+        assert cok, "Invalid id in item: %r" % fltr_id
         if filter_conf.delete_filter(self, fltr_id):
             self._fill_filters()
 
     def _on_filters_act(self, item):
-        fltr_id = item.data(QtCore.Qt.UserRole)
+        fltr_id = item.data(QtCore.Qt.UserRole)  # pylint:disable=no-member
         assert fltr_id, "Missing user data in item %r" % item
-        fltr_id, ok = fltr_id.toInt()
-        assert ok, "Invalid id in item: %r" % fltr_id
+        fltr_id, cok = fltr_id.toInt()
+        assert cok, "Invalid id in item: %r" % fltr_id
         if filter_conf.edit_filter(self, fltr_id):
             self._fill_filters()

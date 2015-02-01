@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable-msg=C0103
+# pylint: disable=C0103
 """ Application configuration.
 
 Copyright (c) Karol Będkowski, 2007-2015
@@ -126,7 +126,7 @@ class AppConfig(Singleton):
         if filename:
             self._defaults = self.load_configuration_file(filename)
 
-    def load_configuration_file(self, filename):
+    def load_configuration_file(self, filename):  # pylint:disable=no-self-use
         """ Load configuration file. """
         if not os.path.exists(filename):
             _LOG.warn("AppConfig.load_configuration_file: file %r not found",

@@ -51,7 +51,7 @@ def accept_part(session, source_id, checksum):
                     source_id=source_id) == 0
 
 
-def accept_page(content, session, source, threshold):
+def accept_page(content, source, threshold):
     """ Check is check similarity ratio if `threshold`  given -
     reject files with similarity ratio > threshold.
     """
@@ -67,9 +67,9 @@ def accept_page(content, session, source, threshold):
     return True
 
 
-class FrmSettFilemon(QtGui.QFrame):
+class FrmSettFilemon(QtGui.QFrame):  # pylint:disable=no-member
     def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
+        QtGui.QFrame.__init__(self, parent)  # pylint:disable=no-member
         self._ui = frm_sett_filemon_ui.Ui_FrmSettFilemon()
         self._ui.setupUi(self)
         self._ui.b_select_file.clicked.connect(self._on_filename_choice)
@@ -121,9 +121,10 @@ class FrmSettFilemon(QtGui.QFrame):
         curr_filename = self._ui.e_filename.text()
         if curr_filename:
             curr_filename = os.path.expanduser(curr_filename)
+        # pylint:disable=no-member
         filename = QtGui.QFileDialog.getOpenFileName(
             self,
-            self.tr("Select file"),
+            self.tr("Select file"),  # pylint:disable=no-member
             curr_filename,
             self.tr("All Files (*);;Text Files (*.txt)"))
         if filename:
@@ -157,7 +158,7 @@ class FileSource(base.AbstractSource):
             articles = (self._process_part(part, session)
                         for part in get_file_part(content, selector))
         else:
-            articles = [self._process_page(content, session)]
+            articles = [self._process_page(content)]
 
         articles = filter(None, articles)
 
@@ -190,8 +191,8 @@ class FileSource(base.AbstractSource):
             raise base.GetArticleException("Load file error: %s" % err)
         return None
 
-    def _process_page(self, content, session):
-        if accept_page(content, session, self.cfg,
+    def _process_page(self, content):
+        if accept_page(content, self.cfg,
                        self.cfg.conf.get('similarity') or 1):
             return self._create_article(content)
         return None

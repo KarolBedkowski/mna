@@ -30,9 +30,9 @@ def _ts2datetime(tstruct):
     return None
 
 
-class FrmSettRss(QtGui.QFrame):
+class FrmSettRss(QtGui.QFrame):  # pylint: disable=no-member
     def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
+        QtGui.QFrame.__init__(self, parent)  # pylint: disable=no-member
         self._ui = frm_sett_rss_ui.Ui_FrmSettRss()
         self._ui.setupUi(self)
 

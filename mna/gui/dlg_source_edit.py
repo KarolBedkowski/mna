@@ -29,19 +29,19 @@ _LOG = logging.getLogger(__name__)
 assert resources_rc
 
 
-class DlgSourceEdit(QtGui.QDialog):
+class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-methods
     """ Main Window class. """
 
     def __init__(self, parent=None, source_oid=None):
         _LOG.info("DlgSourceEdit.init: %r", source_oid)
-        QtGui.QDialog.__init__(self, parent)
+        QtGui.QDialog.__init__(self, parent)  # pylint:disable=no-member
         self._ui = dlg_source_edit_ui.Ui_DlgSourceEdit()
         self._ui.setupUi(self)
         self._bind()
         source = db.get_one(DBO.Source, oid=source_oid)
         self.source = source
         self._setup(source)
-        self.setWindowTitle(source.title)
+        self.setWindowTitle(source.title)  # pylint:disable=no-member
         self._to_window(source)
 
     def _bind(self):
@@ -56,18 +56,18 @@ class DlgSourceEdit(QtGui.QDialog):
         if hasattr(src, 'conf_panel_class'):
             src_opt_frame = src.conf_panel_class(self)
         else:
-            src_opt_frame = QtGui.QLabel("No options", self)
+            src_opt_frame = QtGui.QLabel("No options", self)  # pylint:disable=no-member
         self._ui.l_src_opt.addWidget(src_opt_frame)
         self._curr_src_frame = src_opt_frame
 
     def done(self, result):
-        if result != QtGui.QDialog.Accepted:
-            return QtGui.QDialog.done(self, result)
+        if result != QtGui.QDialog.Accepted:  # pylint:disable=no-member
+            return QtGui.QDialog.done(self, result)  # pylint:disable=no-member
         if not self._validate():
             return
         if self._from_window():
             sources.save_source(self.source)
-            return QtGui.QDialog.done(self, result)
+            return QtGui.QDialog.done(self, result)  # pylint:disable=no-member
 
     def _to_window(self, source):
         self._frm_sett_main.to_window(source)
@@ -130,8 +130,8 @@ class DlgSourceEdit(QtGui.QDialog):
         lv_filters.clear()
         for fltr in db.get_all(DBO.Filter, source_id=self.source.oid):
             fltr_class = plugins.FILTERS[fltr.name]
-            itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
-            itm.setData(QtCore.Qt.UserRole, fltr.oid)
+            itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))  # pylint:disable=no-member
+            itm.setData(QtCore.Qt.UserRole, fltr.oid)  # pylint:disable=no-member
             lv_filters.addItem(itm)
 
     def _on_add_filter(self):
@@ -142,17 +142,17 @@ class DlgSourceEdit(QtGui.QDialog):
         item = self._ui.lv_filters.currentItem()
         if not item:
             return
-        fltr_id = item.data(QtCore.Qt.UserRole)
+        fltr_id = item.data(QtCore.Qt.UserRole)  # pylint:disable=no-member
         assert fltr_id, "Missing user data in item %r" % item
-        fltr_id, ok = fltr_id.toInt()
-        assert ok, "Invalid id in item: %r" % fltr_id
+        fltr_id, conv_ok = fltr_id.toInt()
+        assert conv_ok, "Invalid id in item: %r" % fltr_id
         if filter_conf.delete_filter(self, fltr_id):
             self._fill_filters()
 
     def _on_filters_act(self, item):
-        fltr_id = item.data(QtCore.Qt.UserRole)
+        fltr_id = item.data(QtCore.Qt.UserRole)  # pylint:disable=no-member
         assert fltr_id, "Missing user data in item %r" % item
-        fltr_id, ok = fltr_id.toInt()
-        assert ok, "Invalid id in item: %r" % fltr_id
+        fltr_id, conv_ok = fltr_id.toInt()
+        assert conv_ok, "Invalid id in item: %r" % fltr_id
         if filter_conf.edit_filter(self, fltr_id):
             self._fill_filters()

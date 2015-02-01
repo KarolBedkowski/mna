@@ -94,7 +94,7 @@ class Group(BaseModelMixin, Base):
             count()
 
     @unread.expression
-    def unread(cls):
+    def unread(cls):  # pylint:disable=no-self-argument
         return select([func.count(Article.oid)]).\
             where(and_(Article.source_id == Source.oid, Article.read == 0,
                        Source.group_id == cls.oid)).\
@@ -200,7 +200,7 @@ class Source(BaseModelMixin, Base):
             count()
 
     @unread.expression
-    def unread(cls):
+    def unread(cls):  # pylint:disable=no-self-argument
         return select([func.count(Article.oid)]).\
             where(and_(Article.source_id == cls.oid, Article.read == 0)).\
             label('unread_count')
@@ -212,7 +212,7 @@ class Source(BaseModelMixin, Base):
         return self.conf.get('filter_minimal_score', 0)
 
     def add_log(self, category, message):
-        self.source_log.append(SourceLog(category=category, message=message))
+        self.source_log.append(SourceLog(category=category, message=message))  # pylint:disable=no-member
 
     def get_last_article(self):
         return self.articles.order_by(Article.updated.desc()).first()
@@ -220,7 +220,7 @@ class Source(BaseModelMixin, Base):
     def get_filters(self):
         apply_global = self.conf.get('filter.apply_global', True)
         if not apply_global:
-            return self.filters
+            return self.filters  # pylint:disable=no-member
         session = orm.object_session(self)
         fltrs = session.query(Filter).\
             filter(or_(Filter.source_id == self.oid,
