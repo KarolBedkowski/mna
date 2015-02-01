@@ -1,8 +1,5 @@
 ! usuniecie testowych danych z bootstrap
 
-+ dynamiczne dialogi - pluginy
-
 * import OPML
 * mozliwosc aktualizacji tylko jednego src/grupy
 * zatrzymywanie aktualizacji
-* zachowywanie zaznaczenia przy aktualizacji

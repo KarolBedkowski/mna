@@ -2,13 +2,13 @@
  MNA ver 0.x.x
 +++++++++++++++++
 
-:Credits: Copyright (c) Karol Będkowski, 2014
+:Credits: Copyright (c) Karol Będkowski, 2014-2015
 :Licence: GPLv2+
 :Status: alpha (working, bugs)
 :Tags: news agent, news aggregator, rss
 
 
-News aggregate application.
+News aggregate & websites changes monitoring application.
 
 
 Disclaimer
@@ -27,7 +27,7 @@ Just unpack and run via mna.py
 
 Runtime Requirements
 --------------------
-* Python 2.6+
+* Python 2.7.x
 * sqlalchemy 0.7.9+
 
 
