@@ -103,6 +103,11 @@ class RssSource(base.AbstractSource):
                                  len(articles))
         return articles
 
+    @classmethod
+    def get_info(cls, source_conf, _session=None):
+        info = [('URL', source_conf.conf.get("url"))]
+        return info
+
     def _create_article(self, feed, session, min_date_to_load):
         published = _ts2datetime(feed.get('published_parsed'))
         updated = _ts2datetime(feed.get('updated_parsed'))

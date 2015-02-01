@@ -117,6 +117,11 @@ class AbstractSource(object):
     def get_name(cls):
         return cls.__module__ + '.' + cls.__name__
 
+    @classmethod
+    def get_info(cls, source_conf, session=None):  # pylint:disable=unused-argument
+        """ Get additional information specific to given source. """
+        return None
+
 
 class AbstractFilter(object):
     """Basic Filter object"""

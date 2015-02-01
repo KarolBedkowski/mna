@@ -246,6 +246,24 @@ class WebSource(base.AbstractSource):
         articles = self._limit_articles(articles, max_load)
         return articles
 
+    @classmethod
+    def get_info(cls, source_conf, _session=None):
+        info = [('URL', source_conf.conf.get("url"))]
+        mode = source_conf.conf.get("mode")
+        if mode == "part":
+            info.append(('Mode', 'page parts'))
+            info.append(("Selector", source_conf.conf.get('xpath')))
+        elif mode == "page_one_part":
+            info.append(('Mode', 'one page part'))
+            info.append(("Selector", source_conf.conf.get('xpath')))
+            info.append(("Similarity level",
+                         source_conf.conf.get('similarity')))
+        else:
+            info.append(('Mode', 'load whole page'))
+            info.append(("Similarity level",
+                         source_conf.conf.get('similarity')))
+        return info
+
     def _process_page(self, page, info, session):
         if accept_page(page, session, self.cfg,
                        self.cfg.conf.get('similarity') or 1):
