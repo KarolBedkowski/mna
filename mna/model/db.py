@@ -38,10 +38,10 @@ def text_factory(text):
 @sqlalchemy.event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
     dbapi_connection.text_factory = text_factory
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")
-    cursor.close()
+#    cursor = dbapi_connection.cursor()
+#    cursor.execute("PRAGMA foreign_keys=ON")
+#    cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")
+#    cursor.close()
 
 
 def connect(filename, debug=False, *args, **kwargs):

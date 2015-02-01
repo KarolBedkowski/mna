@@ -14,4 +14,7 @@ __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-12"
 
 
-SCHEMA_DEF = []
+SCHEMA_DEF = [[
+    "PRAGMA foreign_keys=ON",
+    "PRAGMA auto_vacuum=INCREMENTAL"
+]]

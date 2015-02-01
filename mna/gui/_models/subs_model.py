@@ -137,6 +137,10 @@ class SpecialTreeNode(_TreeNode):
         return QtCore.QVariant()  # pylint:disable=no-member
 
 
+# pylint:disable=no-member
+_DEFAULT_FLAGS = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+
 class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
     """ Groups & sources tree model.
     """
@@ -234,7 +238,7 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
 
     def flags(self, _index):
         """Returns the item flags for the given index. """
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+        return _DEFAULT_FLAGS
 
     def columnCount(self, _parent):
         """The number of columns for the children of the given index."""
@@ -267,8 +271,6 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
 
     def parent(self, child):
         """The parent index of a given index."""
-        if not child.isValid():
-            return QtCore.QModelIndex()
         node = self.node_from_index(child)
         if node is None:
             return QtCore.QModelIndex()
