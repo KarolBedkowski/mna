@@ -126,6 +126,12 @@ class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
                 return True
         return False
 
+    def get_index_by_oid(self, oid):
+        for row, itm in enumerate(self.items):
+            if itm.oid == oid:
+                return self.index(row, 0)  # pylint: disable=no-member
+        return None
+
     def rowCount(self, _parent=None):
         return len(self.items)
 

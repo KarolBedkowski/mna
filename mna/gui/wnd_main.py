@@ -175,8 +175,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
                 == QtGui.QMessageBox.No:
             return
 
-        model = self._ui.tv_subs.selectionModel()
-        model.clearSelection()
+        self._ui.tv_subs.selectionModel().clearSelection()
 
         if isinstance(node, subs_model.SourceTreeNode):
             if sources.delete_source(node.oid):
@@ -331,10 +330,22 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._subs_model.update_source(source_id, group_id)
         # refresh article list when updated source is displayed
         model = self._arts_list_model
-        if model.ds_kind == arts_model.DS_SOURCE and model.ds_oid == source_id:
+        if ((model.ds_kind == arts_model.DS_SOURCE and
+             model.ds_oid == source_id) or
+                (model.ds_kind == arts_model.DS_GROUP and
+                 model.ds_oid == group_id)):
+            sel_art = self._selected_article
+            if not sel_art:
+                self._arts_list_model.refresh()
+                return
+            # try to keep current selection
+            sel_art_oid = sel_art.oid
             self._arts_list_model.refresh()
-        elif model.ds_kind == arts_model.DS_GROUP and model.ds_oid == group_id:
-            self._arts_list_model.refresh()
+            index = self._arts_list_model.get_index_by_oid(sel_art_oid)
+            if index:
+                self._ui.tv_articles.selectionModel().setCurrentIndex(
+                    index, QtGui.QItemSelectionModel.ClearAndSelect
+                    | QtGui.QItemSelectionModel.Rows)
 
     @QtCore.pyqtSlot(unicode)
     def _on_announce(self, message):
