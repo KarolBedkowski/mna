@@ -390,7 +390,6 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         else:
             raise RuntimeError("invalid tree item: %r", node)
         model.refresh()
-        self._ui.tv_articles.resizeColumnsToContents()
 
     def _set_window_pos_size(self):
         appcfg = self._appconfig
@@ -404,6 +403,11 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         sp2 = appcfg.get('wnd_main.splitter2')
         if sp2:
             self._ui.splitter_2.setSizes(sp2)
+        cols_width = appcfg.get('wnd_main.arts.cols_width')
+        if cols_width:
+            cols_width = cols_width[:self._arts_list_model.columnCount(None)]
+            for idx, width in enumerate(cols_width):
+                self._ui.tv_articles.setColumnWidth(idx, width)
 
     def _save_window_pos_size(self):
         appcfg = self._appconfig
@@ -413,6 +417,11 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         appcfg['wnd_main.splitter2'] = self._ui.splitter_2.sizes()
         # save expanded tree items
         self._save_expanded_tree_nodes()
+        # save column width
+        cols_width = [self._ui.tv_articles.columnWidth(col)
+                      for col
+                      in xrange(self._arts_list_model.columnCount(None))]
+        appcfg['wnd_main.arts.cols_width'] = cols_width
 
     def _save_expanded_tree_nodes(self):
         _LOG.debug('_save_expanded_tree_nodes')
