@@ -41,10 +41,11 @@ class ListItem(object):
             self.font = QtGui.QFont()  # pylint: disable=no-member
             self.font.setBold(True)
         self.color = _score_to_color(src.score)
+        source_title = src.source.title or u"Source %d" % src.source_oid
         self._cols = [
             QtCore.QVariant(u"✔" if src.read else ""),  # read
             QtCore.QVariant(u"★" if src.starred else ""),  # starred
-            QtCore.QVariant(src.source.title),  # source
+            QtCore.QVariant(source_title),  # source
             QtCore.QVariant(src.title),  # title
             QtCore.QDateTime(src.updated),  # updated
             QtCore.QVariant(src.score)  # score

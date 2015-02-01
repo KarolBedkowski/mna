@@ -110,11 +110,13 @@ class GroupTreeNode(_TreeNode):
 class SourceTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, title, oid, unread):
-        super(SourceTreeNode, self).__init__(parent, title, oid, unread)
+        super(SourceTreeNode, self).__init__(
+            parent, (title or u"Source %d" % oid), oid, unread)
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
-        self.caption, self.unread = sources.get_source_info(session, self.oid)
+        caption, self.unread = sources.get_source_info(session, self.oid)
+        self.caption = caption or u"Source %d" % self.oid
 
 
 SPECIAL_STARRED = -1

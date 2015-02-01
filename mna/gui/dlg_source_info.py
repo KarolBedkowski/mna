@@ -38,11 +38,11 @@ class DlgSourceInfo(QtGui.QDialog):
     def _setup(self, source_oid):
         session = db.Session()
         source = db.get_one(DBO.Source, session=session, oid=source_oid)
-        self._create_info_model(source)
+        self._create_info_model(source, session)
         self._create_logs_model(source)
         self.setWindowTitle("Source %s info" % source.title)
 
-    def _create_info_model(self, source):
+    def _create_info_model(self, source, session):
         articles_cnt = db.count(DBO.Article, source_id=source.oid)
         info = [('Name', source.name),
                 ('Title', source.title),
@@ -51,6 +51,7 @@ class DlgSourceInfo(QtGui.QDialog):
                 ('Last error date', unicode(source.last_error_date)),
                 ('Last error', unicode(source.last_error)),
                 ('Articles', unicode(articles_cnt))]
+        info.extend(source.get_info(session) or [])
 
         model = QtGui.QStandardItemModel(0, 2, self._ui.lv_info)
         model.setHeaderData(0, QtCore.Qt.Horizontal, self.tr("Key"))

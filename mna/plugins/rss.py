@@ -72,6 +72,10 @@ class RssSource(base.AbstractSource):
             raise base.GetArticleException("Get rss feed error: %r" %
                                            doc.get('status'))
 
+        if self.cfg.title == "":
+            if 'title' in doc.feed:
+                self.cfg.title = doc.feed.title
+
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         _LOG.debug("RssSource: src=%d min_date_to_load=%s", self.cfg.oid,
                    min_date_to_load)

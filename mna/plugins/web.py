@@ -215,6 +215,9 @@ class WebSource(base.AbstractSource):
                              "Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
+        if self.cfg.title == "":
+            self.cfg.title = get_title(page, info['_encoding'])
+
         if not self.is_page_updated(info, max_age_load):
             return []
 

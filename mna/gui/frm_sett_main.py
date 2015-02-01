@@ -16,16 +16,17 @@ import logging
 from PyQt4 import QtGui
 
 from mna.gui import frm_sett_main_ui
-from mna.gui import _validators
+# from mna.gui import _validators
 from mna.model import db
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
 
 
-class FrmSettMain(QtGui.QFrame):
+class FrmSettMain(QtGui.QFrame):  # pylint: disable=no-member
     def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
+        QtGui.QFrame.__init__(self, parent)  # pylint: disable=no-member
+
         self._ui = frm_sett_main_ui.Ui_FrmSettMain()
         self._ui.setupUi(self)
         self._setup()
@@ -34,11 +35,7 @@ class FrmSettMain(QtGui.QFrame):
         for group in db.get_all(DBO.Group):
             self._ui.c_group.addItem(group.name, group.oid)
 
-    def validate(self):
-        try:
-            _validators.validate_empty_string(self._ui.e_title, 'Title')
-        except _validators.ValidationError:
-            return False
+    def validate(self):  # pylint:disable=no-self-use
         return True
 
     def from_window(self, source):
