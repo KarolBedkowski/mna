@@ -195,9 +195,9 @@ class Source(BaseModelMixin, Base):
 
     @hybrid_property
     def unread(self):
-        return orm.object_session(self).query(Article).\
+        return orm.object_session(self).query(func.count(Article)).\
             filter(Article.source_id == self.oid, Article.read == 0).\
-            count()
+            scalar()
 
     @unread.expression
     def unread(cls):  # pylint:disable=no-self-argument

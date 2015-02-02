@@ -22,6 +22,7 @@ import datetime
 import sqlalchemy
 from sqlalchemy.engine import Engine
 from sqlalchemy import orm
+from sqlalchemy import func
 # from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls
@@ -226,7 +227,11 @@ def count(clazz, session=None, **kwargs):
         One object.
     """
     _LOG.debug('count: %r %r', clazz, kwargs)
-    return (session or Session()).query(clazz).filter_by(**kwargs).count()
+    session = session or Session()
+    if hasattr(clazz, "oid"):
+        return session.query(func.count(clazz.oid)).\
+            filter_by(**kwargs).scalar()
+    return session.query(clazz).filter_by(**kwargs).count()
 
 
 def save(obj, commit=False, session=None):
