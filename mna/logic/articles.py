@@ -301,3 +301,12 @@ def search_text(text, session=None):
                    func.lower(DBO.Article.content).like(text),
                    func.lower(DBO.Article.author).like(text)))
     return res
+
+
+def get_unread_count(session=None):
+    """ Count all unread articles. """
+    session = session or db.Session()
+    cnt = session.query(func.count(DBO.Article.oid)).\
+        filter(DBO.Article.read == 0).\
+        scalar()
+    return cnt

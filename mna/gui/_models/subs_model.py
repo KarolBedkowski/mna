@@ -132,6 +132,8 @@ class SpecialTreeNode(_TreeNode):
     def update(self, session):
         if self.oid == SPECIAL_STARRED:
             self.unread = articles.get_starred_count(session)
+        elif self.oid == SPECIAL_ALL:
+            self.unread = articles.get_unread_count(session)
 
     def get_font(self):
         return QtCore.QVariant()  # pylint:disable=no-member
