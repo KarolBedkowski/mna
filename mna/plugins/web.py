@@ -261,11 +261,11 @@ class WebSource(base.AbstractSource):
             info.append(('Mode', 'one page part'))
             info.append(("Selector", source_conf.conf.get('xpath')))
             info.append(("Similarity level",
-                         source_conf.conf.get('similarity')))
+                         str(source_conf.conf.get('similarity', 1) * 100)))
         else:
             info.append(('Mode', 'load whole page'))
             info.append(("Similarity level",
-                         source_conf.conf.get('similarity')))
+                         str(source_conf.conf.get('similarity', 1) * 100)))
         return info
 
     def _process_page(self, page, info, session):
