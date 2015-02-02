@@ -69,6 +69,15 @@ def force_refresh_all():
     session.commit()
 
 
+def force_refresh(source_oid):
+    _LOG.info("Sources.force_refresh(%r)", source_oid)
+    session = db.Session()
+    session.query(DBO.Source).\
+        filter_by(oid=source_oid).\
+        update({"next_refresh": datetime.datetime.now()})
+    session.commit()
+
+
 def get_source_info(session, source_oid):
     """ Get title and unread count for source. """
     session = session or db.Session()

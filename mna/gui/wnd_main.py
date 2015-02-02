@@ -116,7 +116,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
     def _selected_article(self):
         """ Get current selected article """
         index = self._ui.tv_articles.selectionModel().currentIndex()
-        if index:
+        if index and index.isValid():
             return self._arts_list_model.node_from_index(index)
 
     def closeEvent(self, event):
@@ -146,6 +146,8 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         if isinstance(selected, subs_model.SourceTreeNode):
             menu.addAction(self.tr("Info")).triggered.\
                     connect(self._on_subs_cmenu_info)
+            menu.addAction(self.tr("Refresh")).triggered.\
+                    connect(self._on_subs_cmenu_refresh)
         menu.exec_(self._ui.tv_subs.viewport(). mapToGlobal(position))
 
     def _on_subs_cmenu_edit(self):
@@ -192,6 +194,12 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             return
         dlg = dlg_source_info.DlgSourceInfo(self, node.oid)
         dlg.exec_()
+
+    def _on_subs_cmenu_refresh(self):
+        node = self._selected_subscription
+        if node is None or not isinstance(node, subs_model.SourceTreeNode):
+            return
+        sources.force_refresh(node.oid)
 
     def _on_art_clicked(self, index):
         """ Handle article click -  star/flag articles. """
