@@ -62,6 +62,7 @@ class Worker(QtCore.QRunnable):
             filters = list(self._load_filters(source_cfg, session))
             min_score = self._get_min_score(source_cfg)
         try:
+            dropped = 0
             for article in source.get_items(
                     session,
                     aconf.get('articles.max_num_load', 0),  # max_num_load
@@ -76,10 +77,13 @@ class Worker(QtCore.QRunnable):
                     article.score = max(min(article.score, 100), -100)
                     if article.score < min_score:
                         _LOG.debug('%s article %r to low score (min: %d)',
-                                   self._p_name, article, min_score)
+                                   self._p_name, article.title, min_score)
+                        dropped += 1
                         continue
 
                 session.merge(article)
+            if dropped and cnt:
+                source_cfg.add_log("info", "Articles dropped: %d" % dropped)
         except base.GetArticleException, err:
             # some processing error occurred
             _LOG.exception("%s Load articles from %s/%s error: %r",
