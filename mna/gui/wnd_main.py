@@ -140,14 +140,14 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             return
         menu = QtGui.QMenu()
         menu.addAction(self.tr("Edit")).triggered.\
-                connect(self._on_subs_cmenu_edit)
+            connect(self._on_subs_cmenu_edit)
         menu.addAction(self.tr("Delete")).triggered.\
-                connect(self._on_subs_cmenu_del)
+            connect(self._on_subs_cmenu_del)
         if isinstance(selected, subs_model.SourceTreeNode):
             menu.addAction(self.tr("Info")).triggered.\
-                    connect(self._on_subs_cmenu_info)
-            menu.addAction(self.tr("Refresh")).triggered.\
-                    connect(self._on_subs_cmenu_refresh)
+                connect(self._on_subs_cmenu_info)
+        menu.addAction(self.tr("Refresh")).triggered.\
+            connect(self._on_subs_cmenu_refresh)
         menu.exec_(self._ui.tv_subs.viewport(). mapToGlobal(position))
 
     def _on_subs_cmenu_edit(self):
@@ -197,9 +197,12 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
 
     def _on_subs_cmenu_refresh(self):
         node = self._selected_subscription
-        if node is None or not isinstance(node, subs_model.SourceTreeNode):
+        if node is None:
             return
-        sources.force_refresh(node.oid)
+        if isinstance(node, subs_model.SourceTreeNode):
+            sources.force_refresh(node.oid)
+        elif isinstance(node, subs_model.GroupTreeNode):
+            sources.force_refresh_by_group(node.oid)
 
     def _on_art_clicked(self, index):
         """ Handle article click -  star/flag articles. """
