@@ -14,7 +14,6 @@ __version__ = "2015-01-31"
 
 
 import logging
-import weakref
 
 from PyQt4 import QtCore, QtGui
 
@@ -30,7 +29,7 @@ ID_ROLE = QtCore.Qt.UserRole + 1  # pylint:disable=no-member
 class _TreeNode(object):
     def __init__(self, parent, caption=None, oid=None, unread=None):
         self.clear()
-        self.parent = weakref.proxy(parent) if parent else None
+        self.parent = parent
         self.caption = caption
         self.oid = oid
         self.unread = unread
@@ -40,9 +39,14 @@ class _TreeNode(object):
             return self.caption + "  (" + str(self.unread) + ")"
         return self.caption
 
+    def __unicode__(self):
+        if self.unread:
+            return self.caption + "  (" + str(self.unread) + ")"
+        return self.caption
+
     def __repr__(self):
-        return "<%s %s; %r>" % (self.__class__.__name__,
-                                self.caption, self.oid) + \
+        return u"<%s %s; %r>" % (self.__class__.__name__,
+                                 self.caption, self.oid) + \
             "\n".join(" - " + repr(child) for child in self.children) + "</>"
 
     def clear(self):
@@ -218,7 +222,7 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         if not index.isValid():
             return QtCore.QVariant()
         if role == QtCore.Qt.DisplayRole:
-            return QtCore.QVariant(str(self.node_from_index(index)))
+            return QtCore.QVariant(unicode(self.node_from_index(index)))
         elif role == QtCore.Qt.FontRole:
             return self.node_from_index(index).get_font()
         elif role == ID_ROLE:
