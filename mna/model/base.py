@@ -158,3 +158,26 @@ class AbstractFilter(object):
 class GetArticleException(Exception):
     """ General refresh source error. """
     pass
+
+
+class AbstractTool(object):
+    """Basic Tool object"""
+
+    # Human readable name
+    name = "dummy"
+    description = ""
+    group = ""
+
+    def __init__(self):
+        super(AbstractTool, self).__init__()
+
+    @classmethod
+    def get_name(cls):
+        return cls.__module__ + '.' + cls.__name__
+
+    @classmethod
+    def is_available(cls):
+        return False
+
+    def run(self, parent, selected_article, selected_source, selected_group):
+        pass
