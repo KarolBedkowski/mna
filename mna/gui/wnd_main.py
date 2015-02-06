@@ -17,6 +17,7 @@ import sys
 import logging
 import webbrowser
 import urllib2
+import functools
 
 from PyQt4 import QtGui, QtWebKit, QtCore
 
@@ -32,6 +33,7 @@ from mna.lib.appconfig import AppConfig
 from mna.model import db
 from mna.logic import groups, sources, articles as larts
 from mna.common import messenger
+from mna import plugins
 
 _LOG = logging.getLogger(__name__)
 
@@ -76,6 +78,8 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._t_search.setPlaceholderText(self.tr("Search"))
         self._t_search.setMaximumWidth(200)
         self._ui.toolbar.addWidget(self._t_search)
+        # menus
+        self._build_tools_menu()
 
     def _bind(self):
         # actions
@@ -484,3 +488,25 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             index = self._subs_model.index(row, 0, None)
             model.setCurrentIndex(
                 index, QtGui.QItemSelectionModel.ClearAndSelect)
+
+    def _build_tools_menu(self):
+        if not plugins.TOOLS:
+            return
+        # TODO: group tools
+        menu = self._ui.menubar
+        smenu = QtGui.QMenu("Tools", menu)
+        for name, clazz in sorted(plugins.TOOLS.iteritems()):
+            smenu.addAction(clazz.name).triggered.connect(
+                functools.partial(self._on_tool_action, name))
+        menu.addAction(smenu.menuAction())
+
+    def _on_tool_action(self, tool_name):
+        tool_clazz = plugins.TOOLS[tool_name]
+        tool = tool_clazz()
+        sel_subs = self._selected_subscription
+        if isinstance(sel_subs, subs_model.GroupTreeNode):
+            group_oid, source_oid = sel_subs.oid, None
+        else:
+            group_oid, source_oid = None, sel_subs.oid
+        sel_art = self._selected_article
+        tool.run(self, sel_art.oid if sel_art else None, source_oid, group_oid)
