@@ -12,6 +12,7 @@ import time
 import datetime
 
 import feedparser
+from sqlalchemy import orm
 from PyQt4 import QtGui
 
 from mna.model import base
@@ -66,7 +67,7 @@ class RssSource(base.AbstractSource):
         doc = feedparser.parse(url)
         if not doc or doc.get('status') >= 400:
             self.cfg.add_log('error', "Error loading RSS feed: " +
-                             doc.get('status'))
+                             str(doc.get('status')))
             _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
                        self.cfg.oid, url, doc, self.cfg)
             raise base.GetArticleException("Get rss feed error: %r" %
@@ -79,9 +80,14 @@ class RssSource(base.AbstractSource):
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         _LOG.debug("RssSource: src=%d min_date_to_load=%s", self.cfg.oid,
                    min_date_to_load)
+
+        _LOG.debug("get_items: load cache start")
+        art_cache = dict(self._get_existing_articles(session))
+        _LOG.debug("get_items: load cache finished")
+
         articles = filter(None,
-                          (self._create_article(feed, session,
-                                                min_date_to_load)
+                          (self._create_article(
+                              feed, session, min_date_to_load, art_cache)
                            for feed in doc.get('entries') or []))
 
         _LOG.debug("RssSource: src=%d loaded %d articles",
@@ -108,7 +114,7 @@ class RssSource(base.AbstractSource):
         info = [('URL', source_conf.conf.get("url"))]
         return info
 
-    def _create_article(self, feed, session, min_date_to_load):
+    def _create_article(self, feed, session, min_date_to_load, art_cache):
         published = _ts2datetime(feed.get('published_parsed'))
         updated = _ts2datetime(feed.get('updated_parsed'))
         updated = updated or published or datetime.datetime.now()
@@ -122,9 +128,7 @@ class RssSource(base.AbstractSource):
                                        feed.get('title'),
                                        feed.get('author'),
                                        self.__class__.get_name())
-        art = db.get_one(DBO.Article, session=session,
-                         source_id=self.cfg.oid,
-                         internal_id=internal_id)
+        art = art_cache.get(internal_id)
         if art:
             _LOG.debug("RssSource: src=%d Article already in db: %r",
                        self.cfg.oid, internal_id)
@@ -165,3 +169,11 @@ class RssSource(base.AbstractSource):
                 min_date_to_load = limit
 
         return min_date_to_load
+
+    def _get_existing_articles(self, session):
+        rows = db.get_all(DBO.Article, session=session,
+                          source_id=self.cfg.oid).\
+                options(orm.Load(DBO.Article).  # pylint:disable=no-member
+                        load_only("oid", "internal_id", "updated"))
+        for row in rows:
+            yield (row.internal_id, row)
