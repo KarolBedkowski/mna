@@ -41,10 +41,17 @@ class Worker(QtCore.QRunnable):
 
     def run(self):
         session = db.Session()
-        source_cfg = db.get_one(DBO.Source, session=session,
-                                oid=self.source_id)
+        source_cfg = self._get_and_check_source(session)
+        if not source_cfg or source_cfg.processing:
+            _LOG.debug("%s not processing %r", self._p_name, source_cfg)
+            return
+
         _LOG.debug("%s processing %s/%s", self._p_name, source_cfg.name,
                    source_cfg.title)
+
+        source_cfg.processing = True
+        session.commit()
+
         # find pluign
         source_cls = plugins.SOURCES.get(source_cfg.name)
         if not source_cls:
@@ -52,48 +59,38 @@ class Worker(QtCore.QRunnable):
                        source_cls, source_cfg)
             source_cfg.enabled = False
             _on_error(session, source_cfg, "unknown source")
-            return 0
+            return
 
         source = source_cls(source_cfg)
         cnt = 0
         aconf = self.aconf
-        filtering = source_cfg.conf.get('filter.enabled', True)
-        if filtering:
-            filters = list(self._load_filters(source_cfg, session))
-            min_score = self._get_min_score(source_cfg)
         try:
-            dropped = 0
-            for article in source.get_items(
-                    session,
-                    aconf.get('articles.max_num_load', 0),  # max_num_load
-                    aconf.get('articles.max_age_load', 0)):  # max_age_load
-                cnt += 1
-                article.source_id = source_cfg.oid
-                # filter articles
-                if filtering:
-                    for ftr in filters:
-                        article = ftr.filter(article)
-                    # score
-                    article.score = max(min(article.score, 100), -100)
-                    if article.score < min_score:
-                        _LOG.debug('%s article %r to low score (min: %d)',
-                                   self._p_name, article.title, min_score)
-                        dropped += 1
-                        continue
-
-                session.merge(article)
-            if dropped and cnt:
-                source_cfg.add_log("info", "Articles dropped: %d" % dropped)
+            articles = source.get_items(
+                session,
+                aconf.get('articles.max_num_load', 0),
+                aconf.get('articles.max_age_load', 0))
+            if source_cfg.conf.get('filter.enabled', True):
+                articles = self._filter_articles(articles, session, source_cfg)
+            cnt = sum(_save_articls(articles, session, source_cfg))
         except base.GetArticleException, err:
             # some processing error occurred
             _LOG.exception("%s Load articles from %s/%s error: %r",
                            self._p_name, source_cfg.name, source_cfg.title,
                            err)
             _on_error(session, source_cfg, str(err))
-            return 0
+            return
         else:
             _LOG.debug("%s Loaded %d from %s/%s", self._p_name, cnt,
                        source_cfg.name, source_cfg.title)
+
+        # sanity check
+        source_cfg = self._get_and_check_source(session)
+        if not source_cfg or not source_cfg.processing:
+            _LOG.warn("%s finished problem - sanity check failed: %d - %r",
+                      self._p_name, self.source_id, source_cfg)
+            _on_error(session, source_cfg, str(err))
+            return
+
         now = datetime.datetime.now()
         source_cfg.next_refresh = now + \
                 datetime.timedelta(seconds=source_cfg.interval)
@@ -102,6 +99,15 @@ class Worker(QtCore.QRunnable):
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
                       cnt)
         _LOG.debug("%s finished", self._p_name)
+        return
+
+    def _get_and_check_source(self, session):
+        source_cfg = db.get_one(DBO.Source, session=session,
+                                oid=self.source_id)
+        if not source_cfg or \
+                source_cfg.next_refresh > datetime.datetime.now():
+            return None
+        return source_cfg
 
     def _load_filters(self, source_cfg, session):
         for fltr in source_cfg.get_filters():
@@ -120,6 +126,27 @@ class Worker(QtCore.QRunnable):
                 if source_cfg.conf.get('filter.use_default_score') \
                 else source_cfg.conf.get('filter.min_score', 0)
         return min_score
+
+    def _filter_articles(self, articles, session, source_cfg):
+        filters = list(self._load_filters(source_cfg, session))
+        min_score = self._get_min_score(source_cfg)
+        for article in articles:
+            for ftr in filters:
+                article = ftr.filter(article)
+            # score
+            article.score = max(min(article.score, 100), -100)
+            if article.score < min_score:
+                _LOG.debug('%s article %r to low score (min: %d)',
+                           self._p_name, article.title, min_score)
+                continue
+            yield article
+
+
+def _save_articls(articles, session, source_cfg):
+    for article in articles:
+        article.source_id = source_cfg.oid
+        session.merge(article)
+        yield 1
 
 
 def _on_error(session, source_cfg, error_msg):
