@@ -18,9 +18,9 @@ from PyQt4 import QtGui
 from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
-from mna.plugins import frm_sett_rss_ui
-from mna.plugins import opml
 from mna.gui import _validators
+from . import opml
+from . import frm_sett_rss_ui
 
 _LOG = logging.getLogger(__name__)
 
@@ -58,6 +58,10 @@ class RssSource(base.AbstractSource):
 
     name = "RSS/Atom Source"
     conf_panel_class = FrmSettRss
+
+    @classmethod
+    def get_name(cls):
+        return 'mna.plugins.rss.RssSource'
 
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
