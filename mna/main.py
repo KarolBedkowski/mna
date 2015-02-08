@@ -77,14 +77,15 @@ def run():
     from PyQt4 import QtGui
     app = QtGui.QApplication(sys.argv)  # pylint:disable=no-member
 
-    from mna.logic import worker
-    main_worker = worker.MainWorker()
-    main_worker.start()  # pylint:disable=no-member
-
     from mna.gui import wnd_main
 
     window = wnd_main.WndMain()
     window.show()  # pylint:disable=no-member
+
+    from mna.logic import worker
+    main_worker = worker.MainWorker()
+    main_worker.start()  # pylint:disable=no-member
+
     app.exec_()
 
     main_worker.terminate()  # pylint:disable=no-member
