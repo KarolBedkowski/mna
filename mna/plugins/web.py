@@ -20,7 +20,6 @@ from lxml import etree
 from PyQt4 import QtGui, QtCore
 
 from mna.model import base
-from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
 from mna.plugins import dlg_sett_web_xpath_ui
@@ -61,7 +60,8 @@ def get_page_part(info, page, selector):
         parser = etree.HTMLParser(encoding='UTF-8', remove_blank_text=True,
                                   remove_comments=True, remove_pis=True)
     else:
-        parser = etree.XMLParser(recover=True, encoding='UTF-8')  # pylint:disable=no-member
+        parser = etree.XMLParser(  # pylint:disable=no-member
+            recover=True, encoding='UTF-8')
     tree = etree.fromstring(page, parser)  # pylint: disable=no-member
     for elem in itertools.chain(tree.xpath("//comment()"),
                                 tree.xpath("//script"),
@@ -111,18 +111,6 @@ def get_title(html, encoding):
     return title
 
 
-def articles_similarity(art1, art2):
-    return difflib.SequenceMatcher(None, art1, art2).ratio()
-
-
-def accept_part(session, source_id, checksum):
-    """ Check is given part don't already exists in database for given  part
-        `checksum` and `source_id`.
-    """
-    return db.count(DBO.Article, session=session, internal_id=checksum,
-                    source_id=source_id) == 0
-
-
 def accept_page(page, _session, source, threshold):
     """ Check is page change from last time, optionally check similarity ratio
         if `threshold`  given - reject pages with similarity ratio > threshold.
@@ -136,7 +124,7 @@ def accept_page(page, _session, source, threshold):
             if not last_conf_hash or \
                     last_conf_hash != create_config_hash(source):
                 return True
-        similarity = articles_similarity(last.content, page)
+        similarity = difflib.SequenceMatcher(None, last.content, page).ratio()
         _LOG.debug("similarity: %r %r", similarity, threshold)
         if similarity > threshold:
             _LOG.debug("Article skipped - similarity %r > %r",
@@ -225,20 +213,9 @@ class WebSource(base.AbstractSource):
         if not self.is_page_updated(info, max_age_load):
             return []
 
-        articles = []
-        selector_xpath = self.cfg.conf.get('xpath')
-        mode = self.cfg.conf.get("mode")
-        if mode == "part" and selector_xpath:
-            articles = (self._process_part(part, info, session)
-                        for part in get_page_part(info, page, selector_xpath))
-        elif mode == "page_one_part" and selector_xpath:
-            parts = list(get_page_part(info, page, selector_xpath))
-            if parts:
-                articles = [self._process_page(parts[0], info, session)]
-        else:
-            articles = (self._process_page(part, info, session)
-                        for part in get_page_part(info, page, "//html"))
-
+        articles = self._get_articles(info, page)
+        articles = self._filter_articles(articles, session)
+        articles = (self._create_article(art, info) for art in articles)
         articles = filter(None, articles)
 
         _LOG.debug("WebSource: loaded %d articles", len(articles))
@@ -266,27 +243,49 @@ class WebSource(base.AbstractSource):
             info.append(('Mode', 'load whole page'))
             info.append(("Similarity level",
                          str(source_conf.conf.get('similarity', 1) * 100)))
+        if __debug__:
+            if source_conf.conf:
+                info.extend(("CONF: " + key, unicode(val))
+                            for key, val in source_conf.conf.iteritems())
+            if source_conf.meta:
+                info.extend(("META: " + key, unicode(val))
+                            for key, val in source_conf.meta.iteritems())
         return info
 
-    def _process_page(self, page, info, session):
-        if accept_page(page, session, self.cfg,
-                       self.cfg.conf.get('similarity') or 1):
-            return self._create_article(page, info)
-        return None
+    def _get_articles(self, info, page):
+        selector = self.cfg.conf.get('xpath')
+        mode = self.cfg.conf.get("mode")
+        articles = []
+        if mode == "part" and selector:
+            articles = get_page_part(info, page, selector)
+        elif mode == "page_one_part" and selector:
+            parts = list(get_page_part(info, page, selector))
+            if parts:
+                articles = [parts[0]]
+        else:
+            articles = get_page_part(info, page, "//html")
+        return articles
 
-    def _process_part(self, part, info, session):
-        checksum = create_checksum(part)
-        if accept_part(session, self.cfg.oid, checksum):
-            return self._create_article(part, info, checksum)
-        return None
+    def _filter_articles(self, articles, session):
+        selector = self.cfg.conf.get('xpath')
+        mode = self.cfg.conf.get("mode")
+        if mode == "part" and selector:
+            cache = set(self._get_existing_articles(session))
+            articles = (art for art in articles
+                        if create_checksum(art) not in cache)
+        else:
+            sim = self.cfg.conf.get('similarity') or 1
+            articles = (art for art in articles
+                        if accept_page(art, session, self.cfg, sim))
+        return articles
 
-    def _create_article(self, part, info, checksum=None):
+    def _create_article(self, content, info):
         art = DBO.Article()
-        art.internal_id = checksum or create_checksum(part)
-        art.content = part
+        art.internal_id = create_checksum(content)
+        art.content = content
         art.summary = None
         art.score = self.cfg.initial_score
-        art.title = get_title(part, info['_encoding'])
+        art.title = get_title(content, info['_encoding'])
         art.updated = datetime.datetime.now()
         art.published = info.get('_last-modified')
         art.link = self.cfg.conf.get('url')
@@ -325,6 +324,10 @@ class WebSource(base.AbstractSource):
                       last_refreshed)
             return False
         return True
+
+    def _get_existing_articles(self, session):
+        return (row[0] for row in session.query(DBO.Article.internal_id).
+                filter_by(source_id=self.cfg.oid))
 
 
 class _DlgSettWebXPath(QtGui.QDialog):  # pylint: disable=no-member
