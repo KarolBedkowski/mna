@@ -8,7 +8,6 @@ __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-02"
 
 import logging
-import time
 import datetime
 import calendar
 
@@ -36,6 +35,7 @@ def _ts2datetime(tstruct, default=None):
 
 
 def _entry_hash(entry):
+    """ Compute simple checksum for "content" of feed entry """
     content = entry.content[0].value if 'content' in entry \
         else entry.get('value')
     title = entry.get('title') or ''
@@ -136,12 +136,18 @@ class RssSource(base.AbstractSource):
     def get_info(cls, source_conf, _session=None):
         info = [("C:" + key, unicode(val))
                 for key, val in source_conf.conf.iteritems()]
+        if source_conf.meta:
+            info.extend(("META: " + key, unicode(val))
+                        for key, val in source_conf.meta.iteritems())
         return info
 
     def _get_document(self, url):
         _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
-        etag = self.cfg.conf.get('etag')
-        modified = self.cfg.conf.get('modified')
+        if not self.cfg.meta:
+            _LOG.warn("No meta in %d", self.cfg.oid)
+            self.cfg.meta = {}
+        etag = self.cfg.meta.get('etag')
+        modified = self.cfg.meta.get('modified')
         doc = feedparser.parse(url, etag=etag, modified=modified)
         status = doc.get('status') if doc else 400
         if status >= 400:
@@ -155,7 +161,7 @@ class RssSource(base.AbstractSource):
             self._update_source_cfg(doc)
             return None
         elif status == 301:  # permanent redirects
-            self.cfg.conf["url.org"] = url
+            self.cfg.meta["url.org"] = url
             self.cfg.conf["url"] = doc.href
             _LOG.info("RssSource: src=%s permanent redirects to %s",
                       self.cfg.oid, doc.href)
@@ -170,8 +176,13 @@ class RssSource(base.AbstractSource):
         return doc
 
     def _update_source_cfg(self, doc):
-        self.cfg.conf['etag'] = doc.get('etag')
-        self.cfg.conf['modified'] = doc.get('modified')
+        if not self.cfg.meta:
+            _LOG.warn("No meta in %d", self.cfg.oid)
+            self.cfg.meta = {}
+        self.cfg.meta['etag.old'] = self.cfg.meta.get('etag')
+        self.cfg.meta['modified.old'] = self.cfg.meta.get('modified')
+        self.cfg.meta['etag'] = doc.get('etag')
+        self.cfg.meta['modified'] = doc.get('modified')
         if self.cfg.title == "":
             if 'title' in doc.feed:
                 self.cfg.title = doc.feed.title
@@ -187,14 +198,8 @@ class RssSource(base.AbstractSource):
 
     def _filter_by_date(self, entries, min_date_to_load):
         for entry in entries:
-            if entry['_updated'] < min_date_to_load:
-#                _LOG.debug("RssSource: src=%d updated=%s < min_date_to_load=%s",
-#                           self.cfg.oid, entry['_updated'],
-#                           min_date_to_load)
-                continue
-#            _LOG.debug("RssSource: src=%d accept: %s >= %s",
-#                       self.cfg.oid, entry['_updated'], min_date_to_load)
-            yield entry
+            if entry['_updated'] > min_date_to_load:
+                yield entry
 
     def _create_article(self, entry, art_cache, feed_updated):
         internal_id = entry.get('id') or \
