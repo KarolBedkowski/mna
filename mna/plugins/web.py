@@ -32,22 +32,48 @@ class LoadPageError(RuntimeError):
     pass
 
 
-def download_page(url):
-    """ Download Page from `url` """
+# pylint:disable=no-init
+class DefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
+    def http_error_default(self, req, fp, code, msg, headers):
+        result = urllib2.HTTPError(
+            req.get_full_url(), code, msg, headers, fp)
+        result.status = code
+        return result
+
+
+def download_page(url, etag, modified):
+    """ Download Page from `url` with optional last etag and modified time.
+        When no updates return code 304 and no content.
+    """
+    request = urllib2.Request(url)
+    opener = urllib2.build_opener(DefaultErrorHandler())
+    if modified:
+        request.add_header('If-Modified-Since', modified)
+    if etag:
+        request.add_header('If-None-Match', etag)
+    request.add_header(
+        'User-Agent',
+        'Mozilla/5.0 (X11; Linux i686; rv:36.0) Gecko/20100101 Firefox/36.0')
     try:
-        conn = urllib2.urlopen(url)
+        conn = opener.open(request)
         info = dict(conn.headers)
+        info['_status'] = conn.code
         info['_url'] = url
         info['_encoding'] = conn.headers.getencoding()
         if info['_encoding'] == '7bit':
             info['_encoding'] = None
-        modified = conn.headers.getdate('last-modified') or \
+        modified = conn.headers.getdate('Last-Modified') or \
                 conn.headers.getdate('last-modified')
+        info['_modified'] = modified
         info['_last_modified'] = \
                 datetime.datetime.fromtimestamp(time.mktime(modified)) \
                 if modified else None
-        content = conn.read()
-        return info, content
+        if conn.code == 200:
+            content = conn.read()
+            return info, content
+        elif conn.code == 304:  # not modified
+            return info, None
+        raise LoadPageError("%d: %s" % (conn.status, conn.reason))
     except urllib2.URLError, err:
         raise LoadPageError(err)
 
@@ -202,13 +228,23 @@ class WebSource(base.AbstractSource):
 
         _LOG.info("WebSource.get_items %r from %r - %r", self.cfg.oid,
                   url, self.cfg.conf)
-
+        if not self.cfg.meta:
+            self.cfg.meta = {}
         try:
-            info, page = download_page(url)
+            info, page = download_page(url, self.cfg.meta.get('etag'),
+                                       self.cfg.meta.get('last-modified'))
         except LoadPageError, err:
             self.cfg.add_log('error',
                              "Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
+
+        self.cfg.meta['last-modified'] = info['_modified']
+        self.cfg.meta['etag'] = info.get('etag')
+
+        if info['_status'] == 304:  # not modified
+            _LOG.info("WebSource.get_items %r from %r - not modified",
+                      self.cfg.oid, url)
+            return []
 
         if self.cfg.title == "":
             self.cfg.title = get_title(page, info['_encoding'])
