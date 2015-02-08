@@ -111,7 +111,7 @@ def get_title(html, encoding):
     return title
 
 
-def accept_page(page, _session, source, threshold):
+def accept_page(article, _session, source, threshold):
     """ Check is page change from last time, optionally check similarity ratio
         if `threshold`  given - reject pages with similarity ratio > threshold.
     """
@@ -124,12 +124,15 @@ def accept_page(page, _session, source, threshold):
             if not last_conf_hash or \
                     last_conf_hash != create_config_hash(source):
                 return True
-        similarity = difflib.SequenceMatcher(None, last.content, page).ratio()
+        content = article['content']
+        similarity = difflib.SequenceMatcher(None, last.content,
+                                             content).ratio()
         _LOG.debug("similarity: %r %r", similarity, threshold)
         if similarity > threshold:
             _LOG.debug("Article skipped - similarity %r > %r",
                        similarity, threshold)
             return False
+        article['meta']['similarity'] = similarity
     return True
 
 
@@ -213,7 +216,8 @@ class WebSource(base.AbstractSource):
         if not self.is_page_updated(info, max_age_load):
             return []
 
-        articles = self._get_articles(info, page)
+        parts = self._get_articles(info, page)
+        articles = self._prepare_articles(parts)
         articles = self._filter_articles(articles, session)
         articles = (self._create_article(art, info) for art in articles)
         articles = filter(None, articles)
@@ -266,22 +270,29 @@ class WebSource(base.AbstractSource):
             articles = get_page_part(info, page, "//html")
         return articles
 
+    def _prepare_articles(self, parts):  # pylint:disable=no-self-use
+        for part in parts:
+            yield {'content': part,
+                   'checksum': create_checksum(part),
+                   'meta': {}}
+
     def _filter_articles(self, articles, session):
         selector = self.cfg.conf.get('xpath')
         mode = self.cfg.conf.get("mode")
         if mode == "part" and selector:
             cache = set(self._get_existing_articles(session))
             articles = (art for art in articles
-                        if create_checksum(art) not in cache)
+                        if art['checksum'] not in cache)
         else:
             sim = self.cfg.conf.get('similarity') or 1
             articles = (art for art in articles
                         if accept_page(art, session, self.cfg, sim))
         return articles
 
-    def _create_article(self, content, info):
+    def _create_article(self, article, info):
+        content = article['content']
         art = DBO.Article()
-        art.internal_id = create_checksum(content)
+        art.internal_id = article['checksum']
         art.content = content
         art.summary = None
         art.score = self.cfg.initial_score
@@ -290,6 +301,7 @@ class WebSource(base.AbstractSource):
         art.published = info.get('_last-modified')
         art.link = self.cfg.conf.get('url')
         art.meta = {'conf': create_config_hash(self.cfg)}
+        art.meta.update(article['meta'])
         return art
 
     def _limit_articles(self, articles, max_load):
