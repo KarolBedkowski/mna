@@ -68,15 +68,37 @@ class RssSource(base.AbstractSource):
         if not url:
             return []
 
+        etag = self.cfg.conf.get('etag')
+        modified = self.cfg.conf.get('modified')
+
         _LOG.info("RssSource: src=%d get_items from %r", self.cfg.oid, url)
-        doc = feedparser.parse(url)
-        if not doc or doc.get('status') >= 400:
-            self.cfg.add_log('error', "Error loading RSS feed: " +
-                             str(doc.get('status')))
+        doc = feedparser.parse(url, etag=etag, modified=modified)
+        status = doc.get('status') if doc else 400
+        if status >= 400:
+            self.cfg.add_log('error', "Error loading RSS feed: %s" % status)
             _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
                        self.cfg.oid, url, doc, self.cfg)
-            raise base.GetArticleException("Get rss feed error: %r" %
-                                           doc.get('status'))
+            raise base.GetArticleException("Get rss feed error: %r" % status)
+        elif status == 304:
+            _LOG.info("RssSource: src=%s result %d: %r - skipping",
+                      self.cfg.oid, status, doc.get('debug_message'))
+            return []
+        elif status == 301:  # permanent redirects
+            self.cfg.conf["url.org"] = url
+            self.cfg.conf["url"] = doc.href
+            _LOG.info("RssSource: src=%s permanent redirects to %s",
+                      self.cfg.oid, doc.href)
+            self.cfg.add_log('info',
+                             "Permanent redirect to %s; updating configuration"
+                             % doc.href)
+        elif status == 302:  # temporary redirects
+            _LOG.info("RssSource: src=%s temporary redirects to %s",
+                      self.cfg.oid, doc.href)
+            self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
+
+        self.cfg.conf['etag'] = doc.get('etag')
+        self.cfg.conf['modified'] = doc.get('modified')
+        print self.cfg.conf
 
         if self.cfg.title == "":
             if 'title' in doc.feed:
@@ -116,7 +138,8 @@ class RssSource(base.AbstractSource):
 
     @classmethod
     def get_info(cls, source_conf, _session=None):
-        info = [('URL', source_conf.conf.get("url"))]
+        info = [("C:" + key, str(val))
+                for key, val in source_conf.conf.iteritems()]
         return info
 
     def _create_article(self, feed, min_date_to_load, art_cache):
