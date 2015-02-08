@@ -34,8 +34,10 @@ def get_article_info(article_oid):
     info.append(('author', article.author))
     info.append(('score', article.score))
     info.append(('starred', article.starred))
-    info.append(('meta', repr(article.meta)))
     info.append(('summary', article.summary))
+    if __debug__ and article.meta:
+        info.extend(("META: " + key, val) for key, val
+                    in article.meta.iteritems())
     res = "".join(u"<dt><b>%s</b></dt><dd>%s</dd>" % keyval for keyval in info)
     return "<dl>" + res + "</dl>"
 
