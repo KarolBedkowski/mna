@@ -83,6 +83,7 @@ def logging_setup(filename, debug=False, debug_sql=False):
 
     logging.getLogger("sqlalchemy").setLevel(logging.INFO if debug_sql
                                              else logging.WARN)
+    logging.getLogger("mna.plugins.basic_filters").setLevel(logging.INFO)
 
     log = logging.getLogger(__name__)
     log.debug("logging_setup() finished")
