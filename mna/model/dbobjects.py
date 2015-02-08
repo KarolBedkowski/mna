@@ -135,7 +135,7 @@ class Article(BaseModelMixin, Base):
     def compute_id(link, title, author, source_id):
         if link:
             return link
-        return"".join(map(hash, (title, author, source_id)))
+        return"".join(map(str, map(hash, (title, author, source_id))))
 
 
 Index('idx_articles_chs', Article.source_id, Article.internal_id)
