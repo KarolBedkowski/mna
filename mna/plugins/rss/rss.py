@@ -25,12 +25,23 @@ from . import frm_sett_rss_ui
 
 _LOG = logging.getLogger(__name__)
 
+feedparser.PARSE_MICROFORMATS = 0
+
 
 def _ts2datetime(tstruct, default=None):
     """ Convert time stucture to datetime.datetime """
     if tstruct:
         return datetime.datetime.fromtimestamp(calendar.timegm(tstruct))
     return default
+
+
+def _entry_hash(entry):
+    content = entry.content[0].value if 'content' in entry \
+        else entry.get('value')
+    title = entry.get('title') or ''
+    author = entry.get('author') or ''
+    summary = entry.get('summary') or ''
+    return "".join(map(str, map(hash, (content, title, author, summary))))
 
 
 class FrmSettRss(QtGui.QFrame):  # pylint: disable=no-member
@@ -97,7 +108,8 @@ class RssSource(base.AbstractSource):
         # cache articles in database
         art_cache = dict(self._get_existing_articles(session))
         # create articles with lookup into cache
-        articles = (self._create_article(feed, art_cache) for feed in articles)
+        articles = (self._create_article(feed, art_cache, feed_update)
+                    for feed in articles)
         # left only new/updated articles
         articles = filter(None, articles)
 
@@ -122,7 +134,7 @@ class RssSource(base.AbstractSource):
 
     @classmethod
     def get_info(cls, source_conf, _session=None):
-        info = [("C:" + key, str(val))
+        info = [("C:" + key, unicode(val))
                 for key, val in source_conf.conf.iteritems()]
         return info
 
@@ -176,44 +188,53 @@ class RssSource(base.AbstractSource):
     def _filter_by_date(self, entries, min_date_to_load):
         for entry in entries:
             if entry['_updated'] < min_date_to_load:
-                _LOG.debug("RssSource: src=%d updated=%s < min_date_to_load=%s",
-                           self.cfg.oid, entry['_updated'],
-                           min_date_to_load)
+#                _LOG.debug("RssSource: src=%d updated=%s < min_date_to_load=%s",
+#                           self.cfg.oid, entry['_updated'],
+#                           min_date_to_load)
                 continue
-            _LOG.debug("RssSource: src=%d accept: %s >= %s",
-                       self.cfg.oid, entry['_updated'], min_date_to_load)
+#            _LOG.debug("RssSource: src=%d accept: %s >= %s",
+#                       self.cfg.oid, entry['_updated'], min_date_to_load)
             yield entry
 
-    def _create_article(self, entry, art_cache):
+    def _create_article(self, entry, art_cache, feed_updated):
         internal_id = entry.get('id') or \
                 DBO.Article.compute_id(
                     entry.get('link'), entry.get('title'), entry.get('author'),
                     self.__class__.get_name())
 
-        art = art_cache.get(internal_id)
-        if art:
-#            _LOG.debug("RssSource: src=%d Article already in db: %r",
-#                       self.cfg.oid, internal_id)
-            if art.updated > entry['_updated']:
-                _LOG.debug("RssSource: src=%d Article is not updated, "
-                           "skipping", self.cfg.oid)
-                return None
-
-        _LOG.debug("RssSource: src=%d creating article: %s: %s %s",
-                   self.cfg.oid, internal_id, entry.get('title'),
-                   entry['_updated'])
-
-        art = art or DBO.Article()
-        art.internal_id = internal_id
-        art.content = entry.content[0].value if 'content' in entry \
+        content = entry.content[0].value if 'content' in entry \
             else entry.get('value')
+        art = art_cache.get(internal_id)
+        meta = art.meta.copy() if art and art.meta else {}
+        if art and art.updated >= entry['_updated']:
+            return None
+
+        content_hash = _entry_hash(entry)
+        if art:
+            prev_hash = art.meta.get('content_hash') if art.meta else None
+            if prev_hash == content_hash:
+                return None
+            meta['prev_updated'] = repr(art.updated)
+
+        meta['feed_updated'] = repr(feed_updated)
+        meta['new_art'] = not art
+        meta['content_hash'] = content_hash
+        meta['published'] = repr(entry.get('published'))
+        meta['id'] = repr(entry.get('id'))
+        meta['updated'] = repr(entry.get('updated'))
+
+        art = art or DBO.Article(meta={})
+        art.internal_id = internal_id
+        art.content = content
         art.summary = entry.get('summary')
         art.score = self.cfg.initial_score
         art.title = entry.get('title')
         art.updated = entry['_updated']
         art.published = entry['_published']
         art.link = entry.get('link')
+        art.author = entry.get('author')
         art.read = 0
+        art.meta = meta
         return art
 
     def _get_min_date_to_load(self, global_max_age, now):
@@ -238,7 +259,7 @@ class RssSource(base.AbstractSource):
         rows = db.get_all(DBO.Article, session=session,
                           source_id=self.cfg.oid).\
                 options(orm.Load(DBO.Article).  # pylint:disable=no-member
-                        load_only("oid", "internal_id", "updated"))
+                        load_only("oid", "internal_id", "updated", "meta"))
         for row in rows:
             yield (row.internal_id, row)
 
