@@ -40,16 +40,17 @@ class Worker(QtCore.QRunnable):
         self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
 
     def run(self):
-        session = db.Session()
+        session = db.Session(autoflush=False, autocommit=False)
         source_cfg = self._get_and_check_source(session)
         if not source_cfg or source_cfg.processing:
-            _LOG.debug("%s not processing %r", self._p_name, source_cfg)
+            _LOG.warn("%s not processing %r", self._p_name, source_cfg)
             return
 
         _LOG.debug("%s processing %s/%s", self._p_name, source_cfg.name,
                    source_cfg.title)
+        now = datetime.datetime.now()
 
-        source_cfg.processing = True
+        source_cfg.processing = 1
         session.commit()
 
         # find pluign
@@ -91,10 +92,10 @@ class Worker(QtCore.QRunnable):
             _on_error(session, source_cfg, str(err))
             return
 
-        now = datetime.datetime.now()
         source_cfg.next_refresh = now + \
                 datetime.timedelta(seconds=source_cfg.interval)
         source_cfg.last_refreshed = now
+        source_cfg.processing = 0
         session.commit()
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
                       cnt)
@@ -154,7 +155,7 @@ def _on_error(session, source_cfg, error_msg):
     if not source_cfg:
         return
     now = datetime.datetime.now()
-    source_cfg.processing = False
+    source_cfg.processing = 0
     source_cfg.last_error = error_msg
     source_cfg.last_error_date = now
     source_cfg.next_refresh = now + datetime.timedelta(
