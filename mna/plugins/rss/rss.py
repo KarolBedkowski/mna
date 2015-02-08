@@ -64,45 +64,14 @@ class RssSource(base.AbstractSource):
         return 'mna.plugins.rss.RssSource'
 
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
+        _LOG.info("RssSource: src=%d get_items", self.cfg.oid)
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
             return []
 
-        etag = self.cfg.conf.get('etag')
-        modified = self.cfg.conf.get('modified')
-
-        _LOG.info("RssSource: src=%d get_items from %r", self.cfg.oid, url)
-        doc = feedparser.parse(url, etag=etag, modified=modified)
-        status = doc.get('status') if doc else 400
-        if status >= 400:
-            self.cfg.add_log('error', "Error loading RSS feed: %s" % status)
-            _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
-                       self.cfg.oid, url, doc, self.cfg)
-            raise base.GetArticleException("Get rss feed error: %r" % status)
-        elif status == 304:
-            _LOG.info("RssSource: src=%s result %d: %r - skipping",
-                      self.cfg.oid, status, doc.get('debug_message'))
+        doc = self._get_document(url)
+        if not doc:
             return []
-        elif status == 301:  # permanent redirects
-            self.cfg.conf["url.org"] = url
-            self.cfg.conf["url"] = doc.href
-            _LOG.info("RssSource: src=%s permanent redirects to %s",
-                      self.cfg.oid, doc.href)
-            self.cfg.add_log('info',
-                             "Permanent redirect to %s; updating configuration"
-                             % doc.href)
-        elif status == 302:  # temporary redirects
-            _LOG.info("RssSource: src=%s temporary redirects to %s",
-                      self.cfg.oid, doc.href)
-            self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
-
-        self.cfg.conf['etag'] = doc.get('etag')
-        self.cfg.conf['modified'] = doc.get('modified')
-        print self.cfg.conf
-
-        if self.cfg.title == "":
-            if 'title' in doc.feed:
-                self.cfg.title = doc.feed.title
 
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         _LOG.debug("RssSource: src=%d min_date_to_load=%s", self.cfg.oid,
@@ -110,7 +79,7 @@ class RssSource(base.AbstractSource):
 
         _LOG.debug("get_items: load cache start")
         art_cache = dict(self._get_existing_articles(session))
-        _LOG.debug("get_items: load cache finished")
+        _LOG.debug("get_items: load cache finished items=%d", len(art_cache))
 
         articles = filter(None,
                           (self._create_article(
@@ -142,6 +111,44 @@ class RssSource(base.AbstractSource):
                 for key, val in source_conf.conf.iteritems()]
         return info
 
+    def _get_document(self, url):
+        _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
+        etag = self.cfg.conf.get('etag')
+        modified = self.cfg.conf.get('modified')
+        doc = feedparser.parse(url, etag=etag, modified=modified)
+        status = doc.get('status') if doc else 400
+        if status >= 400:
+            self.cfg.add_log('error', "Error loading RSS feed: %s" % status)
+            _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
+                       self.cfg.oid, url, doc, self.cfg)
+            raise base.GetArticleException("Get rss feed error: %r" % status)
+        elif status == 304:
+            _LOG.info("RssSource: src=%s result %d: %r - skipping",
+                      self.cfg.oid, status, doc.get('debug_message'))
+            self._update_source_cfg(doc)
+            return None
+        elif status == 301:  # permanent redirects
+            self.cfg.conf["url.org"] = url
+            self.cfg.conf["url"] = doc.href
+            _LOG.info("RssSource: src=%s permanent redirects to %s",
+                      self.cfg.oid, doc.href)
+            self.cfg.add_log('info',
+                             "Permanent redirect to %s; updating configuration"
+                             % doc.href)
+        elif status == 302:  # temporary redirects
+            _LOG.info("RssSource: src=%s temporary redirects to %s",
+                      self.cfg.oid, doc.href)
+            self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
+        self._update_source_cfg(doc)
+        return doc
+
+    def _update_source_cfg(self, doc):
+        self.cfg.conf['etag'] = doc.get('etag')
+        self.cfg.conf['modified'] = doc.get('modified')
+        if self.cfg.title == "":
+            if 'title' in doc.feed:
+                self.cfg.title = doc.feed.title
+
     def _create_article(self, feed, min_date_to_load, art_cache):
         published = _ts2datetime(feed.get('published_parsed'))
         updated = _ts2datetime(feed.get('updated_parsed'))
@@ -149,7 +156,7 @@ class RssSource(base.AbstractSource):
         if min_date_to_load and updated < min_date_to_load:
             _LOG.debug("RssSource: src=%d updated=%s < min_date_to_load=%s",
                        self.cfg.oid, updated, min_date_to_load)
-            # return None
+            return None
 
         internal_id = feed.get('id') or \
                 DBO.Article.compute_id(feed.get('link'),
