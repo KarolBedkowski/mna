@@ -19,6 +19,7 @@ from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_rss_ui
+from mna.plugins import opml
 from mna.gui import _validators
 
 _LOG = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ class RssSource(base.AbstractSource):
 
         articles = filter(None,
                           (self._create_article(
-                              feed, session, min_date_to_load, art_cache)
+                              feed, min_date_to_load, art_cache)
                            for feed in doc.get('entries') or []))
 
         _LOG.debug("RssSource: src=%d loaded %d articles",
@@ -114,7 +115,7 @@ class RssSource(base.AbstractSource):
         info = [('URL', source_conf.conf.get("url"))]
         return info
 
-    def _create_article(self, feed, session, min_date_to_load, art_cache):
+    def _create_article(self, feed, min_date_to_load, art_cache):
         published = _ts2datetime(feed.get('published_parsed'))
         updated = _ts2datetime(feed.get('updated_parsed'))
         updated = updated or published or datetime.datetime.now()
@@ -177,3 +178,20 @@ class RssSource(base.AbstractSource):
                         load_only("oid", "internal_id", "updated"))
         for row in rows:
             yield (row.internal_id, row)
+
+
+class OpmlImportTool(base.AbstractTool):
+    """ Import opml file """
+
+    name = "Import OPML"
+    description = ""
+
+    @classmethod
+    def is_available(cls):
+        return True
+
+    def run(self, parent, _sel_article, _sel_source, _sel_group):
+        fname = QtGui.QFileDialog.getOpenFileName(  # pylint:disable=no-member
+            parent, "Select OPML file")
+        if fname:
+            opml.import_opml_file(fname)
