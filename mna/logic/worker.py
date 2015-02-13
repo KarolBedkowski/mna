@@ -76,6 +76,12 @@ class Worker(QtCore.QRunnable):
             cnt = sum(_save_articls(articles, session, source_cfg))
         except base.GetArticleException, err:
             # some processing error occurred
+            _LOG.error("%s Load articles from %s/%s error: %r",
+                       self._p_name, source_cfg.name, source_cfg.title,
+                       err)
+            _on_error(session, source_cfg, str(err))
+            return
+        except Exception, err:  # pylint:disable=broad-except
             _LOG.exception("%s Load articles from %s/%s error: %r",
                            self._p_name, source_cfg.name, source_cfg.title,
                            err)
@@ -147,6 +153,7 @@ class Worker(QtCore.QRunnable):
                 continue
             yield article
 
+    # pylint:disable=no-self-use
     def _get_icon(self, source, _session, source_cfg):
         iconname = source.get_icon()
         if iconname and iconname[0]:
