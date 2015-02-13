@@ -68,6 +68,7 @@ def connect(filename, debug=False, *args, **kwargs):
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
+    sqls.add_icon_id(engine)
     Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:

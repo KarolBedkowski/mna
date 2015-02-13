@@ -184,6 +184,8 @@ class Source(BaseModelMixin, Base):
         backref=orm.backref("sources", cascade="all, delete-orphan",
                             order_by="Source.title"))
 
+    icon_id = Column(Unicode(64))
+
     articles = orm.relationship(
         Article,
         backref=orm.backref("source"),
