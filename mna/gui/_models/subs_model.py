@@ -19,6 +19,7 @@ from PyQt4 import QtCore, QtGui
 
 from mna.model import db
 from mna.logic import groups, sources, articles
+from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 
@@ -75,6 +76,9 @@ class _TreeNode(object):
             return font
         return QtCore.QVariant()  # pylint:disable=no-member
 
+    def get_icon(self):
+        return QtCore.QVariant()  # pylint:disable=no-member
+
     def get_first_unread(self, start=0, wrap=True, skip=0):
         """ Find first child with unread articles.
 
@@ -113,14 +117,22 @@ class GroupTreeNode(_TreeNode):
 
 class SourceTreeNode(_TreeNode):
     """ Group node """
-    def __init__(self, parent, title, oid, unread):
+    def __init__(self, parent, title, oid, unread, icon):
         super(SourceTreeNode, self).__init__(
             parent, (title or u"Source %d" % oid), oid, unread)
+        self.icon = QtCore.QVariant()  # pylint:disable=no-member
+        if icon:
+            icon = appconfig.AppConfig().get_cache_file(icon)
+            if icon:
+                self.icon = QtGui.QIcon(icon)  # pylint:disable=no-member
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
         caption, self.unread = sources.get_source_info(session, self.oid)
         self.caption = caption or u"Source %d" % self.oid
+
+    def get_icon(self):
+        return self.icon
 
 
 SPECIAL_STARRED = -1
@@ -181,8 +193,9 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(self.root, group_oid, group_name)
-            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
-                            for s_oid, s_title, s_unread in group]
+            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread,
+                                           s_icon)
+                            for s_oid, s_title, s_unread, s_icon in group]
             obj.update_unread()
             self.root.children.append(obj)
         self.update_specials(session)
@@ -227,6 +240,8 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
             return self.node_from_index(index).get_font()
         elif role == ID_ROLE:
             return self.node_from_index(index).oid
+        elif role == QtCore.Qt.DecorationRole:
+            return self.node_from_index(index).get_icon()
         return QtCore.QVariant()
 
     # pylint:disable=no-member,no-self-use
