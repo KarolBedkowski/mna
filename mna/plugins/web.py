@@ -15,6 +15,7 @@ import logging
 import itertools
 import difflib
 import base64
+import os.path
 
 from lxml import etree
 from PyQt4 import QtGui, QtCore
@@ -55,7 +56,7 @@ def download_page(url, etag, modified):
         'User-Agent',
         'Mozilla/5.0 (X11; Linux i686; rv:36.0) Gecko/20100101 Firefox/36.0')
     try:
-        conn = opener.open(request)
+        conn = opener.open(request, timeout=10)
         info = dict(conn.headers)
         info['_status'] = conn.code
         info['_url'] = url
@@ -135,6 +136,32 @@ def get_title(html, encoding):
     if len(title) > 100:
         title = title[:97] + "..."
     return title
+
+
+_ICONS_XPATH = ['//head/link[@rel="icon"]',
+                '//head/link[@rel="shortcut icon"]']
+
+
+def get_icon(base_url, html, encoding):
+    # pylint: disable=no-member
+    parser = etree.HTMLParser(encoding=encoding, remove_blank_text=True,
+                              remove_comments=True, remove_pis=True)
+    tree = etree.fromstring(html, parser)  # pylint: disable=no-member
+    for xpath in _ICONS_XPATH:
+        icon = tree.xpath(xpath)
+        if icon:
+            icon_href = icon[0].attrib.get('href')
+            if not icon_href:
+                continue
+            url = urllib2.urlparse.urljoin(base_url, icon_href)
+            _LOG.debug("get_icon: icon url=%r", url)
+            try:
+                _info, icon = download_page(url, None, None)
+                if icon:
+                    return icon, os.path.basename(url)
+            except LoadPageError, err:
+                _LOG.warn('get_icon: %r error %s', url, err)
+    return None, None
 
 
 def accept_page(article, _session, source, threshold):
@@ -221,12 +248,16 @@ class WebSource(base.AbstractSource):
     name = "Web Page Source"
     conf_panel_class = FrmSettWeb
 
+    def __init__(self, cfg):
+        super(WebSource, self).__init__(cfg)
+        self._icon = None
+
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
             return []
 
-        _LOG.info("WebSource.get_items %r from %r - %r", self.cfg.oid,
+        _LOG.info("WebSource.get_items src=%r from %r - %r", self.cfg.oid,
                   url, self.cfg.conf)
         if not self.cfg.meta:
             self.cfg.meta = {}
@@ -246,10 +277,15 @@ class WebSource(base.AbstractSource):
                       self.cfg.oid, url)
             return []
 
+        if not self.cfg.icon_id:
+            self._icon = get_icon(url, page, info['_encoding'])
+
         if self.cfg.title == "":
             self.cfg.title = get_title(page, info['_encoding'])
 
         if not self.is_page_updated(info, max_age_load):
+            _LOG.info("WebSource.get_items src=%r page not updated",
+                      self.cfg.oid)
             return []
 
         parts = self._get_articles(info, page)
@@ -266,6 +302,9 @@ class WebSource(base.AbstractSource):
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
+
+    def get_icon(self):
+        return self._icon
 
     @classmethod
     def get_info(cls, source_conf, _session=None):
