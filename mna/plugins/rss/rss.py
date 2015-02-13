@@ -7,6 +7,7 @@ __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-02"
 
+import os
 import logging
 import datetime
 import calendar
@@ -19,6 +20,7 @@ from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.gui import _validators
+from mna.plugins import web
 from . import opml
 from . import frm_sett_rss_ui
 
@@ -71,6 +73,10 @@ class RssSource(base.AbstractSource):
     name = "RSS/Atom Source"
     conf_panel_class = FrmSettRss
 
+    def __init__(self, cfg):
+        super(RssSource, self).__init__(cfg)
+        self._icon = None, None
+
     @classmethod
     def get_name(cls):
         return 'mna.plugins.rss.RssSource'
@@ -85,6 +91,9 @@ class RssSource(base.AbstractSource):
         doc = self._get_document(url)
         if not doc:
             return []
+
+        if self.cfg.icon_id is None:
+            self._icon = self._get_icon(doc)
 
         min_date_to_load = self._get_min_date_to_load(max_age_load, now)
         feed_update = _ts2datetime(doc.get('updated_parsed'), now)
@@ -140,6 +149,9 @@ class RssSource(base.AbstractSource):
             info.extend(("META: " + key, unicode(val))
                         for key, val in source_conf.meta.iteritems())
         return info
+
+    def get_icon(self):
+        return self._icon
 
     def _get_document(self, url):
         _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
@@ -267,6 +279,29 @@ class RssSource(base.AbstractSource):
                         load_only("oid", "internal_id", "updated", "meta"))
         for row in rows:
             yield (row.internal_id, row)
+
+    def _get_icon(self, content):
+        if 'icon' in content.feed:
+            try:
+                info, page = web.download_page(content.feed.icon, None, None)
+                if page:
+                    return page, os.path.basename(content.feed.icon)
+            except web.LoadPageError, err:
+                _LOG.info("RssSource: src=%d _get_icon error %r",
+                          self.cfg.oid, err)
+        if 'link' in content.feed:
+            try:
+                info, page = web.download_page(content.feed.link, None, None)
+                if page:
+                    icon = web.get_icon(content.feed.link, page,
+                                        info['_encoding'])
+                    if icon and icon[0]:
+                        return icon
+            except web.LoadPageError, err:
+                _LOG.info("RssSource: src=%d _get_icon error %r",
+                          self.cfg.oid, err)
+        return None, None
+
 
 
 class OpmlImportTool(base.AbstractTool):
