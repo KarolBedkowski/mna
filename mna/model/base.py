@@ -110,7 +110,8 @@ class AbstractSource(object):
         self.cfg = cfg
         self.group_id = cfg.group_id
 
-    def get_items(self, session=None, max_load=-1, max_age_load=-1):  # pylint:disable=unused-argument,no-self-use
+    # pylint:disable=unused-argument,no-self-use
+    def get_items(self, session=None, max_load=-1, max_age_load=-1):
         return []
 
     @classmethod
@@ -118,9 +119,19 @@ class AbstractSource(object):
         return cls.__module__ + '.' + cls.__name__
 
     @classmethod
-    def get_info(cls, source_conf, session=None):  # pylint:disable=unused-argument
+    # pylint:disable=unused-argument
+    def get_info(cls, source_conf, session=None):
         """ Get additional information specific to given source. """
         return None
+
+    def get_icon(self):  # pylint:disable=no-self-use
+        """ Download and return icon for source.
+        Called when Source.icon_id is None
+
+        Returns:
+            (icon content, icon filename)
+        """
+        return None, None
 
 
 class AbstractFilter(object):
