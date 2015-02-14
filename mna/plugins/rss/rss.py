@@ -20,7 +20,7 @@ from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.gui import _validators
-from mna.plugins import web
+from mna.lib import websupport
 from . import opml
 from . import frm_sett_rss_ui
 
@@ -283,25 +283,26 @@ class RssSource(base.AbstractSource):
     def _get_icon(self, content):
         if 'icon' in content.feed:
             try:
-                info, page = web.download_page(content.feed.icon, None, None)
+                info, page = websupport.download_page(content.feed.icon,
+                                                      None, None)
                 if page:
                     return page, os.path.basename(content.feed.icon)
-            except web.LoadPageError, err:
+            except websupport.LoadPageError, err:
                 _LOG.info("RssSource: src=%d _get_icon error %r",
                           self.cfg.oid, err)
         if 'link' in content.feed:
             try:
-                info, page = web.download_page(content.feed.link, None, None)
+                info, page = websupport.download_page(content.feed.link,
+                                                      None, None)
                 if page:
-                    icon = web.get_icon(content.feed.link, page,
-                                        info['_encoding'])
+                    icon = websupport.get_icon(content.feed.link, page,
+                                               info['_encoding'])
                     if icon and icon[0]:
                         return icon
-            except web.LoadPageError, err:
+            except websupport.LoadPageError, err:
                 _LOG.info("RssSource: src=%d _get_icon error %r",
                           self.cfg.oid, err)
         return None, None
-
 
 
 class OpmlImportTool(base.AbstractTool):

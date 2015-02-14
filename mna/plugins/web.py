@@ -7,17 +7,12 @@ __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
 __version__ = "2015-01-18"
 
-import urllib2
 import hashlib
-import time
 import datetime
 import logging
-import itertools
 import difflib
 import base64
-import os.path
 
-from lxml import etree
 from PyQt4 import QtGui, QtCore
 
 from mna.model import base
@@ -25,80 +20,9 @@ from mna.model import dbobjects as DBO
 from mna.plugins import frm_sett_web_ui
 from mna.plugins import dlg_sett_web_xpath_ui
 from mna.gui import _validators
+from mna.lib import websupport
 
 _LOG = logging.getLogger(__name__)
-
-
-class LoadPageError(RuntimeError):
-    pass
-
-
-# pylint:disable=no-init
-class DefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
-    def http_error_default(self, req, fp, code, msg, headers):
-        result = urllib2.HTTPError(
-            req.get_full_url(), code, msg, headers, fp)
-        result.status = code
-        return result
-
-
-def download_page(url, etag, modified):
-    """ Download Page from `url` with optional last etag and modified time.
-        When no updates return code 304 and no content.
-    """
-    request = urllib2.Request(url)
-    opener = urllib2.build_opener(DefaultErrorHandler())
-    if modified:
-        request.add_header('If-Modified-Since', modified)
-    if etag:
-        request.add_header('If-None-Match', etag)
-    request.add_header(
-        'User-Agent',
-        'Mozilla/5.0 (X11; Linux i686; rv:36.0) Gecko/20100101 Firefox/36.0')
-    try:
-        conn = opener.open(request, timeout=10)
-        info = dict(conn.headers)
-        info['_status'] = conn.code
-        info['_url'] = url
-        info['_encoding'] = conn.headers.getencoding()
-        if info['_encoding'] == '7bit':
-            info['_encoding'] = None
-        modified = conn.headers.getdate('Last-Modified') or \
-                conn.headers.getdate('last-modified')
-        info['_modified'] = modified
-        info['_last_modified'] = \
-                datetime.datetime.fromtimestamp(time.mktime(modified)) \
-                if modified else None
-        if conn.code == 200:
-            content = conn.read()
-            return info, content
-        elif conn.code == 304:  # not modified
-            return info, None
-        raise LoadPageError("%d: %s" % (conn.status, conn.reason))
-    except urllib2.URLError, err:
-        raise LoadPageError(err)
-
-
-def get_page_part(info, page, selector):
-    """ Find all elements of `page` by `selector` xpath expression. """
-    content_type = info.get('content-type')
-    if content_type and content_type.startswith('text/html'):
-        # pylint: disable=no-member
-        parser = etree.HTMLParser(encoding='UTF-8', remove_blank_text=True,
-                                  remove_comments=True, remove_pis=True)
-    else:
-        parser = etree.XMLParser(  # pylint:disable=no-member
-            recover=True, encoding='UTF-8')
-    tree = etree.fromstring(page, parser)  # pylint: disable=no-member
-    for elem in itertools.chain(tree.xpath("//comment()"),
-                                tree.xpath("//script"),
-                                tree.xpath("//style")):
-        elem.getparent().remove(elem)
-    # pylint: disable=no-member
-    return (unicode(etree.tostring(elem, encoding='utf-8',
-                                   method='html').strip(),
-                    encoding='utf-8', errors="replace")
-            for elem in tree.xpath(selector))
 
 
 def create_checksum(data):
@@ -111,70 +35,6 @@ def create_config_hash(source):
     conf = source.conf
     return create_checksum("|".join((conf['url'], conf['mode'],
                                      conf['xpath'])))
-
-
-def get_title(html, encoding):
-    # pylint: disable=no-member
-    parser = etree.HTMLParser(encoding=encoding, remove_blank_text=True,
-                              remove_comments=True, remove_pis=True)
-    # try to find title
-    tree = etree.fromstring(html, parser)  # pylint: disable=no-member
-    for tag in ('//head/title', '//h1', '//h2'):
-        titles = tree.xpath(tag)
-        if titles:
-            title = titles[0].text
-            if title:
-                title = title.strip()
-                if title:
-                    return title
-
-    # title not found, use page text
-    # pylint: disable=no-member
-    html = etree.tostring(tree, encoding='UTF-8', method="text")
-    title = unicode(html.replace('\n', ' ').replace('\t', ' ').
-                    replace('\r', ' ').strip(), 'UTF-8')
-    if len(title) > 100:
-        title = title[:97] + "..."
-    return title
-
-
-_ICONS_XPATH = ['/html/head/link[@rel="icon"]',
-                '/html/head/link[@rel="shortcut icon"]',
-                '/html/head/link[@rel="apple-touch-icon-precomposed"]']
-
-
-def get_icon(base_url, html, encoding):
-    # pylint: disable=no-member
-    parser = etree.HTMLParser(encoding=encoding, remove_blank_text=True,
-                              remove_comments=True, remove_pis=True)
-    tree = etree.fromstring(html, parser)  # pylint: disable=no-member
-    for xpath in _ICONS_XPATH:
-        icon = tree.xpath(xpath)
-        _LOG.info('get_icon %r %r %r', base_url, xpath, icon)
-        if icon:
-            _LOG.info('get_icon %r %r %r %r', base_url, xpath, icon,
-                      icon[0].attrib)
-            icon_href = icon[0].attrib.get('href')
-            if not icon_href:
-                continue
-            url = urllib2.urlparse.urljoin(base_url, icon_href)
-            _LOG.debug("get_icon: icon url=%r", url)
-            try:
-                _info, icon = download_page(url, None, None)
-                if icon:
-                    return icon, os.path.basename(url)
-            except LoadPageError, err:
-                _LOG.warn('get_icon: %r error %s', url, err)
-    # try to load /favicon.ico
-    url = urllib2.urlparse.urljoin(base_url, '/favicon.ico')
-    _LOG.debug("get_icon: icon url=%r", url)
-    try:
-        _info, icon = download_page(url, None, None)
-        if icon:
-            return icon, os.path.basename(url)
-    except LoadPageError, err:
-        _LOG.warn('get_icon: %r error %s', url, err)
-    return None, None
 
 
 def accept_page(article, _session, source, threshold):
@@ -275,9 +135,10 @@ class WebSource(base.AbstractSource):
         if not self.cfg.meta:
             self.cfg.meta = {}
         try:
-            info, page = download_page(url, self.cfg.meta.get('etag'),
-                                       self.cfg.meta.get('last-modified'))
-        except LoadPageError, err:
+            info, page = websupport.download_page(
+                url, self.cfg.meta.get('etag'),
+                self.cfg.meta.get('last-modified'))
+        except websupport.LoadPageError, err:
             self.cfg.add_log('error',
                              "Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
@@ -291,10 +152,10 @@ class WebSource(base.AbstractSource):
             return []
 
         if not self.cfg.icon_id:
-            self._icon = get_icon(url, page, info['_encoding'])
+            self._icon = websupport.get_icon(url, page, info['_encoding'])
 
         if self.cfg.title == "":
-            self.cfg.title = get_title(page, info['_encoding'])
+            self.cfg.title = websupport.get_title(page, info['_encoding'])
 
         if not self.is_page_updated(info, max_age_load):
             _LOG.info("WebSource.get_items src=%r page not updated",
@@ -349,13 +210,13 @@ class WebSource(base.AbstractSource):
         mode = self.cfg.conf.get("mode")
         articles = []
         if mode == "part" and selector:
-            articles = get_page_part(info, page, selector)
+            articles = websupport.get_page_part(info, page, selector)
         elif mode == "page_one_part" and selector:
-            parts = list(get_page_part(info, page, selector))
+            parts = list(websupport.get_page_part(info, page, selector))
             if parts:
                 articles = [parts[0]]
         else:
-            articles = get_page_part(info, page, "//html")
+            articles = websupport.get_page_part(info, page, "//html")
         return articles
 
     def _prepare_articles(self, parts):  # pylint:disable=no-self-use
@@ -384,7 +245,7 @@ class WebSource(base.AbstractSource):
         art.content = content
         art.summary = None
         art.score = self.cfg.initial_score
-        art.title = get_title(content, info['_encoding'])
+        art.title = websupport.get_title(content, info['_encoding'])
         art.updated = datetime.datetime.now()
         art.published = info.get('_last-modified')
         art.link = self.cfg.conf.get('url')
