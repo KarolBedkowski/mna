@@ -27,6 +27,8 @@ from . import frm_sett_rss_ui
 _LOG = logging.getLogger(__name__)
 
 feedparser.PARSE_MICROFORMATS = 0
+feedparser.USER_AGENT = ("Mozilla/5.0 (X11; Linux i686; rv:36.0) "
+                         "Gecko/20100101 Firefox/36.0")
 
 
 def _ts2datetime(tstruct, default=None):
@@ -84,16 +86,13 @@ class RssSource(base.AbstractSource):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         _LOG.info("RssSource: src=%d get_items", self.cfg.oid)
         url = self.cfg.conf.get("url") if self.cfg.conf else None
-        now = datetime.datetime.now()
         if not url:
             return []
 
+        now = datetime.datetime.now()
         doc = self._get_document(url)
         if not doc:
             return []
-
-        if self.cfg.icon_id is None:
-            self._icon = self._get_icon(doc)
 
         min_date_to_load = self._get_min_date_to_load(max_age_load, now)
         feed_update = _ts2datetime(doc.get('updated_parsed'), now)
@@ -124,9 +123,6 @@ class RssSource(base.AbstractSource):
 
         _LOG.debug("RssSource: src=%d loaded %d articles",
                    self.cfg.oid, len(articles))
-        if not articles:
-            self.cfg.add_log('info', "Not found new articles")
-            return []
 
         # Limit number articles to load
         if self.cfg.max_articles_to_load > 0 or \
@@ -153,8 +149,11 @@ class RssSource(base.AbstractSource):
     def get_icon(self):
         return self._icon
 
-    def _get_document(self, url):
+    def _get_document(self, url, cntr=10):
         _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
+        if cntr <= 0:
+            raise base.GetArticleException(
+                "Get rss feed error: to many redirections")
         if not self.cfg.meta:
             _LOG.warn("No meta in %d", self.cfg.oid)
             self.cfg.meta = {}
@@ -180,11 +179,17 @@ class RssSource(base.AbstractSource):
             self.cfg.add_log('info',
                              "Permanent redirect to %s; updating configuration"
                              % doc.href)
+            return self._get_document(doc.href, cntr=cntr-1)
         elif status == 302:  # temporary redirects
             _LOG.info("RssSource: src=%s temporary redirects to %s",
                       self.cfg.oid, doc.href)
             self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
+            return self._get_document(doc.href, cntr=cntr-1)
+
+        if self.cfg.icon_id is None:
+            self._icon = self._get_icon(doc)
         self._update_source_cfg(doc)
+        _LOG.info("RssSource: src=%d get_document done %r", self.cfg.oid, url)
         return doc
 
     def _update_source_cfg(self, doc):
