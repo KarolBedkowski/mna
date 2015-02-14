@@ -138,8 +138,9 @@ def get_title(html, encoding):
     return title
 
 
-_ICONS_XPATH = ['//head/link[@rel="icon"]',
-                '//head/link[@rel="shortcut icon"]']
+_ICONS_XPATH = ['/html/head/link[@rel="icon"]',
+                '/html/head/link[@rel="shortcut icon"]',
+                '/html/head/link[@rel="apple-touch-icon-precomposed"]']
 
 
 def get_icon(base_url, html, encoding):
@@ -149,7 +150,10 @@ def get_icon(base_url, html, encoding):
     tree = etree.fromstring(html, parser)  # pylint: disable=no-member
     for xpath in _ICONS_XPATH:
         icon = tree.xpath(xpath)
+        _LOG.info('get_icon %r %r %r', base_url, xpath, icon)
         if icon:
+            _LOG.info('get_icon %r %r %r %r', base_url, xpath, icon,
+                      icon[0].attrib)
             icon_href = icon[0].attrib.get('href')
             if not icon_href:
                 continue
@@ -161,6 +165,15 @@ def get_icon(base_url, html, encoding):
                     return icon, os.path.basename(url)
             except LoadPageError, err:
                 _LOG.warn('get_icon: %r error %s', url, err)
+    # try to load /favicon.ico
+    url = urllib2.urlparse.urljoin(base_url, '/favicon.ico')
+    _LOG.debug("get_icon: icon url=%r", url)
+    try:
+        _info, icon = download_page(url, None, None)
+        if icon:
+            return icon, os.path.basename(url)
+    except LoadPageError, err:
+        _LOG.warn('get_icon: %r error %s', url, err)
     return None, None
 
 
