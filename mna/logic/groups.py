@@ -57,7 +57,7 @@ def get_group_sources_tree(session):
     """
     res = session.query(DBO.Group.oid, DBO.Group.name, DBO.Source.oid,
                         DBO.Source.title, DBO.Source.unread,
-                        DBO.Source.icon_id).\
+                        DBO.Source.icon_id, DBO.Source.last_error).\
         filter(DBO.Group.oid == DBO.Source.group_id).\
         order_by(DBO.Group.name, DBO.Source.name)
     for group, group_items in itertools.groupby(res, lambda x: x[0:2]):

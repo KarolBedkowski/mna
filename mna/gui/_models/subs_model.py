@@ -114,18 +114,28 @@ class GroupTreeNode(_TreeNode):
         self.unread = sum(cld.unread for cld in self.children)
 
 
+_ICON_ERROR = ':icons/icon-error.svg'
+
 class SourceTreeNode(_TreeNode):
     """ Group node """
-    def __init__(self, parent, title, oid, unread, icon):
+    def __init__(self, parent, data):
+        oid, title, unread, icon, last_error = data
         super(SourceTreeNode, self).__init__(
             parent, (title or u"Source %d" % oid), oid, unread)
-        self.icon = icons_helper.load_icon(icon)
+        if last_error:
+            self.icon = icons_helper.load_icon(_ICON_ERROR)
+        else:
+            self.icon = icons_helper.load_icon(icon)
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
-        caption, self.unread, icon = sources.get_source_info(session, self.oid)
+        caption, self.unread, icon, last_error = sources.get_source_info(
+            session, self.oid)
         self.caption = caption or u"Source %d" % self.oid
-        self.icon = icons_helper.load_icon(icon)
+        if last_error:
+            self.icon = icons_helper.load_icon(_ICON_ERROR)
+        else:
+            self.icon = icons_helper.load_icon(icon)
 
 
 SPECIAL_STARRED = -1
@@ -195,9 +205,7 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(self.root, group_oid, group_name)
-            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread,
-                                           s_icon)
-                            for s_oid, s_title, s_unread, s_icon in group]
+            obj.children = [SourceTreeNode(obj, data) for data in group]
             obj.update_unread()
             self.root.children.append(obj)
         self.update_specials(session)
