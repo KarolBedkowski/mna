@@ -111,6 +111,7 @@ class AbstractSource(object):
         self.oid = cfg.oid
         self.cfg = cfg
         self.group_id = cfg.group_id
+        self._resources = {}
 
     # pylint:disable=unused-argument,no-self-use
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
@@ -126,14 +127,13 @@ class AbstractSource(object):
         """ Get additional information specific to given source. """
         return None
 
-    def get_icon(self):  # pylint:disable=no-self-use
-        """ Download and return icon for source.
-        Called when Source.icon_id is None
+    def get_resources(self):  # pylint:disable=no-self-use
+        """ Get additional resources to store in cache (i.e. icons).
 
         Returns:
-            (icon content, icon filename)
+            iter((name, content))
         """
-        return None, None
+        return self._resources.iteritems()
 
 
 class AbstractFilter(object):

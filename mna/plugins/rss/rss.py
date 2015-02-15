@@ -78,7 +78,6 @@ class RssSource(base.AbstractSource):
 
     def __init__(self, cfg):
         super(RssSource, self).__init__(cfg)
-        self._icon = None, None
 
     @classmethod
     def get_name(cls):
@@ -148,9 +147,6 @@ class RssSource(base.AbstractSource):
                         for key, val in source_conf.meta.iteritems())
         return info
 
-    def get_icon(self):
-        return self._icon
-
     def _get_document(self, url, cntr=10):
         _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
         if cntr <= 0:
@@ -202,8 +198,12 @@ class RssSource(base.AbstractSource):
             if 'title' in doc.feed:
                 self.cfg.title = doc.feed.title
         if not self.cfg.icon_id:
-            self._icon = self._get_icon(doc)
-            if not self._icon or not self._icon[0]:
+            icon, icon_name = self._get_icon(doc)
+            if icon:
+                icon_name = "_".join(('src', str(self.cfg.oid), icon_name))
+                self.cfg.icon_id = icon_name
+                self._resources[icon_name] = icon
+            else:
                 self.cfg.icon_id = self.default_icon
 
     # pylint:disable=no-self-use

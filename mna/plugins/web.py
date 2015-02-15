@@ -153,8 +153,12 @@ class WebSource(base.AbstractSource):
             return []
 
         if not self.cfg.icon_id:
-            self._icon = websupport.get_icon(url, page, info['_encoding'])
-            if not self._icon or not self._icon[0]:
+            icon, name = websupport.get_icon(url, page, info['_encoding'])
+            if icon:
+                name = "_".join(('src', str(self.cfg.oid), name))
+                self.cfg.icon_id = name
+                self._resources[name] = icon
+            else:
                 self.cfg.icon_id = self.default_icon
 
         if self.cfg.title == "":
@@ -179,9 +183,6 @@ class WebSource(base.AbstractSource):
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
-
-    def get_icon(self):
-        return self._icon
 
     @classmethod
     def get_info(cls, source_conf, _session=None):

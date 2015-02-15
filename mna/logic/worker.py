@@ -106,8 +106,10 @@ class Worker(QtCore.QRunnable):
         source_cfg.last_error = None
         source_cfg.last_error_date = None
 
-        if not source_cfg.icon_id:
-            self._get_icon(source, session, source_cfg)
+        # store resources in repository
+        repository = repo.Reporitory()
+        for res_name, res_content in source.get_resources():
+            repository.store_file(res_name, res_content)
 
         session.commit()
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
