@@ -13,6 +13,7 @@
     <file>web-icon.svg</file>
     <file>icon-all.svg</file>
     <file>icon-starred.svg</file>
+    <file>icon-folder.svg</file>
     <file>feed-icon.svg</file>
     <file>error-icon.svg</file>
   </qresource>

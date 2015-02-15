@@ -103,6 +103,7 @@ class GroupTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, group_oid, group_name):
         super(GroupTreeNode, self).__init__(parent, group_name, group_oid)
+        self.icon = icons_helper.load_icon(':icons/icon-folder.svg')
 
     def update(self, session=None):
         """ Update group caption and unread counter from database. """
