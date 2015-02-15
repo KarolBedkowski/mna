@@ -34,6 +34,7 @@ class _TreeNode(object):
         self.caption = caption
         self.oid = oid
         self.unread = unread
+        self.icon = QtCore.QVariant()  # pylint:disable=no-member
 
     def __str__(self):
         if self.unread:
@@ -74,9 +75,6 @@ class _TreeNode(object):
             font = QtGui.QFont()  # pylint:disable=no-member
             font.setBold(True)
             return font
-        return QtCore.QVariant()  # pylint:disable=no-member
-
-    def get_icon(self):  # pylint:disable=no-self-use
         return QtCore.QVariant()  # pylint:disable=no-member
 
     def get_first_unread(self, start=0, wrap=True, skip=0):
@@ -128,19 +126,25 @@ class SourceTreeNode(_TreeNode):
         self.caption = caption or u"Source %d" % self.oid
         self.icon = icons_helper.load_icon(icon)
 
-    def get_icon(self):
-        return self.icon
-
 
 SPECIAL_STARRED = -1
 SPECIAL_ALL = -2
 SPECIAL_SEARCH = -3
+
+_SPECIAL_ICONS = {
+    SPECIAL_SEARCH: ':icons/icon-search.svg',
+    SPECIAL_ALL: ':icons/icon-all.svg',
+    SPECIAL_STARRED: ':icons/icon-starred.svg'
+}
 
 
 class SpecialTreeNode(_TreeNode):
     """Special node (all nodes, stared, etc). """
     def __init__(self, parent, title, sid):
         super(SpecialTreeNode, self).__init__(parent, title, sid)
+        icon = _SPECIAL_ICONS.get(sid)
+        if icon:
+            self.icon = icons_helper.load_icon(icon)
 
     def update(self, session):
         if self.oid == SPECIAL_STARRED:
@@ -238,7 +242,7 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         elif role == ID_ROLE:
             return self.node_from_index(index).oid
         elif role == QtCore.Qt.DecorationRole:
-            return self.node_from_index(index).get_icon()
+            return self.node_from_index(index).icon
         return QtCore.QVariant()
 
     # pylint:disable=no-member,no-self-use
