@@ -65,7 +65,9 @@ def force_refresh_all():
     """ Force refresh all sources. """
     _LOG.info("Sources.force_refresh_all()")
     session = db.Session()
-    session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
+    session.query(DBO.Source).\
+        filter_by(processing=0).\
+        update({"next_refresh": datetime.datetime.now()})
     session.commit()
 
 
@@ -73,7 +75,7 @@ def force_refresh(source_oid):
     _LOG.info("Sources.force_refresh(%r)", source_oid)
     session = db.Session()
     session.query(DBO.Source).\
-        filter_by(oid=source_oid).\
+        filter_by(oid=source_oid, processing=0).\
         update({"next_refresh": datetime.datetime.now()})
     session.commit()
 
@@ -82,7 +84,7 @@ def force_refresh_by_group(group_oid):
     _LOG.info("Sources.force_refresh_by_group(%r)", group_oid)
     session = db.Session()
     session.query(DBO.Source).\
-        filter_by(group_id=group_oid).\
+        filter_by(group_id=group_oid, processing=0).\
         update({"next_refresh": datetime.datetime.now()})
     session.commit()
 
