@@ -120,6 +120,7 @@ class WebSource(base.AbstractSource):
 
     name = "Web Page Source"
     conf_panel_class = FrmSettWeb
+    default_icon = ":icons/web-icon.svg"
 
     def __init__(self, cfg):
         super(WebSource, self).__init__(cfg)
@@ -153,6 +154,8 @@ class WebSource(base.AbstractSource):
 
         if not self.cfg.icon_id:
             self._icon = websupport.get_icon(url, page, info['_encoding'])
+            if not self._icon or not self._icon[0]:
+                self.cfg.icon_id = self.default_icon
 
         if self.cfg.title == "":
             self.cfg.title = websupport.get_title(page, info['_encoding'])
