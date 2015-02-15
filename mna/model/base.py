@@ -102,6 +102,8 @@ class AbstractSource(object):
     presenter = SimplePresenter
     # subclass of QFrame
     conf_panel_class = None
+    # default icon for sources this type
+    default_icon = "unknown"
 
     def __init__(self, cfg):
         super(AbstractSource, self).__init__()

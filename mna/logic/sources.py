@@ -90,8 +90,10 @@ def force_refresh_by_group(group_oid):
 
 
 def get_source_info(session, source_oid):
-    """ Get title and unread count for source. """
+    """ Get title, unread count and icon_id for source. """
     session = session or db.Session()
-    title, unread = session.query(DBO.Source.title, DBO.Source.unread).\
+    title, unread, icon_id = \
+        session.query(DBO.Source.title, DBO.Source.unread,
+                      DBO.Source.icon_id).\
         filter(DBO.Source.oid == source_oid).first()
-    return title, unread
+    return title, unread, icon_id

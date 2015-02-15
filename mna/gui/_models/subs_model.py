@@ -13,6 +13,7 @@ __copyright__ = u"Copyright (c) Karol Będkowski, 2014-2015"
 __version__ = "2015-01-31"
 
 
+import os.path
 import logging
 
 from PyQt4 import QtCore, QtGui
@@ -115,21 +116,33 @@ class GroupTreeNode(_TreeNode):
         self.unread = sum(cld.unread for cld in self.children)
 
 
+def _build_icon(icon_name):
+    icon = None
+    if icon_name:
+        if icon_name[0] == ':':  # resources
+            icon = QtGui.QIcon(icon_name)  # pylint:disable=no-member
+        elif os.path.isabs(icon_name):
+            icon = QtGui.QIcon(icon_name)  # pylint:disable=no-member
+        else:
+            icon_name = appconfig.AppConfig().get_cache_file(icon_name)
+            if icon_name:
+                icon = QtGui.QIcon(icon_name)  # pylint:disable=no-member
+    # pylint:disable=no-member
+    return icon or QtGui.QIcon(":icons/unknown-icon.svg")
+
+
 class SourceTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, title, oid, unread, icon):
         super(SourceTreeNode, self).__init__(
             parent, (title or u"Source %d" % oid), oid, unread)
-        self.icon = QtCore.QVariant()  # pylint:disable=no-member
-        if icon:
-            icon = appconfig.AppConfig().get_cache_file(icon)
-            if icon:
-                self.icon = QtGui.QIcon(icon)  # pylint:disable=no-member
+        self.icon = _build_icon(icon)
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
-        caption, self.unread = sources.get_source_info(session, self.oid)
+        caption, self.unread, icon = sources.get_source_info(session, self.oid)
         self.caption = caption or u"Source %d" % self.oid
+        self.icon = _build_icon(icon)
 
     def get_icon(self):
         return self.icon
