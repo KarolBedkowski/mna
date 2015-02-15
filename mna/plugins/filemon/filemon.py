@@ -21,8 +21,9 @@ from PyQt4 import QtGui
 from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
-from mna.plugins import frm_sett_filemon_ui
 from mna.gui import _validators
+
+from . import frm_sett_filemon_ui
 
 _LOG = logging.getLogger(__name__)
 
@@ -136,6 +137,10 @@ class FileSource(base.AbstractSource):
 
     name = "Plain File Source"
     conf_panel_class = FrmSettFilemon
+
+    @classmethod
+    def get_name(cls):
+        return 'mna.plugins.filemon.FileSource'
 
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         filename = self._filename
