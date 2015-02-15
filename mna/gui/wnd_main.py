@@ -236,7 +236,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         _LOG.debug("_on_art_sel_changed %r", item.oid)
         article, content = larts.get_article_content(
             item.oid, False, session=session)
-        self._ui.article_view.setHtml(content)
+        self._ui.article_view.setHtml(content, QtCore.QUrl(article.link))
         self._subs_model.update_source(
             article.source_id, article.source.group_id)
         if self._current_article:
