@@ -17,10 +17,11 @@ from PyQt4 import QtGui, QtCore
 
 from mna.model import base
 from mna.model import dbobjects as DBO
-from mna.plugins import frm_sett_web_ui
-from mna.plugins import dlg_sett_web_xpath_ui
 from mna.gui import _validators
 from mna.lib import websupport
+
+from . import frm_sett_web_ui
+from . import dlg_sett_web_xpath_ui
 
 _LOG = logging.getLogger(__name__)
 
@@ -125,6 +126,10 @@ class WebSource(base.AbstractSource):
     def __init__(self, cfg):
         super(WebSource, self).__init__(cfg)
         self._icon = None
+
+    @classmethod
+    def get_name(cls):
+        return 'mna.plugins.web.WebSource'
 
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
