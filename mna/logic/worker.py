@@ -103,6 +103,8 @@ class Worker(QtCore.QRunnable):
                 datetime.timedelta(seconds=source_cfg.interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
+        source_cfg.last_error = None
+        source_cfg.last_error_date = None
 
         if not source_cfg.icon_id:
             self._get_icon(source, session, source_cfg)
