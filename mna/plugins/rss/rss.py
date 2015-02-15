@@ -74,6 +74,7 @@ class RssSource(base.AbstractSource):
 
     name = "RSS/Atom Source"
     conf_panel_class = FrmSettRss
+    default_icon = ":icons/feed-icon.svg"
 
     def __init__(self, cfg):
         super(RssSource, self).__init__(cfg)
@@ -93,6 +94,7 @@ class RssSource(base.AbstractSource):
         doc = self._get_document(url)
         if not doc:
             return []
+        self._update_source_cfg(doc)
 
         min_date_to_load = self._get_min_date_to_load(max_age_load, now)
         feed_update = _ts2datetime(doc.get('updated_parsed'), now)
@@ -169,7 +171,6 @@ class RssSource(base.AbstractSource):
         elif status == 304:
             _LOG.info("RssSource: src=%s result %d: %r - skipping",
                       self.cfg.oid, status, doc.get('debug_message'))
-            self._update_source_cfg(doc)
             return None
         elif status == 301:  # permanent redirects
             self.cfg.meta["url.org"] = url
@@ -186,9 +187,6 @@ class RssSource(base.AbstractSource):
             self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
             return self._get_document(doc.href, cntr=cntr-1)
 
-        if self.cfg.icon_id is None:
-            self._icon = self._get_icon(doc)
-        self._update_source_cfg(doc)
         _LOG.info("RssSource: src=%d get_document done %r", self.cfg.oid, url)
         return doc
 
@@ -203,6 +201,10 @@ class RssSource(base.AbstractSource):
         if self.cfg.title == "":
             if 'title' in doc.feed:
                 self.cfg.title = doc.feed.title
+        if not self.cfg.icon_id:
+            self._icon = self._get_icon(doc)
+            if not self._icon or not self._icon[0]:
+                self.cfg.icon_id = self.default_icon
 
     # pylint:disable=no-self-use
     def _prepare_entries(self, entries, feed_updated):
