@@ -98,7 +98,7 @@ def _parse_html_content(content, encoding=None):
     return tree
 
 
-def get_page_part(info, page, selector):
+def get_page_part(info, page, selector=None):
     """ Find all elements of `page` by `selector` xpath expression.
     If empty selector - return parsed whole page.
 
@@ -121,7 +121,10 @@ def get_page_part(info, page, selector):
                                 tree.xpath("//style")):
         elem.getparent().remove(elem)
     if not selector:
-        return [tree]
+        # pylint: disable=no-member
+        return [unicode(
+            etree.tostring(tree, encoding='utf-8', method='html').strip(),
+            encoding='utf-8', errors="replace")]
     # pylint: disable=no-member
     return (unicode(
         etree.tostring(elem, encoding='utf-8', method='html').strip(),

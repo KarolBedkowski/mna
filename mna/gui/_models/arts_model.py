@@ -25,12 +25,12 @@ _LOG = logging.getLogger(__name__)
 
 
 class ListItem(object):
-    __slots__ = ('oid', '_cols', 'font', 'color', '_icon')
+    __slots__ = ('oid', '_cols', 'font', 'color', 'icon')
 
     def __init__(self, src):
         self.oid = src.oid
         self._cols = []
-        self._icon = None
+        self.icon = None
         self.font = QtCore.QVariant()  # pylint: disable=no-member
         self.color = QtCore.QVariant()  # pylint: disable=no-member
         self.update(src)
@@ -52,7 +52,7 @@ class ListItem(object):
             QtCore.QDateTime(src.updated),  # updated
             QtCore.QVariant(src.score)  # score
         ]
-        self._icon = icons_helper.load_icon(src.source.icon_id)
+        self.icon = icons_helper.load_icon(src.source.icon_id)
 
     def __str__(self):
         return self.title
@@ -63,9 +63,6 @@ class ListItem(object):
 
     def get_value(self, col):
         return self._cols[col]
-
-    def get_icon(self):
-        return self._icon
 
 
 DS_SOURCE = 1
@@ -167,7 +164,7 @@ class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
                 return QtCore.Qt.AlignHCenter
         elif role == QtCore.Qt.DecorationRole:
             if index.column() == 2:
-                return self.items[index.row()].get_icon()
+                return self.items[index.row()].icon
         return QtCore.QVariant()
 
     def node_from_index(self, index):

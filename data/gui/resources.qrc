@@ -15,6 +15,6 @@
     <file>icon-starred.svg</file>
     <file>icon-folder.svg</file>
     <file>feed-icon.svg</file>
-    <file>error-icon.svg</file>
+    <file>icon-error.svg</file>
   </qresource>
 </RCC>

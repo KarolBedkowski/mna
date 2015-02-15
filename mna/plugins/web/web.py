@@ -11,16 +11,12 @@ import hashlib
 import datetime
 import logging
 import difflib
-import base64
-
-from PyQt4 import QtGui, QtCore
 
 from mna.model import base
 from mna.model import dbobjects as DBO
-from mna.plugins import frm_sett_web_ui
-from mna.plugins import dlg_sett_web_xpath_ui
-from mna.gui import _validators
 from mna.lib import websupport
+
+from . import frm_sett_web
 
 _LOG = logging.getLogger(__name__)
 
@@ -62,69 +58,22 @@ def accept_page(article, _session, source, threshold):
     return True
 
 
-class FrmSettWeb(QtGui.QFrame):  # pylint: disable=no-member
-    def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)  # pylint: disable=no-member
-        self._ui = frm_sett_web_ui.Ui_FrmSettWeb()
-        self._ui.setupUi(self)
-        self._ui.b_path_sel.clicked.connect(self._on_btn_xpath_sel)
-
-    def validate(self):
-        try:
-            _validators.validate_empty_string(self._ui.e_url, 'URL')
-            if self._ui.rb_scan_parts.isChecked():
-                _validators.validate_empty_string(self._ui.e_xpath, 'Xpath')
-        except _validators.ValidationError:
-            return False
-        return True
-
-    def from_window(self, source):
-        source.conf["url"] = self._ui.e_url.text()
-        source.conf["xpath"] = self._ui.e_xpath.toPlainText()
-        source.conf["similarity"] = \
-            self._ui.sb_similarity_ratio.value() / 100.0
-        if self._ui.rb_scan_page.isChecked():
-            source.conf["mode"] = "page"
-        elif self._ui.rb_scan_one_part.isChecked():
-            source.conf["mode"] = "page_one_part"
-        else:
-            source.conf["mode"] = "part"
-        return True
-
-    def to_window(self, source):
-        self._ui.e_url.setText(source.conf.get("url") or "")
-        self._ui.e_xpath.setPlainText(source.conf.get("xpath") or "")
-        self._ui.sb_similarity_ratio.setValue((source.conf.get('similarity')
-                                               or 0.5) * 100.0)
-        mode = source.conf.get("mode")
-        if mode == "page":
-            self._ui.rb_scan_page.setChecked(True)
-            self._ui.rb_scan_page.toggled.emit(True)
-        elif mode == "page_one_part":
-            self._ui.rb_scan_one_part.setChecked(True)
-            self._ui.rb_scan_one_part.toggled.emit(True)
-        else:
-            self._ui.rb_scan_parts.setChecked(True)
-            self._ui.rb_scan_parts.toggled.emit(True)
-
-    def _on_btn_xpath_sel(self):
-        dlg = _DlgSettWebXPath(self, self._ui.e_url.text(),
-                               self._ui.e_xpath.toPlainText())
-        if dlg.exec_() == QtGui.QDialog.Accepted:  # pylint: disable=no-member
-            self._ui.e_url.setText(dlg.url)
-            self._ui.e_xpath.setPlainText(dlg.xpath)
-
-
 class WebSource(base.AbstractSource):
     """Load article from website"""
 
     name = "Web Page Source"
-    conf_panel_class = FrmSettWeb
+    conf_panel_class = frm_sett_web.FrmSettWeb
     default_icon = ":icons/web-icon.svg"
 
     def __init__(self, cfg):
         super(WebSource, self).__init__(cfg)
         self._icon = None
+        if not self.cfg.meta:
+            self.cfg.meta = {}
+
+    @classmethod
+    def get_name(cls):
+        return 'mna.plugins.web.WebSource'
 
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
@@ -133,36 +82,14 @@ class WebSource(base.AbstractSource):
 
         _LOG.info("WebSource.get_items src=%r from %r - %r", self.cfg.oid,
                   url, self.cfg.conf)
-        if not self.cfg.meta:
-            self.cfg.meta = {}
-        try:
-            info, page = websupport.download_page(
-                url, self.cfg.meta.get('etag'),
-                self.cfg.meta.get('last-modified'))
-        except websupport.LoadPageError, err:
-            self.cfg.add_log('error',
-                             "Error loading page: " + str(err))
-            raise base.GetArticleException("Get web page error: %s" % err)
 
-        self.cfg.meta['last-modified'] = info['_modified']
-        self.cfg.meta['etag'] = info.get('etag')
-
+        info, page = self._download_page(url)
         if info['_status'] == 304:  # not modified
             _LOG.info("WebSource.get_items %r from %r - not modified",
                       self.cfg.oid, url)
             return []
 
-        if not self.cfg.icon_id:
-            icon, name = websupport.get_icon(url, page, info['_encoding'])
-            if icon:
-                name = "_".join(('src', str(self.cfg.oid), name))
-                self.cfg.icon_id = name
-                self._resources[name] = icon
-            else:
-                self.cfg.icon_id = self.default_icon
-
-        if self.cfg.title == "":
-            self.cfg.title = websupport.get_title(page, info['_encoding'])
+        self._download_page_info(url, page, info)
 
         if not self.is_page_updated(info, max_age_load):
             _LOG.info("WebSource.get_items src=%r page not updated",
@@ -209,6 +136,20 @@ class WebSource(base.AbstractSource):
                             for key, val in source_conf.meta.iteritems())
         return info
 
+    def _download_page(self, url):
+        try:
+            info, page = websupport.download_page(
+                url, self.cfg.meta.get('etag'),
+                self.cfg.meta.get('last-modified'))
+        except websupport.LoadPageError, err:
+            self.cfg.add_log('error',
+                             "Error loading page: " + str(err))
+            raise base.GetArticleException("Get web page error: %s" % err)
+
+        self.cfg.meta['last-modified'] = info['_modified']
+        self.cfg.meta['etag'] = info.get('etag')
+        return info, page
+
     def _get_articles(self, info, page):
         selector = self.cfg.conf.get('xpath')
         mode = self.cfg.conf.get("mode")
@@ -220,7 +161,7 @@ class WebSource(base.AbstractSource):
             if parts:
                 articles = [parts[0]]
         else:
-            articles = websupport.get_page_part(info, page, "//html")
+            articles = websupport.get_page_part(info, page, None)
         return articles
 
     def _prepare_articles(self, parts):  # pylint:disable=no-self-use
@@ -294,98 +235,15 @@ class WebSource(base.AbstractSource):
         return (row[0] for row in session.query(DBO.Article.internal_id).
                 filter_by(source_id=self.cfg.oid))
 
-
-class _DlgSettWebXPath(QtGui.QDialog):  # pylint: disable=no-member
-    """ Select web page element dialog. """
-
-    def __init__(self, parent, url, xpath=None):
-        QtGui.QDialog.__init__(self, parent)  # pylint: disable=no-member
-        self._ui = dlg_sett_web_xpath_ui. Ui_DlgSettWebXPath()
-        self._ui.setupUi(self)
-        self._ui.e_xpath.setPlainText(xpath or "")
-        self._ui.web_page.loadFinished.connect(self._on_web_page_loaded)
-        self._ui.b_go.pressed.connect(self._on_btn_go)
-        self._set_url(url)
-
-    @property
-    def url(self):
-        return self._ui.e_url.text().strip()
-
-    def _set_url(self, url):
-        if not url:
-            self._ui.e_url.setText("")
-            return
-        if url and not url.startswith('http://') and \
-                not url.startswith('https://'):
-            url = 'http://' + url
-        self._ui.e_url.setText(url)
-        self._ui.web_page.load(QtCore.QUrl(url))  # pylint: disable=no-member
-
-    @property
-    def xpath(self):
-        return self._ui.e_xpath.toPlainText()
-
-    def done(self, result):
-        if result == QtGui.QDialog.Accepted:  # pylint: disable=no-member
-            if not self.url:
-                self._ui.e_url.focus()
-                return False
-        return QtGui.QDialog.done(self, result)  # pylint: disable=no-member
-
-    def _on_btn_go(self):
-        self._set_url(self.url)
-
-    def _on_web_page_loaded(self, res):
-        if not res:
-            _LOG.info("_DlgSettWebXPath._on_web_page_loaded failed")
-            return
-        page = self._ui.web_page.page()
-        frame = page.mainFrame()
-        frame.addToJavaScriptWindowObject('click_handler', self)
-        frame.evaluateJavaScript(_SEL_ELEM_JS)
-        css = "data:text/css;charset=utf-8;base64," + base64.encodestring(_CSS)
-        # pylint: disable=no-member
-        page.settings().setUserStyleSheetUrl(QtCore.QUrl(css))
-
-    @QtCore.pyqtSlot(str)  # pylint: disable=no-member
-    def click(self, message):
-        """ handle custom clicks in web page """
-        self._ui.e_xpath.setPlainText(message)
-
-
-# based on http://stackoverflow.com/questions/2631820/im-storing-click-
-# coordinates-in-my-db-and-then-reloading-them-later-and-showing/2631931#2631931
-_SEL_ELEM_JS = """
-function getXPath(element) {
-    if (element.id !== '')
-        return 'id("' + element.id + '")';
-    if (element === document.body)
-        return element.tagName;
-    var ix = 0;
-    var siblings = element.parentNode.childNodes;
-    for (var i= 0; i < siblings.length; i++) {
-        var sibling = siblings[i];
-        if (sibling===element) {
-            return getPathTo(element.parentNode) + '/' + \
-                element.tagName + '[' + (ix + 1) + ']';
-        }
-        if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
-            ix++;
-        }
-    }
-}
-
-function clickListener(e) {
-    e.preventDefault();
-    var clickedElement = (window.event) ? window.event.srcElement : e.target;
-    var value = getXPath(clickedElement);
-    click_handler.click(value);
-}
-
-document.onclick = clickListener;
-
-"""
-
-_CSS = """
-*:hover {border: 1px solid red !important;}
-"""
+    def _download_page_info(self, url, page, info):
+        """ Get page icon, title, etc. """
+        if not self.cfg.icon_id:
+            icon, name = websupport.get_icon(url, page, info['_encoding'])
+            if icon:
+                name = "_".join(('src', str(self.cfg.oid), name))
+                self.cfg.icon_id = name
+                self._resources[name] = icon
+            else:
+                self.cfg.icon_id = self.default_icon
+        if self.cfg.title == "":
+            self.cfg.title = websupport.get_title(page, info['_encoding'])
