@@ -76,7 +76,8 @@ def force_refresh(source_oid):
     session = db.Session()
     session.query(DBO.Source).\
         filter_by(oid=source_oid, processing=0).\
-        update({"next_refresh": datetime.datetime.now()})
+        update({"next_refresh": datetime.datetime.now(),
+                "enabled": 1})
     session.commit()
 
 
