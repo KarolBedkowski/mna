@@ -103,6 +103,7 @@ class Worker(QtCore.QRunnable):
                 datetime.timedelta(seconds=source_cfg.interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
+        force_update = bool(source_cfg.last_error)
         source_cfg.last_error = None
         source_cfg.last_error_date = None
 
@@ -113,7 +114,7 @@ class Worker(QtCore.QRunnable):
 
         session.commit()
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
-                      cnt)
+                      cnt, force_update)
         _LOG.debug("%s finished", self._p_name)
         return
 
@@ -189,13 +190,14 @@ def _on_error(session, source_cfg, error_msg):
     session.commit()
 
 
-def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt):
+def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt,
+                  force=False):
     """ Inform application about source updates. """
-    if new_articles_cnt:
+    if new_articles_cnt or force:
         messenger.MESSENGER.emit_source_updated(source_oid, group_oid)
+    if new_articles_cnt:
         messenger.MESSENGER.emit_announce(
-            u"%s updated - %d new articles" %
-            (source_title, new_articles_cnt))
+            u"%s updated - %d new articles" % (source_title, new_articles_cnt))
     else:
         messenger.MESSENGER.emit_announce(u"%s updated" % source_title)
 
