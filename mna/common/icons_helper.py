@@ -39,5 +39,7 @@ def load_icon(icon_name):
                 icon = QtGui.QIcon(fname)  # pylint:disable=no-member
         if icon:
             _ICON_CACHE[icon_name] = icon
+        else:
+            _LOG.warn("load_icon %r not found", icon_name)
     # pylint:disable=no-member
     return icon or QtGui.QIcon(":icons/unknown-icon.svg")
