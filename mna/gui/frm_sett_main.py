@@ -43,6 +43,7 @@ class FrmSettMain(QtGui.QFrame):  # pylint: disable=no-member
         group_idx = self._ui.c_group.currentIndex()
         group_id = self._ui.c_group.itemData(group_idx).toInt()[0]
         source.group_id = group_id
+        source.enabled = self._ui.cb_enabled.isChecked()
         return True
 
     def to_window(self, source):
@@ -50,3 +51,4 @@ class FrmSettMain(QtGui.QFrame):  # pylint: disable=no-member
         if source.group_id:
             group_idx = self._ui.c_group.findData(source.group_id)
             self._ui.c_group.setCurrentIndex(group_idx)
+        self._ui.cb_enabled.setChecked(source.enabled)
