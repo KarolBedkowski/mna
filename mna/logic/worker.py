@@ -19,6 +19,7 @@ from mna import plugins
 from mna.model import base
 from mna.lib import appconfig
 from mna.common import messenger
+from mna.model import repo
 
 _LOG = logging.getLogger(__name__)
 _LONG_SLEEP = 15  # sleep when no source processed
@@ -75,6 +76,12 @@ class Worker(QtCore.QRunnable):
             cnt = sum(_save_articls(articles, session, source_cfg))
         except base.GetArticleException, err:
             # some processing error occurred
+            _LOG.error("%s Load articles from %s/%s error: %r",
+                       self._p_name, source_cfg.name, source_cfg.title,
+                       err)
+            _on_error(session, source_cfg, str(err))
+            return
+        except Exception, err:  # pylint:disable=broad-except
             _LOG.exception("%s Load articles from %s/%s error: %r",
                            self._p_name, source_cfg.name, source_cfg.title,
                            err)
@@ -96,6 +103,14 @@ class Worker(QtCore.QRunnable):
                 datetime.timedelta(seconds=source_cfg.interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
+        source_cfg.last_error = None
+        source_cfg.last_error_date = None
+
+        # store resources in repository
+        repository = repo.Reporitory()
+        for res_name, res_content in source.get_resources():
+            repository.store_file(res_name, res_content)
+
         session.commit()
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
                       cnt)
@@ -141,6 +156,15 @@ class Worker(QtCore.QRunnable):
                            self._p_name, article.title, min_score)
                 continue
             yield article
+
+    # pylint:disable=no-self-use
+    def _get_icon(self, source, _session, source_cfg):
+        iconname = source.get_icon()
+        if iconname and iconname[0]:
+            icon, icon_name = iconname
+            name = "_".join(('src', str(source_cfg.oid), icon_name))
+            repo.Reporitory().store_file(name, icon)
+            source_cfg.icon_id = name
 
 
 def _save_articls(articles, session, source_cfg):

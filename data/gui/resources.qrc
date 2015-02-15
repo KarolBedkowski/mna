@@ -7,4 +7,14 @@
     <file>reload.svg</file>
     <file>mark_read.svg</file>
   </qresource>
+  <qresource prefix="icons">
+    <file>unknown-icon.svg</file>
+    <file>icon-search.svg</file>
+    <file>web-icon.svg</file>
+    <file>icon-all.svg</file>
+    <file>icon-starred.svg</file>
+    <file>icon-folder.svg</file>
+    <file>feed-icon.svg</file>
+    <file>error-icon.svg</file>
+  </qresource>
 </RCC>

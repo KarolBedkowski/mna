@@ -19,6 +19,7 @@ from PyQt4 import QtCore, QtGui
 
 from mna.model import db
 from mna.logic import groups, sources, articles
+from mna.common import icons_helper
 
 _LOG = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class _TreeNode(object):
         self.caption = caption
         self.oid = oid
         self.unread = unread
+        self.icon = QtCore.QVariant()  # pylint:disable=no-member
 
     def __str__(self):
         if self.unread:
@@ -101,6 +103,7 @@ class GroupTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, group_oid, group_name):
         super(GroupTreeNode, self).__init__(parent, group_name, group_oid)
+        self.icon = icons_helper.load_icon(':icons/icon-folder.svg')
 
     def update(self, session=None):
         """ Update group caption and unread counter from database. """
@@ -111,27 +114,48 @@ class GroupTreeNode(_TreeNode):
         self.unread = sum(cld.unread for cld in self.children)
 
 
+_ICON_ERROR = ':icons/icon-error.svg'
+
 class SourceTreeNode(_TreeNode):
     """ Group node """
-    def __init__(self, parent, title, oid, unread):
+    def __init__(self, parent, data):
+        oid, title, unread, icon, last_error = data
         super(SourceTreeNode, self).__init__(
             parent, (title or u"Source %d" % oid), oid, unread)
+        if last_error:
+            self.icon = icons_helper.load_icon(_ICON_ERROR)
+        else:
+            self.icon = icons_helper.load_icon(icon)
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
-        caption, self.unread = sources.get_source_info(session, self.oid)
+        caption, self.unread, icon, last_error = sources.get_source_info(
+            session, self.oid)
         self.caption = caption or u"Source %d" % self.oid
+        if last_error:
+            self.icon = icons_helper.load_icon(_ICON_ERROR)
+        else:
+            self.icon = icons_helper.load_icon(icon)
 
 
 SPECIAL_STARRED = -1
 SPECIAL_ALL = -2
 SPECIAL_SEARCH = -3
 
+_SPECIAL_ICONS = {
+    SPECIAL_SEARCH: ':icons/icon-search.svg',
+    SPECIAL_ALL: ':icons/icon-all.svg',
+    SPECIAL_STARRED: ':icons/icon-starred.svg'
+}
+
 
 class SpecialTreeNode(_TreeNode):
     """Special node (all nodes, stared, etc). """
     def __init__(self, parent, title, sid):
         super(SpecialTreeNode, self).__init__(parent, title, sid)
+        icon = _SPECIAL_ICONS.get(sid)
+        if icon:
+            self.icon = icons_helper.load_icon(icon)
 
     def update(self, session):
         if self.oid == SPECIAL_STARRED:
@@ -181,8 +205,7 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(self.root, group_oid, group_name)
-            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
-                            for s_oid, s_title, s_unread in group]
+            obj.children = [SourceTreeNode(obj, data) for data in group]
             obj.update_unread()
             self.root.children.append(obj)
         self.update_specials(session)
@@ -227,6 +250,8 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
             return self.node_from_index(index).get_font()
         elif role == ID_ROLE:
             return self.node_from_index(index).oid
+        elif role == QtCore.Qt.DecorationRole:
+            return self.node_from_index(index).icon
         return QtCore.QVariant()
 
     # pylint:disable=no-member,no-self-use

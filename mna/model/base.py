@@ -102,6 +102,8 @@ class AbstractSource(object):
     presenter = SimplePresenter
     # subclass of QFrame
     conf_panel_class = None
+    # default icon for sources this type
+    default_icon = "unknown"
 
     def __init__(self, cfg):
         super(AbstractSource, self).__init__()
@@ -109,8 +111,10 @@ class AbstractSource(object):
         self.oid = cfg.oid
         self.cfg = cfg
         self.group_id = cfg.group_id
+        self._resources = {}
 
-    def get_items(self, session=None, max_load=-1, max_age_load=-1):  # pylint:disable=unused-argument,no-self-use
+    # pylint:disable=unused-argument,no-self-use
+    def get_items(self, session=None, max_load=-1, max_age_load=-1):
         return []
 
     @classmethod
@@ -118,9 +122,18 @@ class AbstractSource(object):
         return cls.__module__ + '.' + cls.__name__
 
     @classmethod
-    def get_info(cls, source_conf, session=None):  # pylint:disable=unused-argument
+    # pylint:disable=unused-argument
+    def get_info(cls, source_conf, session=None):
         """ Get additional information specific to given source. """
         return None
+
+    def get_resources(self):  # pylint:disable=no-self-use
+        """ Get additional resources to store in cache (i.e. icons).
+
+        Returns:
+            iter((name, content))
+        """
+        return self._resources.iteritems()
 
 
 class AbstractFilter(object):

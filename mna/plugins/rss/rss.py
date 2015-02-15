@@ -7,6 +7,7 @@ __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014"
 __version__ = "2014-06-02"
 
+import os
 import logging
 import datetime
 import calendar
@@ -19,12 +20,15 @@ from mna.model import base
 from mna.model import db
 from mna.model import dbobjects as DBO
 from mna.gui import _validators
+from mna.lib import websupport
 from . import opml
 from . import frm_sett_rss_ui
 
 _LOG = logging.getLogger(__name__)
 
 feedparser.PARSE_MICROFORMATS = 0
+feedparser.USER_AGENT = ("Mozilla/5.0 (X11; Linux i686; rv:36.0) "
+                         "Gecko/20100101 Firefox/36.0")
 
 
 def _ts2datetime(tstruct, default=None):
@@ -70,6 +74,10 @@ class RssSource(base.AbstractSource):
 
     name = "RSS/Atom Source"
     conf_panel_class = FrmSettRss
+    default_icon = ":icons/feed-icon.svg"
+
+    def __init__(self, cfg):
+        super(RssSource, self).__init__(cfg)
 
     @classmethod
     def get_name(cls):
@@ -78,13 +86,14 @@ class RssSource(base.AbstractSource):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         _LOG.info("RssSource: src=%d get_items", self.cfg.oid)
         url = self.cfg.conf.get("url") if self.cfg.conf else None
-        now = datetime.datetime.now()
         if not url:
             return []
 
+        now = datetime.datetime.now()
         doc = self._get_document(url)
         if not doc:
             return []
+        self._update_source_cfg(doc)
 
         min_date_to_load = self._get_min_date_to_load(max_age_load, now)
         feed_update = _ts2datetime(doc.get('updated_parsed'), now)
@@ -115,9 +124,6 @@ class RssSource(base.AbstractSource):
 
         _LOG.debug("RssSource: src=%d loaded %d articles",
                    self.cfg.oid, len(articles))
-        if not articles:
-            self.cfg.add_log('info', "Not found new articles")
-            return []
 
         # Limit number articles to load
         if self.cfg.max_articles_to_load > 0 or \
@@ -141,8 +147,11 @@ class RssSource(base.AbstractSource):
                         for key, val in source_conf.meta.iteritems())
         return info
 
-    def _get_document(self, url):
+    def _get_document(self, url, cntr=10):
         _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
+        if cntr <= 0:
+            raise base.GetArticleException(
+                "Get rss feed error: to many redirections")
         if not self.cfg.meta:
             _LOG.warn("No meta in %d", self.cfg.oid)
             self.cfg.meta = {}
@@ -158,7 +167,6 @@ class RssSource(base.AbstractSource):
         elif status == 304:
             _LOG.info("RssSource: src=%s result %d: %r - skipping",
                       self.cfg.oid, status, doc.get('debug_message'))
-            self._update_source_cfg(doc)
             return None
         elif status == 301:  # permanent redirects
             self.cfg.meta["url.org"] = url
@@ -168,11 +176,14 @@ class RssSource(base.AbstractSource):
             self.cfg.add_log('info',
                              "Permanent redirect to %s; updating configuration"
                              % doc.href)
+            return self._get_document(doc.href, cntr=cntr-1)
         elif status == 302:  # temporary redirects
             _LOG.info("RssSource: src=%s temporary redirects to %s",
                       self.cfg.oid, doc.href)
             self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
-        self._update_source_cfg(doc)
+            return self._get_document(doc.href, cntr=cntr-1)
+
+        _LOG.info("RssSource: src=%d get_document done %r", self.cfg.oid, url)
         return doc
 
     def _update_source_cfg(self, doc):
@@ -186,6 +197,14 @@ class RssSource(base.AbstractSource):
         if self.cfg.title == "":
             if 'title' in doc.feed:
                 self.cfg.title = doc.feed.title
+        if not self.cfg.icon_id:
+            icon, icon_name = self._get_icon(doc)
+            if icon:
+                icon_name = "_".join(('src', str(self.cfg.oid), icon_name))
+                self.cfg.icon_id = icon_name
+                self._resources[icon_name] = icon
+            else:
+                self.cfg.icon_id = self.default_icon
 
     # pylint:disable=no-self-use
     def _prepare_entries(self, entries, feed_updated):
@@ -267,6 +286,30 @@ class RssSource(base.AbstractSource):
                         load_only("oid", "internal_id", "updated", "meta"))
         for row in rows:
             yield (row.internal_id, row)
+
+    def _get_icon(self, content):
+        if 'icon' in content.feed:
+            try:
+                info, page = websupport.download_page(content.feed.icon,
+                                                      None, None)
+                if page:
+                    return page, os.path.basename(content.feed.icon)
+            except websupport.LoadPageError, err:
+                _LOG.info("RssSource: src=%d _get_icon error %r",
+                          self.cfg.oid, err)
+        if 'link' in content.feed:
+            try:
+                info, page = websupport.download_page(content.feed.link,
+                                                      None, None)
+                if page:
+                    icon = websupport.get_icon(content.feed.link, page,
+                                               info['_encoding'])
+                    if icon and icon[0]:
+                        return icon
+            except websupport.LoadPageError, err:
+                _LOG.info("RssSource: src=%d _get_icon error %r",
+                          self.cfg.oid, err)
+        return None, None
 
 
 class OpmlImportTool(base.AbstractTool):

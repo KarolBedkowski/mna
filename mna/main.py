@@ -62,6 +62,9 @@ def run():
     from mna.model import db
     db.connect(db.find_db_file(config), options.debug_sql)
 
+    from mna.model import repo
+    repo.Reporitory().setup(config.user_cache_dir)
+
     # load plugins
     from mna import plugins
     plugins.load_plugins()
