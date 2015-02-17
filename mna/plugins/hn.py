@@ -30,7 +30,7 @@ class HNSource(base.AbstractSource):
 
     name = "Hacker News"
     conf_panel_class = None
-    default_icon = ":icons/hn-icon.svg"
+    default_icon = ":plugins-hn/hn-icon.png"
 
     def __init__(self, cfg):
         super(HNSource, self).__init__(cfg)
@@ -47,6 +47,8 @@ class HNSource(base.AbstractSource):
 
         if not self.cfg.title:
             self.cfg.title = 'Hacker News'
+        if not self.cfg.icon_id:
+            self.cfg.icon_id = self.default_icon
 
         info, page = self._get_top_stories()
         if info['_status'] == 304:  # not modified
