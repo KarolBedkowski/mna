@@ -17,4 +17,7 @@
     <file>feed-icon.svg</file>
     <file>icon-error.svg</file>
   </qresource>
+  <qresource prefix="plugins-hn">
+    <file>hn-icon.png</file>
+  </qresource>
 </RCC>
