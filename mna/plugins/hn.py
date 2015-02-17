@@ -115,6 +115,11 @@ class HNSource(base.AbstractSource):
             else:
                 if page:
                     article = json.loads(page)
+                    if article.get('deleted'):
+                        continue
+                    if not article.get('url'):
+                        _LOG.debug("_get_articles without url: %r", article)
+                        continue
                     article['time_parsed'] = datetime.datetime.fromtimestamp(
                         article['time'])
                     yield article
