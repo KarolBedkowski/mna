@@ -53,7 +53,7 @@ class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-m
         self._frm_sett_main = frm_sett_main.FrmSettMain(self)
         self._ui.l_main_opt.addWidget(self._frm_sett_main)
         src = plugins.SOURCES[source.name]
-        if hasattr(src, 'conf_panel_class'):
+        if hasattr(src, 'conf_panel_class') and src.conf_panel_class:
             src_opt_frame = src.conf_panel_class(self)
         else:
             src_opt_frame = QtGui.QLabel("No options", self)  # pylint:disable=no-member
@@ -71,7 +71,7 @@ class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-m
 
     def _to_window(self, source):
         self._frm_sett_main.to_window(source)
-        if hasattr(self._curr_src_frame, 'to_window'):
+        if self._curr_src_frame and hasattr(self._curr_src_frame, 'to_window'):
             self._curr_src_frame.to_window(source)
         self_ui = self._ui
         self_ui.e_interval.setValue((source.interval or 3600) / 60)

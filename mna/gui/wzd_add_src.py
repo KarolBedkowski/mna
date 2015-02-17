@@ -68,10 +68,12 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
             # create new frame
             src_opt_frame = None
             src_cls = plugins.SOURCES[src]
-            if hasattr(src_cls, 'conf_panel_class'):
+            if hasattr(src_cls, 'conf_panel_class') and \
+                    src_cls.conf_panel_class:
                 src_opt_frame = src_cls.conf_panel_class(self)
             else:
-                src_opt_frame = QtGui.QLabel("No options", self)  # pylint:disable=no-member
+                src_opt_frame = QtGui.QLabel(  # pylint:disable=no-member
+                    "No options", self)
             self._ui.l_src_opt.addWidget(src_opt_frame)
             self._curr_src_frame = src_opt_frame
 
@@ -82,7 +84,8 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
         if page == 0:  # main
             return self._frm_edit_main.validate()
         elif page == 1:  # source settings
-            assert self._curr_src_frame is not None, "Missing curr src frame"
+            if self._curr_src_frame is None:
+                return True
             if hasattr(self._curr_src_frame, 'validate'):
                 return self._curr_src_frame.validate()
         elif page == 2:  # additional
@@ -100,7 +103,8 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
         # get params from main frame
         self._frm_edit_main.from_window(source)
         # source specific
-        if hasattr(self._curr_src_frame, 'from_window'):
+        if self._curr_src_frame and hasattr(self._curr_src_frame,
+                                            'from_window'):
             self._curr_src_frame.from_window(source)
         # additional
         source.interval = self._ui.e_interval.value() * 60
