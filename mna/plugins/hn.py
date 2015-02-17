@@ -15,8 +15,6 @@ try:
 except ImportError:
     import json
 
-from sqlalchemy import func
-
 from mna.model import base
 from mna.model import dbobjects as DBO
 from mna.lib import websupport
@@ -57,22 +55,25 @@ class HNSource(base.AbstractSource):
 
         stories_id = json.loads(page.decode('utf-8'))
 
-        last_art = self._get_last_article_id(session)
-        if last_art:
-            stories_id = [sid for sid in stories_id if sid > last_art]
+        last_sid = self.cfg.meta.get('last_sid')
+        _LOG.debug('HNSource.get_items: last_art=%r', last_sid)
+        new_last_sid = max(stories_id)
+        if last_sid:
+            stories_id = [sid for sid in stories_id if sid > last_sid]
 
         if not stories_id:
             _LOG.info("HNSource.get_items %r - no new stories", self.cfg.oid)
             return []
 
         articles = self._get_articles(stories_id)
-        articles = (self._create_article(art) for art in articles)
 
         # filter by timme
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         if min_date_to_load:
             articles = (art for art in articles
                         if art['time_parsed'] >= min_date_to_load)
+
+        articles = [self._create_article(art) for art in articles]
 
         _LOG.debug("HNSource: loaded %d articles", len(articles))
         if not articles:
@@ -81,6 +82,7 @@ class HNSource(base.AbstractSource):
         self.cfg.add_log('info', "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
+        self.cfg.meta['last_sid'] = new_last_sid
         return articles
 
     @classmethod
@@ -141,10 +143,6 @@ class HNSource(base.AbstractSource):
                                  "Loaded only %d articles (limit)." %
                                  len(articles))
         return articles
-
-    def _get_last_article_id(self, session):
-        return session.query(func.max_(DBO.Article.internal_id)).\
-                filter_by(source_id=self.cfg.oid).scalar()
 
     def _get_min_date_to_load(self, global_max_age):
         min_date_to_load = self.cfg.last_refreshed
