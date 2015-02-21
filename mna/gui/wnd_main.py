@@ -48,6 +48,8 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         QtGui.QMainWindow.__init__(self, parent)  # pylint: disable=no-member
         self._appconfig = AppConfig()
         self._current_article = None
+        self._progress_bar_step = 0
+        self._progress_bar_cntr = 0.0
         self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
         self._setup()
@@ -80,6 +82,10 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._ui.toolbar.addWidget(self._t_search)
         # menus
         self._build_tools_menu()
+        # statusbar
+        self._sb_progressbar = QtGui.QProgressBar(self.statusBar())
+        self.statusBar().addPermanentWidget(self._sb_progressbar)
+        self._sb_progressbar.hide()
 
     def _bind(self):
         # actions
@@ -108,6 +114,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         messenger.MESSENGER.source_updated.connect(self._on_source_updated)
         messenger.MESSENGER.group_updated.connect(self._on_group_updated)
         messenger.MESSENGER.announce.connect(self._on_announce)
+        messenger.MESSENGER.updating_status.connect(self._on_updating_status)
 
     @property
     def _selected_subscription(self):
@@ -376,6 +383,20 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             return
         if isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
             self._arts_list_model.refresh()
+
+    @QtCore.pyqtSlot(int, int)
+    def _on_updating_status(self, status, data):
+        pbar = self._sb_progressbar
+        if status == messenger.ST_UPDATE_FINISHED:
+            pbar.hide()
+        elif status == messenger.ST_UPDATE_STARTED:
+            self._progress_bar_step = data / 100.
+            self._progress_bar_cntr = 0.0
+            pbar.show()
+            pbar.setRange(0, 100)
+        else:
+            self._progress_bar_cntr += self._progress_bar_step
+            pbar.setValue(self._progress_bar_cntr)
 
     def _refresh_tree(self):
         """ Refresh tree; keep expanded nodes """

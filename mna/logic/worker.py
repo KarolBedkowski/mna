@@ -115,6 +115,7 @@ class Worker(QtCore.QRunnable):
         session.commit()
         _emit_updated(source_cfg.oid, source_cfg.group_id, source_cfg.title,
                       cnt, force_update)
+        messenger.MESSENGER.emit_updating_status(messenger.ST_UPDATE_PING)
         _LOG.debug("%s finished", self._p_name)
         return
 
@@ -217,6 +218,8 @@ def _process_sources():
     _LOG.debug("MainWorker: processing %d sources", len(sources))
     if len(sources) > 0:
         messenger.MESSENGER.emit_announce(u"Starting sources update")
+        messenger.MESSENGER.emit_updating_status(messenger.ST_UPDATE_STARTED,
+                                                 len(sources))
         pool = QtCore.QThreadPool()  # pylint:disable=no-member
         pool.setMaxThreadCount(_WORKERS)
         for source_id in sources:
@@ -224,6 +227,7 @@ def _process_sources():
             pool.start(worker)
         pool.waitForDone()
         messenger.MESSENGER.emit_announce(u"Update finished")
+        messenger.MESSENGER.emit_updating_status(messenger.ST_UPDATE_FINISHED)
     _LOG.debug("MainWorker: processing finished")
     return 0
 
