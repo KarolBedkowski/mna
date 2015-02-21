@@ -254,6 +254,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._current_article = article
 
     def _on_action_update(self):  # pylint: disable=no-self-use
+        self._ui.a_update.setDisabled(True)
         sources.force_refresh_all()
 
     def _on_action_add_group(self):
@@ -389,6 +390,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         pbar = self._sb_progressbar
         if status == messenger.ST_UPDATE_FINISHED:
             pbar.hide()
+            self._ui.a_update.setDisabled(False)
         elif status == messenger.ST_UPDATE_STARTED:
             self._progress_bar_step = data / 100.
             self._progress_bar_cntr = 0.0
