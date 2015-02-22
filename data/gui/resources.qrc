@@ -20,4 +20,7 @@
   <qresource prefix="plugins-hn">
     <file>hn-icon.png</file>
   </qresource>
+  <qresource prefix="plugins-jamendo">
+    <file>jamendo-icon.png</file>
+  </qresource>
 </RCC>
