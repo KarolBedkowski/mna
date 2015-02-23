@@ -114,9 +114,9 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         _LOG.debug(_logtitle + "loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_log('info', "Not found new articles")
+            self._log_info("Not found new articles")
             return []
-        self.cfg.add_log('info', "Found %d new articles" % len(articles))
+        self._log_info("Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         self.cfg.meta['last_sid'] = new_last_sid
@@ -149,8 +149,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         try:
             info, page = websupport.download_page(url)
         except websupport.LoadPageError, err:
-            self.cfg.add_log('error',
-                             "Error loading page: " + str(err))
+            self._log_error("Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         if not page:

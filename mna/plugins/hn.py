@@ -79,9 +79,9 @@ class HNSource(base.AbstractSource):
 
         _LOG.debug("HNSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_log('info', "Not found new articles")
+            self._log_info("Not found new articles")
             return []
-        self.cfg.add_log('info', "Found %d new articles" % len(articles))
+        self._log_info("Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         self.cfg.meta['last_sid'] = new_last_sid
@@ -97,8 +97,7 @@ class HNSource(base.AbstractSource):
                 _TOP_STORIES_URL, self.cfg.meta.get('etag'),
                 self.cfg.meta.get('last-modified'))
         except websupport.LoadPageError, err:
-            self.cfg.add_log('error',
-                             "Error loading page: " + str(err))
+            self._log_error("Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         self.cfg.meta['last-modified'] = info['_modified']
@@ -111,7 +110,7 @@ class HNSource(base.AbstractSource):
                 _LOG.debug('_get_articles: sid=%r', sid)
                 _info, page = websupport.download_page(_GET_STORY_URL % sid)
             except websupport.LoadPageError, err:
-                self.cfg.add_log('error', "Error loading page: " + str(err))
+                self._log_error("Error loading page: " + str(err))
             else:
                 if page:
                     article = json.loads(page)

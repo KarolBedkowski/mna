@@ -169,7 +169,7 @@ class FileSource(base.AbstractSource):
 
         _LOG.debug("FileSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_log('info', "Not found new articles")
+            self._log_info("Not found new articles")
             return []
         self.cfg.add_log('info',
                          "Found %d new articles" % len(articles))
@@ -201,8 +201,7 @@ class FileSource(base.AbstractSource):
                              errors="replace") as srcfile:
                 return srcfile.read()
         except IOError, err:
-            self.cfg.add_log('error',
-                             "Error loading file: " + str(err))
+            self._log_error("Error loading file: " + str(err))
             raise base.GetArticleException("Load file error: %s" % err)
         return None
 

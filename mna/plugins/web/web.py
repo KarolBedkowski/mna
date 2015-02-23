@@ -115,9 +115,9 @@ class WebSource(base.AbstractSource):
 
         _LOG.debug("WebSource: loaded %d articles", len(articles))
         if not articles:
-            self.cfg.add_log('info', "Not found new articles")
+            self._log_info("Not found new articles")
             return []
-        self.cfg.add_log('info', "Found %d new articles" % len(articles))
+        self._log_info("Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
@@ -153,8 +153,7 @@ class WebSource(base.AbstractSource):
                 url, self.cfg.meta.get('etag'),
                 self.cfg.meta.get('last-modified'))
         except websupport.LoadPageError, err:
-            self.cfg.add_log('error',
-                             "Error loading page: " + str(err))
+            self._log_error("Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         self.cfg.meta['last-modified'] = info['_modified']
@@ -223,8 +222,7 @@ class WebSource(base.AbstractSource):
 
         page_modification = info.get('_last-modified')
         if page_modification and page_modification < last_refreshed:
-            self.cfg.add_log('info',
-                             "Page not modified according to header")
+            self._log_info("Page not modified according to header")
             _LOG.info("No page %s modification since %s", self.cfg.title,
                       last_refreshed)
             return False

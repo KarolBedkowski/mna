@@ -112,7 +112,7 @@ class RssSource(base.AbstractSource):
         _LOG.debug("RssSource: src=%d after filtering:  %d articles",
                    self.cfg.oid, len(articles))
         if not articles:
-            self.cfg.add_log('info', "Not found new articles")
+            self._log_info("Not found new articles")
             return []
         # cache articles in database
         art_cache = dict(self._get_existing_articles(session))
@@ -156,7 +156,7 @@ class RssSource(base.AbstractSource):
         doc = feedparser.parse(url, etag=etag, modified=modified)
         status = doc.get('status') if doc else 400
         if status >= 400:
-            self.cfg.add_log('error', "Error loading RSS feed: %s" % status)
+            self._log_error("Error loading RSS feed: %s" % status)
             _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
                        self.cfg.oid, url, doc, self.cfg)
             raise base.GetArticleException("Get rss feed error: %r" % status)
@@ -169,14 +169,13 @@ class RssSource(base.AbstractSource):
             self.cfg.conf["url"] = doc.href
             _LOG.info("RssSource: src=%s permanent redirects to %s",
                       self.cfg.oid, doc.href)
-            self.cfg.add_log('info',
-                             "Permanent redirect to %s; updating configuration"
+            self._log_info("Permanent redirect to %s; updating configuration"
                              % doc.href)
             return self._get_document(doc.href, cntr=cntr-1)
         elif status == 302:  # temporary redirects
             _LOG.info("RssSource: src=%s temporary redirects to %s",
                       self.cfg.oid, doc.href)
-            self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
+            self._log_info("Temporary redirect to %s" % doc.href)
             return self._get_document(doc.href, cntr=cntr-1)
 
         _LOG.info("RssSource: src=%d get_document done %r", self.cfg.oid, url)
