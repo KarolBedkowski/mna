@@ -136,6 +136,13 @@ class AbstractSource(object):
         return self._resources.iteritems()
 
 
+    @classmethod
+    def update_configuration(cls, source_conf, session=None):
+        """ Update `source_conf` with default source parameters.
+        Remove wrong parameters. """
+        return source_conf
+
+
 class AbstractFilter(object):
     """Basic Filter object"""
 
