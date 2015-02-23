@@ -21,7 +21,6 @@ from mna import plugins
 from mna.gui import frm_sett_main
 from mna.model import dbobjects as DBO
 from mna.logic import sources
-from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 
@@ -111,8 +110,4 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
             self._curr_src_frame.from_window(source)
         # additional
         source.interval = self._ui.e_interval.value() * 60
-        # TODO: przeniesc to do worker-a
-        if not source.interval:
-            aconf = appconfig.AppConfig()
-            source.interval = aconf.get('articles.update_interval', 60)
         sources.save_source(source)

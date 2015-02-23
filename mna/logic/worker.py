@@ -99,8 +99,9 @@ class Worker(QtCore.QRunnable):
             _on_error(session, source_cfg, str(err))
             return
 
-        source_cfg.next_refresh = now + \
-                datetime.timedelta(seconds=source_cfg.interval)
+        interval = source_cfg.interval or aconf.get(
+            'articles.update_interval', 60)
+        source_cfg.next_refresh = now + datetime.timedelta(seconds=interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
         force_update = bool(source_cfg.last_error)
