@@ -135,6 +135,11 @@ class AbstractSource(object):
         """
         return self._resources.iteritems()
 
+    def _log_info(self, message):
+        self.cfg.add_log('info', message)
+
+    def _log_error(self, message):
+        self.cfg.add_log('error', message)
 
     @classmethod
     def update_configuration(cls, source_conf, session=None):
