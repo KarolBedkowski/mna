@@ -147,6 +147,12 @@ class RssSource(base.AbstractSource):
                         for key, val in source_conf.meta.iteritems())
         return info
 
+    @classmethod
+    def update_configuration(cls, source_conf, session=None):
+        org_conf = source_conf.conf
+        source_conf.conf = {'url': org_conf.get('url') or ''}
+        return source_conf
+
     def _get_document(self, url, cntr=10):
         _LOG.info("RssSource: src=%d get_document %r", self.cfg.oid, url)
         if cntr <= 0:
