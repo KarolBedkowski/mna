@@ -57,16 +57,12 @@
           <item row="0" column="0">
            <widget class="QLabel" name="label_8">
             <property name="text">
-             <string>Artist ID:</string>
+             <string>Artist name or ID:</string>
             </property>
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QSpinBox" name="sb_artist">
-            <property name="maximum">
-             <number>99999999</number>
-            </property>
-           </widget>
+           <widget class="QLineEdit" name="e_artist"/>
           </item>
          </layout>
         </item>

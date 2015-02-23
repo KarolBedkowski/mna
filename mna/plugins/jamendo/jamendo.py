@@ -43,17 +43,17 @@ class FrmSettJamendo(QtGui.QFrame):  # pylint: disable=no-member
         self._ui.setupUi(self)
 
     def validate(self):
-        if self._ui.sb_artist.value() == 0:
-            self._ui.sb_artist.setFocus()
+        if not self._ui.e_artist.text():
+            self._ui.e_artist.setFocus()
             return False
         return True
 
     def from_window(self, source):
-        source.conf["artist_id"] = self._ui.sb_artist.value()
+        source.conf["artist_id"] = self._ui.e_artist.text()
         return True
 
     def to_window(self, source):
-        self._ui.sb_artist.setValue(source.conf.get("artist_id") or 0)
+        self._ui.e_artist.setText(source.conf.get("artist_id") or "")
 
 
 class JamendoArtistAlbumsSource(base.AbstractSource):
@@ -78,8 +78,8 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
             self.cfg.oid
         _LOG.info(_logtitle + "start")
 
-        #if not self.cfg.icon_id:
-        self.cfg.icon_id = self.default_icon
+        if not self.cfg.icon_id:
+            self.cfg.icon_id = self.default_icon
 
         artist_id = self.cfg.conf.get('artist_id')
         if not artist_id:
@@ -137,8 +137,11 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         query = {
             'client_id': _CLIENT_ID,
             'format': 'json',
-            'id': artist_id,
         }
+        try:
+            query['id'] = int(artist_id)
+        except ValueError:
+            query['name'] = artist_id
         if min_date:
             query['album_datebetween'] = min_date + "_" + max_date
         url += urllib.urlencode(query)
