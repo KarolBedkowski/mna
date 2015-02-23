@@ -139,18 +139,6 @@ class HNSource(base.AbstractSource):
         art.meta = {}
         return art
 
-    def _limit_articles(self, articles, max_load):
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("HNSource: loaded >max_articles - truncating")
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
-        return articles
-
     def _get_min_date_to_load(self, global_max_age):
         min_date_to_load = self.cfg.last_refreshed
         max_age_to_load = self.cfg.max_age_to_load

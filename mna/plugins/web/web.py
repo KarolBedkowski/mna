@@ -209,18 +209,6 @@ class WebSource(base.AbstractSource):
         art.meta.update(article['meta'])
         return art
 
-    def _limit_articles(self, articles, max_load):
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("WebSource: loaded >max_articles - truncating")
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
-        return articles
-
     def is_page_updated(self, info, max_age_load):
         last_refreshed = self.cfg.last_refreshed
         if last_refreshed is None:

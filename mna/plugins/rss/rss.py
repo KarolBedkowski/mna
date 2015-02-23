@@ -125,17 +125,7 @@ class RssSource(base.AbstractSource):
         _LOG.debug("RssSource: src=%d loaded %d articles",
                    self.cfg.oid, len(articles))
 
-        # Limit number articles to load
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("RssSource: src=%d loaded >max_articles - "
-                           "truncating", self.cfg.oid)
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
+        articles = self._limit_articles(articles, max_load)
         return articles
 
     @classmethod

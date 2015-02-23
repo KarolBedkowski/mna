@@ -147,6 +147,24 @@ class AbstractSource(object):
         Remove wrong parameters. """
         return source_conf
 
+    def _limit_articles(self, articles, max_load):
+        """ Limit number of articles to configured value or global `max_load`.
+
+        Args:
+            articles: iter or list of articles
+            max_load: optional maximum number of articles
+        """
+        if self.cfg.max_articles_to_load > 0 or \
+                (self.cfg.max_articles_to_load == 0 and max_load > 0):
+            max_articles_to_load = self.cfg.max_articles_to_load or max_load
+            if len(articles) > max_articles_to_load:
+                _LOG.debug("%s: loaded >max_articles - truncating",
+                           self.__class__.__name__)
+                articles = articles[-max_articles_to_load:]
+                self._log_info("Loaded only %d articles (limit)." %
+                               len(articles))
+        return articles
+
 
 class AbstractFilter(object):
     """Basic Filter object"""
