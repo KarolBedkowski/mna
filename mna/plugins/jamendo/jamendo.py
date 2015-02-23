@@ -241,3 +241,13 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
                 min_date_to_load = limit
 
         return min_date_to_load
+
+    @classmethod
+    def update_configuration(cls, source_conf, session=None):
+        org_conf = source_conf.conf
+        source_conf.conf = {
+            'artist_id': org_conf.get('artist_id') or ''
+        }
+        if not source_conf.interval:
+            source_conf.interval = 60 * 60 * 24  # 1d
+        return source_conf

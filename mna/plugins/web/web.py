@@ -75,6 +75,17 @@ class WebSource(base.AbstractSource):
     def get_name(cls):
         return 'mna.plugins.web.WebSource'
 
+    @classmethod
+    def update_configuration(cls, source_conf, session=None):
+        org_conf = source_conf.conf
+        source_conf.conf = {
+            'url': org_conf.get('url') or '',
+            'mode': org_conf.get('mode') or 'page',
+            'xpath': org_conf.get('xpath') or '',
+            'similarity': org_conf.get('similarity') or 0.5
+        }
+        return source_conf
+
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:

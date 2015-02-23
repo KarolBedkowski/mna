@@ -21,7 +21,6 @@ from mna import plugins
 from mna.gui import frm_sett_main
 from mna.model import dbobjects as DBO
 from mna.logic import sources
-from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 
@@ -40,24 +39,22 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
     def _setup(self):
         self._curr_src_frame = None
         self._curr_src = None
+        self._source = DBO.Source(conf={})
 
         for name, source_cls in plugins.SOURCES.iteritems():
             self._ui.cb_source_type.addItem(source_cls.name, name)
 
         self._frm_edit_main = frm_sett_main.FrmSettMain(self)
         self._ui.l_main_opt.addWidget(self._frm_edit_main)
-        aconf = appconfig.AppConfig()
-        self._ui.e_interval.setValue(
-            aconf.get('articles.update_interval', 60))
 
     def initializePage(self, page):  # pylint:disable=invalid-name
         if page == 1:  # source specific settings
             sel_source_type = self._ui.cb_source_type.currentIndex()
             src = unicode(self._ui.cb_source_type.itemData(sel_source_type).
                           toPyObject())
-            if self._curr_src == src:
+            if self._source.name == src:
                 return
-            self._curr_src = src
+            self._source.name = src
             # remove current frame
             while not self._ui.l_src_opt.isEmpty():
                 itm = self._ui.l_src_opt.itemAt(0)
@@ -68,14 +65,19 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
             # create new frame
             src_opt_frame = None
             src_cls = plugins.SOURCES[src]
+            src_cls.update_configuration(self._source)
+            print self._source
             if hasattr(src_cls, 'conf_panel_class') and \
                     src_cls.conf_panel_class:
                 src_opt_frame = src_cls.conf_panel_class(self)
+                src_opt_frame.to_window(self._source)
             else:
                 src_opt_frame = QtGui.QLabel(  # pylint:disable=no-member
                     "No options", self)
             self._ui.l_src_opt.addWidget(src_opt_frame)
             self._curr_src_frame = src_opt_frame
+            # update tab
+            self._ui.e_interval.setValue((self._source.interval or 0) / 60)
 
     def validateCurrentPage(self):  # pylint:disable=invalid-name
         if not self.currentPage().validatePage():  # pylint:disable=no-member
@@ -99,7 +101,7 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
         return QtGui.QWizard.done(self, result)  # pylint:disable=no-member
 
     def _create_source(self):
-        source = DBO.Source(name=self._curr_src, conf={})
+        source = self._source
         # get params from main frame
         self._frm_edit_main.from_window(source)
         # source specific

@@ -177,6 +177,16 @@ class FileSource(base.AbstractSource):
         articles = self._limit_articles(articles, max_load)
         return articles
 
+    @classmethod
+    def update_configuration(cls, source_conf, session=None):
+        org_conf = source_conf.conf
+        source_conf.conf = {
+            'filename': org_conf.get('filename') or '',
+            'regex': org_conf.get('regex'),
+            'mode': org_conf.get('mode')
+        }
+        return source_conf
+
     @property
     def _filename(self):
         filename = self.cfg.conf.get("filename") if self.cfg.conf else None

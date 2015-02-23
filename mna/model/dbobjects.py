@@ -156,7 +156,7 @@ class Source(BaseModelMixin, Base):
     title = Column(Unicode)
     last_refreshed = Column(DateTime)
     # Refresh interval; default=1h
-    interval = Column(Integer, default=3600)
+    interval = Column(Integer, default=0)
     next_refresh = Column(DateTime, default=datetime.datetime.utcnow,
                           index=True)
     initial_score = Column(Integer, default=0)
