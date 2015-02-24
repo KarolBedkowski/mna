@@ -106,20 +106,13 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
             _LOG.info(_logtitle + "no new albums")
             return []
 
-        new_last_sid = max(album['id'] for album in albums)
+        self.cfg.meta['last_sid'] = max(album['id'] for album in albums)
         albums = self._prepare_albums(albums)
         albums = self._filter_by_date(albums, max_age_load)
-        articles = [self._create_article(album, self.cfg.title)
-                    for album in albums]
-
-        _LOG.debug(_logtitle + "loaded %d articles", len(articles))
-        if not articles:
-            self._log_info("Not found new articles")
-            return []
-        self._log_info("Found %d new articles" % len(articles))
+        articles = (self._create_article(album, self.cfg.title)
+                    for album in albums)
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
-        self.cfg.meta['last_sid'] = new_last_sid
         return articles
 
     @classmethod

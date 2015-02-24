@@ -165,14 +165,7 @@ class FileSource(base.AbstractSource):
         else:
             articles = [self._process_page(content)]
 
-        articles = filter(None, articles)
-
-        _LOG.debug("FileSource: loaded %d articles", len(articles))
-        if not articles:
-            self._log_info("Not found new articles")
-            return []
-        self.cfg.add_log('info',
-                         "Found %d new articles" % len(articles))
+        articles = (art for art in articles if art)
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles

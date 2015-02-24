@@ -108,23 +108,14 @@ class RssSource(base.AbstractSource):
         articles = self._prepare_entries(doc.get('entries'), feed_update)
         # filter old articles
         if min_date_to_load:
-            articles = list(self._filter_by_date(articles, min_date_to_load))
-        _LOG.debug("RssSource: src=%d after filtering:  %d articles",
-                   self.cfg.oid, len(articles))
-        if not articles:
-            self._log_info("Not found new articles")
-            return []
+            articles = self._filter_by_date(articles, min_date_to_load)
         # cache articles in database
         art_cache = dict(self._get_existing_articles(session))
         # create articles with lookup into cache
         articles = (self._create_article(feed, art_cache, feed_update)
                     for feed in articles)
         # left only new/updated articles
-        articles = filter(None, articles)
-
-        _LOG.debug("RssSource: src=%d loaded %d articles",
-                   self.cfg.oid, len(articles))
-
+        articles = (art for art in articles if art)
         articles = self._limit_articles(articles, max_load)
         return articles
 

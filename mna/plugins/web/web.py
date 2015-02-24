@@ -111,14 +111,7 @@ class WebSource(base.AbstractSource):
         articles = self._prepare_articles(parts)
         articles = self._filter_articles(articles, session)
         articles = (self._create_article(art, info) for art in articles)
-        articles = filter(None, articles)
-
-        _LOG.debug("WebSource: loaded %d articles", len(articles))
-        if not articles:
-            self._log_info("Not found new articles")
-            return []
-        self._log_info("Found %d new articles" % len(articles))
-        # Limit number articles to load
+        articles = (art for art in articles if art)
         articles = self._limit_articles(articles, max_load)
         return articles
 

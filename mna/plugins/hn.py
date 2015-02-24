@@ -26,7 +26,7 @@ _GET_STORY_URL = r'https://hacker-news.firebaseio.com/v0/item/%d.json'
 
 
 class HNSource(base.AbstractSource):
-    """Load article from website"""
+    """Load article from HackerNews"""
 
     name = "Hacker News"
     conf_panel_class = None
@@ -51,40 +51,29 @@ class HNSource(base.AbstractSource):
             self.cfg.icon_id = self.default_icon
 
         info, page = self._get_top_stories()
-        if info['_status'] == 304:  # not modified
-            _LOG.info("HNSource.get_items %r - not modified", self.cfg.oid)
+        if not page or info['_status'] == 304:  # not modified
             return []
 
         stories_id = json.loads(page.decode('utf-8'))
-
         last_sid = self.cfg.meta.get('last_sid')
-        _LOG.debug('HNSource.get_items: last_art=%r', last_sid)
-        new_last_sid = max(stories_id)
         if last_sid:
             stories_id = [sid for sid in stories_id if sid > last_sid]
 
         if not stories_id:
-            _LOG.info("HNSource.get_items %r - no new stories", self.cfg.oid)
             return []
 
+        self.cfg.meta['last_sid'] = max(stories_id)
         articles = self._get_articles(stories_id)
 
-        # filter by timme
+        # filter by time
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         if min_date_to_load:
             articles = (art for art in articles
                         if art['time_parsed'] >= min_date_to_load)
 
-        articles = [self._create_article(art) for art in articles]
-
-        _LOG.debug("HNSource: loaded %d articles", len(articles))
-        if not articles:
-            self._log_info("Not found new articles")
-            return []
-        self._log_info("Found %d new articles" % len(articles))
+        articles = (self._create_article(art) for art in articles)
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
-        self.cfg.meta['last_sid'] = new_last_sid
         return articles
 
     @classmethod
@@ -111,17 +100,18 @@ class HNSource(base.AbstractSource):
                 _info, page = websupport.download_page(_GET_STORY_URL % sid)
             except websupport.LoadPageError, err:
                 self._log_error("Error loading page: " + str(err))
-            else:
-                if page:
-                    article = json.loads(page)
-                    if article.get('deleted'):
-                        continue
-                    if not article.get('url'):
-                        _LOG.debug("_get_articles without url: %r", article)
-                        continue
-                    article['time_parsed'] = datetime.datetime.fromtimestamp(
-                        article['time'])
-                    yield article
+                continue
+            if not page:
+                continue
+            article = json.loads(page)
+            if article.get('deleted'):  # pylint: disable=maybe-no-member
+                continue
+            if not article.get('url'):  # pylint: disable=maybe-no-member
+                _LOG.debug("_get_articles without url: %r", article)
+                continue
+            article['time_parsed'] = datetime.datetime.fromtimestamp(
+                article['time'])
+            yield article
 
     def _create_article(self, article):
         art = DBO.Article()

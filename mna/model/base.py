@@ -14,6 +14,7 @@ __copyright__ = "Copyright (c) Karol Będkowski, 2014-2015"
 __version__ = "2015-01-17"
 
 import logging
+import itertools
 
 from mna.lib import appconfig
 
@@ -157,12 +158,7 @@ class AbstractSource(object):
         if self.cfg.max_articles_to_load > 0 or \
                 (self.cfg.max_articles_to_load == 0 and max_load > 0):
             max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("%s: loaded >max_articles - truncating",
-                           self.__class__.__name__)
-                articles = articles[-max_articles_to_load:]
-                self._log_info("Loaded only %d articles (limit)." %
-                               len(articles))
+            return itertools.islice(articles, max_articles_to_load)
         return articles
 
 
