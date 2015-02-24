@@ -116,6 +116,19 @@ class AbstractSource(object):
 
     # pylint:disable=unused-argument,no-self-use
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
+        """ Get articles from sources
+
+        Args:
+            session: SqlAlchemy session
+            max_load: maximum number of articles to load
+            max_age_load: maximum age of articles to load
+
+        Errors:
+            GetArticleException: all errors
+
+        Returns:
+            iter<Article> | [Article]
+        """
         return []
 
     @classmethod
@@ -137,9 +150,11 @@ class AbstractSource(object):
         return self._resources.iteritems()
 
     def _log_info(self, message):
+        """ Add info `message` to source log. """
         self.cfg.add_log('info', message)
 
     def _log_error(self, message):
+        """ Add error `message` to source log. """
         self.cfg.add_log('error', message)
 
     @classmethod
