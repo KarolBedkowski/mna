@@ -13,6 +13,11 @@ __version__ = "2015-01-04"
 
 import logging
 
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 from PyQt4 import QtGui, QtCore
 
 from mna.gui import resources_rc
@@ -23,13 +28,15 @@ from mna.logic import sources
 from mna import plugins
 from mna.model import db
 from mna.model import dbobjects as DBO
+from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 
 assert resources_rc
 
 
-class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-methods
+# pylint:disable=no-member,too-few-public-methods
+class DlgSourceEdit(QtGui.QDialog):
     """ Main Window class. """
 
     def __init__(self, parent=None, source_oid=None):
@@ -48,6 +55,9 @@ class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-m
         self._ui.b_add_filter.clicked.connect(self._on_add_filter)
         self._ui.b_remove_filter.clicked.connect(self._on_remove_filter)
         self._ui.lv_filters.itemActivated.connect(self._on_filters_act)
+        if appconfig.AppConfig().debug:
+            self._ui.b_dev_save.clicked.connect(self._on_dev_save)
+            self._ui.b_dev_load.clicked.connect(self._on_dev_load)
 
     def _setup(self, source):
         self._frm_sett_main = frm_sett_main.FrmSettMain(self)
@@ -56,9 +66,12 @@ class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-m
         if hasattr(src, 'conf_panel_class') and src.conf_panel_class:
             src_opt_frame = src.conf_panel_class(self)
         else:
-            src_opt_frame = QtGui.QLabel("No options", self)  # pylint:disable=no-member
+            # pylint:disable=no-member
+            src_opt_frame = QtGui.QLabel("No options", self)
         self._ui.l_src_opt.addWidget(src_opt_frame)
         self._curr_src_frame = src_opt_frame
+        if not appconfig.AppConfig().debug:
+            self._ui.tab_widget.removeTab(4)
 
     def done(self, result):
         if result != QtGui.QDialog.Accepted:  # pylint:disable=no-member
@@ -130,8 +143,10 @@ class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-m
         lv_filters.clear()
         for fltr in db.get_all(DBO.Filter, source_id=self.source.oid):
             fltr_class = plugins.FILTERS[fltr.name]
-            itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))  # pylint:disable=no-member
-            itm.setData(QtCore.Qt.UserRole, fltr.oid)  # pylint:disable=no-member
+            # pylint:disable=no-member
+            itm = QtGui.QListWidgetItem(fltr_class.get_label(fltr))
+            # pylint:disable=no-member
+            itm.setData(QtCore.Qt.UserRole, fltr.oid)
             lv_filters.addItem(itm)
 
     def _on_add_filter(self):
@@ -156,3 +171,19 @@ class DlgSourceEdit(QtGui.QDialog):  # pylint:disable=no-member,too-few-public-m
         assert conv_ok, "Invalid id in item: %r" % fltr_id
         if filter_conf.edit_filter(self, fltr_id):
             self._fill_filters()
+
+    def _on_dev_load(self):
+        source = self.source
+        self._ui.e_dev_conf.setPlainText(json.dumps(source.conf or {},
+                                                    indent='  '))
+        self._ui.e_dev_meta.setPlainText(json.dumps(source.meta or {},
+                                                    indent='  '))
+
+    def _on_dev_save(self):
+        source = self.source
+        conf = self._ui.e_dev_conf.toPlainText()
+        if conf:
+            source.conf = json.loads(conf)
+        meta = self._ui.e_dev_meta.toPlainText()
+        if meta:
+            source.meta = json.loads(meta)
