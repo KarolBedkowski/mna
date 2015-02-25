@@ -46,7 +46,7 @@ def accept_page(article, _session, source, threshold):
             if not last_conf_hash or \
                     last_conf_hash != create_config_hash(source):
                 return True
-        content = article['content']
+        content = article.content
         similarity = difflib.SequenceMatcher(None, last.content,
                                              content).ratio()
         _LOG.debug("similarity: %r %r", similarity, threshold)
@@ -54,7 +54,7 @@ def accept_page(article, _session, source, threshold):
             _LOG.debug("Article skipped - similarity %r > %r",
                        similarity, threshold)
             return False
-        article['meta']['similarity'] = similarity
+        article.meta['similarity'] = similarity
     return True
 
 
@@ -108,9 +108,12 @@ class WebSource(base.AbstractSource):
             return []
 
         parts = self._get_articles(info, page)
-        articles = self._prepare_articles(parts)
+        articles = (DBO.Article(content=part,
+                                internal_id=create_checksum(part),
+                                meta={})
+                    for part in parts)
         articles = self._filter_articles(articles, session)
-        articles = (self._create_article(art, info) for art in articles)
+        articles = (self._update_article_meta(art, info) for art in articles)
         articles = self._limit_articles(articles, max_load)
         return articles
 
@@ -155,7 +158,6 @@ class WebSource(base.AbstractSource):
     def _get_articles(self, info, page):
         selector = self.cfg.conf.get('xpath')
         mode = self.cfg.conf.get("mode")
-        articles = []
         if mode == "part" and selector:
             articles = websupport.get_page_part(info, page, selector)
         elif mode == "page_one_part" and selector:
@@ -166,39 +168,30 @@ class WebSource(base.AbstractSource):
             articles = websupport.get_page_part(info, page, None)
         return articles
 
-    def _prepare_articles(self, parts):  # pylint:disable=no-self-use
-        for part in parts:
-            yield {'content': part,
-                   'checksum': create_checksum(part),
-                   'meta': {}}
-
     def _filter_articles(self, articles, session):
         selector = self.cfg.conf.get('xpath')
         mode = self.cfg.conf.get("mode")
         if mode == "part" and selector:
-            cache = set(self._get_existing_articles(session))
+            cache = set(row[0] for row
+                        in session.query(DBO.Article.internal_id).
+                        filter_by(source_id=self.cfg.oid))
             articles = (art for art in articles
-                        if art['checksum'] not in cache)
+                        if art.internal_id not in cache)
         else:
             sim = self.cfg.conf.get('similarity') or 1
             articles = (art for art in articles
                         if accept_page(art, session, self.cfg, sim))
         return articles
 
-    def _create_article(self, article, info):
-        content = article['content']
-        art = DBO.Article()
-        art.internal_id = article['checksum']
-        art.content = content
-        art.summary = None
-        art.score = self.cfg.initial_score
-        art.title = websupport.get_title(content, info['_encoding'])
-        art.updated = datetime.datetime.now()
-        art.published = info.get('_last-modified')
-        art.link = self.cfg.conf.get('url')
-        art.meta = {'conf': create_config_hash(self.cfg)}
-        art.meta.update(article['meta'])
-        return art
+    def _update_article_meta(self, article, info):
+        article.score = self.cfg.initial_score
+        article.title = websupport.get_title(article.content,
+                                             info['_encoding'])
+        article.updated = self._now
+        article.published = info.get('_last-modified')
+        article.link = self.cfg.conf.get('url')
+        article.meta['conf'] = create_config_hash(self.cfg)
+        return article
 
     def is_page_updated(self, info, max_age_load):
         last_refreshed = self.cfg.last_refreshed
@@ -208,8 +201,7 @@ class WebSource(base.AbstractSource):
         if self.cfg.max_age_to_load > 0 or (self.cfg.max_age_to_load == 0
                                             and max_age_load > 0):
             max_age_to_load = self.cfg.max_age_to_load or max_age_load
-            offset = datetime.datetime.now() - \
-                    datetime.timedelta(days=max_age_to_load)
+            offset = self._now - datetime.timedelta(days=max_age_to_load)
             last_refreshed = max(last_refreshed, offset)
 
         page_modification = info.get('_last-modified')
@@ -219,10 +211,6 @@ class WebSource(base.AbstractSource):
                       last_refreshed)
             return False
         return True
-
-    def _get_existing_articles(self, session):
-        return (row[0] for row in session.query(DBO.Article.internal_id).
-                filter_by(source_id=self.cfg.oid))
 
     def _download_page_info(self, url, page, info):
         """ Get page icon, title, etc. """
