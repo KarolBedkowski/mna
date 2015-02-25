@@ -117,6 +117,7 @@ class AbstractSource(object):
         self.cfg = cfg
         self.group_id = cfg.group_id
         self._resources = {}
+        self._now = datetime.datetime.now()  # starting, base date
 
     # pylint:disable=unused-argument,no-self-use
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
@@ -185,7 +186,7 @@ class AbstractSource(object):
     def _get_min_date_to_load(self, global_max_age, now=None):
         min_date_to_load = self.cfg.last_refreshed
         max_age_to_load = self.cfg.max_age_to_load
-        now = now or datetime.datetime.now()
+        now = now or self._now
 
         if max_age_to_load == 0:  # use global settings
             max_age_to_load = global_max_age
