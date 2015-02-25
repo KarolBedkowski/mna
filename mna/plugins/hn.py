@@ -23,6 +23,23 @@ _LOG = logging.getLogger(__name__)
 
 _TOP_STORIES_URL = r'https://hacker-news.firebaseio.com/v0/topstories.json'
 _GET_STORY_URL = r'https://hacker-news.firebaseio.com/v0/item/%d.json'
+_CONTENT_TMPL = """<article>
+    <p><a href="%(url)s">%(title)s</a></p>
+    <p><a href="https://news.ycombinator.com/item?id=%(id)s">Comments</a></p>
+    <p><b>Score:</b>%(score)s</p>
+</article>
+"""
+
+
+# pylint: disable=too-few-public-methods
+class HNPresenter(base.SimplePresenter):
+    name = "HN presenter"
+
+    def _format_content(self, article):  # pylint: disable=no-self-use
+        if article.content:
+            yield "<article><p>" + article.content + r"</p></article>"
+        else:
+            yield _CONTENT_TMPL % article.meta
 
 
 class HNSource(base.AbstractSource):
@@ -31,12 +48,15 @@ class HNSource(base.AbstractSource):
     name = "Hacker News"
     conf_panel_class = None
     default_icon = ":plugins-hn/hn-icon.png"
+    presenter = HNPresenter
 
     def __init__(self, cfg):
         super(HNSource, self).__init__(cfg)
         self._icon = None
-        if not self.cfg.meta:
-            self.cfg.meta = {}
+        if not self.cfg.title:
+            self.cfg.title = 'Hacker News'
+        if not self.cfg.icon_id:
+            self.cfg.icon_id = self.default_icon
 
     @classmethod
     def get_name(cls):
@@ -44,11 +64,6 @@ class HNSource(base.AbstractSource):
 
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         _LOG.info("HNSource.get_items src=%r", self.cfg.oid)
-
-        if not self.cfg.title:
-            self.cfg.title = 'Hacker News'
-        if not self.cfg.icon_id:
-            self.cfg.icon_id = self.default_icon
 
         info, page = self._get_top_stories()
         if not page or info['_status'] == 304:  # not modified
@@ -116,8 +131,7 @@ class HNSource(base.AbstractSource):
     def _create_article(self, article):
         art = DBO.Article()
         art.internal_id = article['id']
-        art.content = '<a href="%s">%s</a>' % (article['url'],
-                                               article['title'])
+        art.content = None
         art.summary = None
         art.score = self.cfg.initial_score
         art.title = article['title']
@@ -125,7 +139,5 @@ class HNSource(base.AbstractSource):
         art.published = art.updated
         art.link = article['url']
         art.author = article['by']
-        art.meta = {}
+        art.meta = article.copy()
         return art
-
-
