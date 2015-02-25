@@ -111,7 +111,6 @@ class WebSource(base.AbstractSource):
         articles = self._prepare_articles(parts)
         articles = self._filter_articles(articles, session)
         articles = (self._create_article(art, info) for art in articles)
-        articles = (art for art in articles if art)
         articles = self._limit_articles(articles, max_load)
         return articles
 

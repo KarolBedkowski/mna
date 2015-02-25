@@ -115,7 +115,6 @@ class RssSource(base.AbstractSource):
         articles = (self._create_article(feed, art_cache, feed_update)
                     for feed in articles)
         # left only new/updated articles
-        articles = (art for art in articles if art)
         articles = self._limit_articles(articles, max_load)
         return articles
 
