@@ -89,11 +89,14 @@ class SimplePresenter(object):  # pylint:disable=too-few-public-methods
         result.extend(_sp_build_author(article))
         result.extend(_sp_build_published(article))
         result.append('</header>')
-        if article.summary or article.content:
-            result.append("<article><p>" + (article.content or article.summary)
-                          + r"</p></article>")
+        result.extend(self._format_content(article))
         result.append('</body></html>')
         return "".join(result)
+
+    def _format_content(self, article):  # pylint: disable=no-self-use
+        if article.summary or article.content:
+            yield ("<article><p>" + (article.content or article.summary)
+                   + r"</p></article>")
 
 
 class AbstractSource(object):
