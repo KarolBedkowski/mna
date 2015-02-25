@@ -68,8 +68,6 @@ class WebSource(base.AbstractSource):
     def __init__(self, cfg):
         super(WebSource, self).__init__(cfg)
         self._icon = None
-        if not self.cfg.meta:
-            self.cfg.meta = {}
 
     @classmethod
     def get_name(cls):

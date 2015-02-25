@@ -118,6 +118,8 @@ class AbstractSource(object):
         self.group_id = cfg.group_id
         self._resources = {}
         self._now = datetime.datetime.now()  # starting, base date
+        if not self.cfg.meta:
+            self.cfg.meta = {}
 
     # pylint:disable=unused-argument,no-self-use
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
