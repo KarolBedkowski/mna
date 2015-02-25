@@ -202,25 +202,6 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         art.meta = {}
         return art
 
-    def _get_min_date_to_load(self, global_max_age):
-        min_date_to_load = self.cfg.last_refreshed
-        max_age_to_load = self.cfg.max_age_to_load
-
-        if max_age_to_load == 0:  # use global settings
-            max_age_to_load = global_max_age
-        elif max_age_to_load == -1:  # no limit; use last refresh
-            return min_date_to_load
-
-        if max_age_to_load:  # limit exists
-            now = datetime.datetime.now()
-            limit = now - datetime.timedelta(days=max_age_to_load)
-            if min_date_to_load:
-                min_date_to_load = max(limit, min_date_to_load)
-            else:
-                min_date_to_load = limit
-
-        return min_date_to_load
-
     @classmethod
     def update_configuration(cls, source_conf, session=None):
         org_conf = source_conf.conf
