@@ -23,12 +23,6 @@ _LOG = logging.getLogger(__name__)
 
 _TOP_STORIES_URL = r'https://hacker-news.firebaseio.com/v0/topstories.json'
 _GET_STORY_URL = r'https://hacker-news.firebaseio.com/v0/item/%d.json'
-_CONTENT_TMPL = """<article>
-    <p><a href="%(url)s">%(title)s</a></p>
-    <p><a href="https://news.ycombinator.com/item?id=%(id)s">Comments</a></p>
-    <p><b>Score:</b>%(score)s</p>
-</article>
-"""
 
 
 # pylint: disable=too-few-public-methods
@@ -36,10 +30,19 @@ class HNPresenter(base.SimplePresenter):
     name = "HN presenter"
 
     def _format_content(self, article):  # pylint: disable=no-self-use
+        yield "<article>"
         if article.content:
-            yield "<article><p>" + article.content + r"</p></article>"
+            yield "<p>" + article.content + r"</p>"
         else:
-            yield _CONTENT_TMPL % article.meta
+            if article.link:
+                yield '<p><a href="%s">%s</a></p>' % (article.link,
+                                                      article.link)
+            yield '<p><a href="https://news.ycombinator.com/item?id=%s">'\
+                'Comments</a></p>' % article.internal_id
+            yield '<p><small><b>Score:</b> %s&nbsp;&nbsp;&nbsp;' \
+                % article.meta.get('score')
+            yield '<b>Type:</b> %s</small></p>' % article.meta.get('type')
+        yield "</article>"
 
 
 class HNSource(base.AbstractSource):
@@ -121,9 +124,6 @@ class HNSource(base.AbstractSource):
             article = json.loads(page)
             if article.get('deleted'):  # pylint: disable=maybe-no-member
                 continue
-            if not article.get('url'):  # pylint: disable=maybe-no-member
-                _LOG.debug("_get_articles without url: %r", article)
-                continue
             article['time_parsed'] = datetime.datetime.fromtimestamp(
                 article['time'])
             yield article
@@ -137,7 +137,7 @@ class HNSource(base.AbstractSource):
         art.title = article['title']
         art.updated = article['time_parsed']
         art.published = art.updated
-        art.link = article['url']
+        art.link = article.get('url')
         art.author = article['by']
-        art.meta = article.copy()
+        art.meta = {key: article.get(key) for key in ('score', 'type')}
         return art
