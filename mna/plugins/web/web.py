@@ -21,15 +21,15 @@ from . import frm_sett_web
 _LOG = logging.getLogger(__name__)
 
 
-def create_checksum(data):
+def _create_checksum(data):
     md5 = hashlib.md5()
     md5.update(data.encode('utf-8'))
     return md5.hexdigest().lower()
 
 
-def create_config_hash(source):
+def _create_config_hash(source):
     conf = source.conf
-    return create_checksum("|".join((conf['url'], conf['mode'],
+    return _create_checksum("|".join((conf['url'], conf['mode'],
                                      conf['xpath'])))
 
 
@@ -44,7 +44,7 @@ def accept_page(article, _session, source, threshold):
             # check for parameters changed
             last_conf_hash = last.meta.get('conf')
             if not last_conf_hash or \
-                    last_conf_hash != create_config_hash(source):
+                    last_conf_hash != _create_config_hash(source):
                 return True
         content = article.content
         similarity = difflib.SequenceMatcher(None, last.content,
@@ -67,7 +67,6 @@ class WebSource(base.AbstractSource):
 
     def __init__(self, cfg):
         super(WebSource, self).__init__(cfg)
-        self._icon = None
 
     @classmethod
     def get_name(cls):
@@ -107,7 +106,7 @@ class WebSource(base.AbstractSource):
 
         parts = self._get_articles(info, page)
         articles = (DBO.Article(content=part,
-                                internal_id=create_checksum(part),
+                                internal_id=_create_checksum(part),
                                 meta={})
                     for part in parts)
         articles = self._filter_articles(articles, session)
@@ -188,7 +187,7 @@ class WebSource(base.AbstractSource):
         article.updated = self._now
         article.published = info.get('_last-modified')
         article.link = self.cfg.conf.get('url')
-        article.meta['conf'] = create_config_hash(self.cfg)
+        article.meta['conf'] = _create_config_hash(self.cfg)
         return article
 
     def is_page_updated(self, info, max_age_load):
