@@ -80,6 +80,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         if not self.cfg.icon_id:
             self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
 
         artist_id = self.cfg.conf.get('artist_id')
         if not artist_id:
@@ -94,6 +95,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         if not self.cfg.title:
             self.cfg.title = results[0].get('name')
+            self.mark_conf_updated()
         self.cfg.meta['last_min_date'] = max_date
 
         albums = results[0].get('albums')

@@ -139,6 +139,12 @@ class FileSource(base.AbstractSource):
     name = "Plain File Source"
     conf_panel_class = FrmSettFilemon
 
+    def __init__(self, conf):
+        super(FileSource, self).__init__(conf)
+        if not self.cfg.title:
+            self.cfg.title = os.path.basename(self._filename)
+            self.mark_conf_updated()
+
     @classmethod
     def get_name(cls):
         return 'mna.plugins.filemon.FileSource'

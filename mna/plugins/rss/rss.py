@@ -179,6 +179,7 @@ class RssSource(base.AbstractSource):
         if self.cfg.title == "":
             if 'title' in doc.feed:
                 self.cfg.title = doc.feed.title
+                self.mark_conf_updated()
         if not self.cfg.icon_id:
             icon, icon_name = self._get_icon(doc)
             if icon:
@@ -187,6 +188,7 @@ class RssSource(base.AbstractSource):
                 self._resources[icon_name] = icon
             else:
                 self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
 
     # pylint:disable=no-self-use
     def _get_entries(self, entries, feed_updated):

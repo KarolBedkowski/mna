@@ -29,3 +29,12 @@ def add_icon_id(engine):
     if 'icon_id' in rows[0][0]:
         return
     engine.execute('alter table sources add column icon_id varchar(64)')
+
+
+def add_source_conf_updated(engine):
+    """ Add conf_updated to Source """
+    res = engine.execute("select sql from sqlite_master where name='sources'")
+    row = res.fetchone()
+    if not row or 'conf_updated' in row[0]:
+        return
+    engine.execute('alter table sources add column conf_updated datetime')

@@ -220,5 +220,7 @@ class WebSource(base.AbstractSource):
                 self._resources[name] = icon
             else:
                 self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
         if self.cfg.title == "":
             self.cfg.title = websupport.get_title(page, info['_encoding'])
+            self.mark_conf_updated()

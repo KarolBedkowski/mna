@@ -156,6 +156,9 @@ class AbstractSource(object):
         """
         return self._resources.iteritems()
 
+    def mark_conf_updated(self):
+        self.conf_updated = datetime.datetime.now()
+
     def _log_info(self, message):
         """ Add info `message` to source log. """
         self.cfg.add_log('info', message)

@@ -58,8 +58,10 @@ class HNSource(base.AbstractSource):
         self._icon = None
         if not self.cfg.title:
             self.cfg.title = 'Hacker News'
+            self.mark_conf_updated()
         if not self.cfg.icon_id:
             self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
 
     @classmethod
     def get_name(cls):

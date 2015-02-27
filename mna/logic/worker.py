@@ -52,7 +52,7 @@ class Worker(QtCore.QRunnable):
         now = datetime.datetime.now()
         source_cfg.processing = 1
         session.commit()
-        cfg_hash = hash(source_cfg)
+        last_conf_updated = source_cfg.conf_updated
 
         # find plugin
         source = self._get_source(session, source_cfg)
@@ -64,7 +64,7 @@ class Worker(QtCore.QRunnable):
             return
         # update configuration
         force_update = bool(source_cfg.last_error) or \
-            cfg_hash == hash(source_cfg)
+            last_conf_updated != source_cfg.conf_updated
 
         interval = source_cfg.interval or self.aconf.get(
             'articles.update_interval', 60)
