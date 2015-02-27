@@ -26,7 +26,8 @@ _GET_STORY_URL = r'https://hacker-news.firebaseio.com/v0/item/%d.json'
 
 
 # pylint: disable=too-few-public-methods
-class HNPresenter(base.SimplePresenter):
+class _HNPresenter(base.SimplePresenter):
+    """ Presenter dedicated to HNSource articles. """
     name = "HN presenter"
 
     def _format_content(self, article):  # pylint: disable=no-self-use
@@ -51,7 +52,7 @@ class HNSource(base.AbstractSource):
     name = "Hacker News"
     conf_panel_class = None
     default_icon = ":plugins-hn/hn-icon.png"
-    presenter = HNPresenter
+    presenter = _HNPresenter
 
     def __init__(self, cfg):
         super(HNSource, self).__init__(cfg)
@@ -70,76 +71,76 @@ class HNSource(base.AbstractSource):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         _LOG.info("HNSource.get_items src=%r", self.cfg.oid)
 
-        info, page = self._get_top_stories()
-        if not page or info['_status'] == 304:  # not modified
-            return []
-
-        stories_id = json.loads(page.decode('utf-8'))
-        last_sid = self.cfg.meta.get('last_sid')
-        if last_sid:
-            stories_id = [sid for sid in stories_id if sid > last_sid]
-
+        stories_id = self._get_top_stories()
         if not stories_id:
             return []
 
+        last_sid = self.cfg.meta.get('last_sid')
+        if last_sid:
+            stories_id = [sid for sid in stories_id if sid > last_sid]
+            if not stories_id:
+                # no new stories
+                return []
+
         self.cfg.meta['last_sid'] = max(stories_id)
-        articles = self._get_articles(stories_id)
+        stories = (self._get_story(sid) for sid in stories_id)
+        # filter broken stories
+        stories = (story for story in stories if story)
 
         # filter by time
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         if min_date_to_load:
-            articles = (art for art in articles
-                        if art['time_parsed'] >= min_date_to_load)
+            stories = (story for story in stories
+                       if story['time_parsed'] >= min_date_to_load)
 
-        articles = (self._create_article(art) for art in articles)
-        # Limit number articles to load
+        articles = (self._create_article(art) for art in stories)
         articles = self._limit_articles(articles, max_load)
         return articles
 
-    @classmethod
-    def get_info(cls, source_conf, _session=None):
-        return []
-
     def _get_top_stories(self):
+        """ Load top stories from api.
+
+        Returns:
+            List of stories id
+        """
         try:
             info, page = websupport.download_page(
                 _TOP_STORIES_URL, self.cfg.meta.get('etag'),
                 self.cfg.meta.get('last-modified'))
         except websupport.LoadPageError, err:
-            self._log_error("Error loading page: " + str(err))
+            self._log_error("Error loading top stories page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         self.cfg.meta['last-modified'] = info['_modified']
         self.cfg.meta['etag'] = info.get('etag')
-        return info, page
+        return json.loads(page.decode('utf-8')) if page else None
 
-    def _get_articles(self, stories_id):
-        for sid in stories_id:
-            try:
-                _LOG.debug('_get_articles: sid=%r', sid)
-                _info, page = websupport.download_page(_GET_STORY_URL % sid)
-            except websupport.LoadPageError, err:
-                self._log_error("Error loading page: " + str(err))
-                continue
-            if not page:
-                continue
-            article = json.loads(page)
-            if article.get('deleted'):  # pylint: disable=maybe-no-member
-                continue
-            article['time_parsed'] = datetime.datetime.fromtimestamp(
-                article['time'])
-            yield article
+    def _get_story(self, story_id):
+        """ Load one article by `story_id` """
+        try:
+            _LOG.debug('_get_story: sid=%r', story_id)
+            info, page = websupport.download_page(_GET_STORY_URL % story_id)
+        except websupport.LoadPageError, err:
+            _LOG.error('_get_story %d error %r; %r', story_id, err, info)
+            self._log_error("Error loading story %d: %s" % (story_id, err))
+            return None
+        if not page:
+            return None
+        story = json.loads(page)
+        if story.get('deleted'):  # pylint: disable=maybe-no-member
+            return None
+        story['time_parsed'] = datetime.datetime.fromtimestamp(story['time'])
+        return story
 
-    def _create_article(self, article):
+    def _create_article(self, story):
+        """ Create article from `story`. """
         art = DBO.Article()
-        art.internal_id = article['id']
-        art.content = None
-        art.summary = None
+        art.internal_id = story['id']
         art.score = self.cfg.initial_score
-        art.title = article['title']
-        art.updated = article['time_parsed']
+        art.title = story['title']
+        art.updated = story['time_parsed']
         art.published = art.updated
-        art.link = article.get('url')
-        art.author = article['by']
-        art.meta = {key: article.get(key) for key in ('score', 'type')}
+        art.link = story.get('url')
+        art.author = story['by']
+        art.meta = {key: story.get(key) for key in ('score', 'type')}
         return art
