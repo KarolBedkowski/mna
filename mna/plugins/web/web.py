@@ -30,7 +30,7 @@ def _create_checksum(data):
 def _create_config_hash(source):
     conf = source.conf
     return _create_checksum("|".join((conf['url'], conf['mode'],
-                                     conf['xpath'])))
+                                      conf['xpath'])))
 
 
 def accept_page(article, _session, source, threshold):
@@ -155,6 +155,7 @@ class WebSource(base.AbstractSource):
     def _get_articles(self, info, page):
         selector = self.cfg.conf.get('xpath')
         mode = self.cfg.conf.get("mode")
+        articles = []
         if mode == "part" and selector:
             articles = websupport.get_page_part(info, page, selector)
         elif mode == "page_one_part" and selector:
