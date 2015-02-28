@@ -25,18 +25,44 @@ _TOP_STORIES_URL = r'https://hacker-news.firebaseio.com/v0/topstories.json'
 _GET_STORY_URL = r'https://hacker-news.firebaseio.com/v0/item/%d.json'
 
 
+# pylint: disable=too-few-public-methods
+class _HNPresenter(base.SimplePresenter):
+    """ Presenter dedicated to HNSource articles. """
+    name = "HN presenter"
+
+    def _format_content(self, article):  # pylint: disable=no-self-use
+        yield "<article>"
+        if article.content:
+            yield "<p>" + article.content + r"</p>"
+        else:
+            if article.link:
+                yield '<p><a href="%s">%s</a></p>' % (article.link,
+                                                      article.link)
+            yield '<p><a href="https://news.ycombinator.com/item?id=%s">'\
+                'Comments</a></p>' % article.internal_id
+            yield '<p><small><b>Score:</b> %s&nbsp;&nbsp;&nbsp;' \
+                % article.meta.get('score')
+            yield '<b>Type:</b> %s</small></p>' % article.meta.get('type')
+        yield "</article>"
+
+
 class HNSource(base.AbstractSource):
-    """Load article from website"""
+    """Load article from HackerNews"""
 
     name = "Hacker News"
     conf_panel_class = None
     default_icon = ":plugins-hn/hn-icon.png"
+    presenter = _HNPresenter
 
     def __init__(self, cfg):
         super(HNSource, self).__init__(cfg)
         self._icon = None
-        if not self.cfg.meta:
-            self.cfg.meta = {}
+        if not self.cfg.title:
+            self.cfg.title = 'Hacker News'
+            self.mark_conf_updated()
+        if not self.cfg.icon_id:
+            self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
 
     @classmethod
     def get_name(cls):
@@ -45,127 +71,76 @@ class HNSource(base.AbstractSource):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         _LOG.info("HNSource.get_items src=%r", self.cfg.oid)
 
-        if not self.cfg.title:
-            self.cfg.title = 'Hacker News'
-        if not self.cfg.icon_id:
-            self.cfg.icon_id = self.default_icon
-
-        info, page = self._get_top_stories()
-        if info['_status'] == 304:  # not modified
-            _LOG.info("HNSource.get_items %r - not modified", self.cfg.oid)
+        stories_id = self._get_top_stories()
+        if not stories_id:
             return []
-
-        stories_id = json.loads(page.decode('utf-8'))
 
         last_sid = self.cfg.meta.get('last_sid')
-        _LOG.debug('HNSource.get_items: last_art=%r', last_sid)
-        new_last_sid = max(stories_id)
         if last_sid:
             stories_id = [sid for sid in stories_id if sid > last_sid]
+            if not stories_id:
+                # no new stories
+                return []
 
-        if not stories_id:
-            _LOG.info("HNSource.get_items %r - no new stories", self.cfg.oid)
-            return []
+        self.cfg.meta['last_sid'] = max(stories_id)
+        stories = (self._get_story(sid) for sid in stories_id)
+        # filter broken stories
+        stories = (story for story in stories if story)
 
-        articles = self._get_articles(stories_id)
-
-        # filter by timme
+        # filter by time
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         if min_date_to_load:
-            articles = (art for art in articles
-                        if art['time_parsed'] >= min_date_to_load)
+            stories = (story for story in stories
+                       if story['time_parsed'] >= min_date_to_load)
 
-        articles = [self._create_article(art) for art in articles]
-
-        _LOG.debug("HNSource: loaded %d articles", len(articles))
-        if not articles:
-            self.cfg.add_log('info', "Not found new articles")
-            return []
-        self.cfg.add_log('info', "Found %d new articles" % len(articles))
-        # Limit number articles to load
+        articles = (self._create_article(art) for art in stories)
         articles = self._limit_articles(articles, max_load)
-        self.cfg.meta['last_sid'] = new_last_sid
         return articles
 
-    @classmethod
-    def get_info(cls, source_conf, _session=None):
-        return []
-
     def _get_top_stories(self):
+        """ Load top stories from api.
+
+        Returns:
+            List of stories id
+        """
         try:
             info, page = websupport.download_page(
                 _TOP_STORIES_URL, self.cfg.meta.get('etag'),
                 self.cfg.meta.get('last-modified'))
         except websupport.LoadPageError, err:
-            self.cfg.add_log('error',
-                             "Error loading page: " + str(err))
+            self._log_error("Error loading top stories page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         self.cfg.meta['last-modified'] = info['_modified']
         self.cfg.meta['etag'] = info.get('etag')
-        return info, page
+        return json.loads(page.decode('utf-8')) if page else None
 
-    def _get_articles(self, stories_id):
-        for sid in stories_id:
-            try:
-                _LOG.debug('_get_articles: sid=%r', sid)
-                _info, page = websupport.download_page(_GET_STORY_URL % sid)
-            except websupport.LoadPageError, err:
-                self.cfg.add_log('error', "Error loading page: " + str(err))
-            else:
-                if page:
-                    article = json.loads(page)
-                    if article.get('deleted'):
-                        continue
-                    if not article.get('url'):
-                        _LOG.debug("_get_articles without url: %r", article)
-                        continue
-                    article['time_parsed'] = datetime.datetime.fromtimestamp(
-                        article['time'])
-                    yield article
+    def _get_story(self, story_id):
+        """ Load one article by `story_id` """
+        try:
+            _LOG.debug('_get_story: sid=%r', story_id)
+            info, page = websupport.download_page(_GET_STORY_URL % story_id)
+        except websupport.LoadPageError, err:
+            _LOG.error('_get_story %d error %r; %r', story_id, err, info)
+            self._log_error("Error loading story %d: %s" % (story_id, err))
+            return None
+        if not page:
+            return None
+        story = json.loads(page)
+        if story.get('deleted'):  # pylint: disable=maybe-no-member
+            return None
+        story['time_parsed'] = datetime.datetime.fromtimestamp(story['time'])
+        return story
 
-    def _create_article(self, article):
+    def _create_article(self, story):
+        """ Create article from `story`. """
         art = DBO.Article()
-        art.internal_id = article['id']
-        art.content = '<a href="%s">%s</a>' % (article['url'],
-                                               article['title'])
-        art.summary = None
+        art.internal_id = story['id']
         art.score = self.cfg.initial_score
-        art.title = article['title']
-        art.updated = article['time_parsed']
+        art.title = story['title']
+        art.updated = story['time_parsed']
         art.published = art.updated
-        art.link = article['url']
-        art.author = article['by']
-        art.meta = {}
+        art.link = story.get('url')
+        art.author = story['by']
+        art.meta = {key: story.get(key) for key in ('score', 'type')}
         return art
-
-    def _limit_articles(self, articles, max_load):
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("HNSource: loaded >max_articles - truncating")
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
-        return articles
-
-    def _get_min_date_to_load(self, global_max_age):
-        min_date_to_load = self.cfg.last_refreshed
-        max_age_to_load = self.cfg.max_age_to_load
-
-        if max_age_to_load == 0:  # use global settings
-            max_age_to_load = global_max_age
-        elif max_age_to_load == -1:  # no limit; use last refresh
-            return min_date_to_load
-
-        if max_age_to_load:  # limit exists
-            now = datetime.datetime.now()
-            limit = now - datetime.timedelta(days=max_age_to_load)
-            if min_date_to_load:
-                min_date_to_load = max(limit, min_date_to_load)
-            else:
-                min_date_to_load = limit
-
-        return min_date_to_load

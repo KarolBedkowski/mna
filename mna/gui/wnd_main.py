@@ -392,6 +392,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             pbar.hide()
             self._ui.a_update.setDisabled(False)
         elif status == messenger.ST_UPDATE_STARTED:
+            self._ui.a_update.setDisabled(True)
             self._progress_bar_step = data / 100.
             self._progress_bar_cntr = 0.0
             pbar.show()

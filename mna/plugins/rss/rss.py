@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" RSS/Atom source plugin """
+""" RSS/Atom source plugin
+"""
 
 __author__ = "Karol Będkowski"
 __copyright__ = "Copyright (c) Karol Będkowski, 2014"
@@ -40,7 +41,7 @@ def _ts2datetime(tstruct, default=None):
 
 def _entry_hash(entry):
     """ Compute simple checksum for "content" of feed entry """
-    content = entry.content[0].value if 'content' in entry \
+    content = entry['content'][0].value if 'content' in entry \
         else entry.get('value')
     title = entry.get('title') or ''
     author = entry.get('author') or ''
@@ -89,53 +90,31 @@ class RssSource(base.AbstractSource):
         if not url:
             return []
 
-        now = datetime.datetime.now()
         doc = self._get_document(url)
         if not doc:
             return []
         self._update_source_cfg(doc)
 
-        min_date_to_load = self._get_min_date_to_load(max_age_load, now)
-        feed_update = _ts2datetime(doc.get('updated_parsed'), now)
-        _LOG.debug("RssSource: src=%d min_date_to_load=%s feed_update=%s",
-                   self.cfg.oid, min_date_to_load, feed_update)
+        min_date_to_load = self._get_min_date_to_load(max_age_load)
+        feed_update = _ts2datetime(doc.get('updated_parsed'), self._now)
         if feed_update < min_date_to_load:
-            _LOG.info("RssSource: src=%d feed not update %r < %r",
-                      self.cfg.oid, feed_update, min_date_to_load)
+            _LOG.debug("RssSource: src=%d feed not update %r < %r",
+                       self.cfg.oid, feed_update, min_date_to_load)
             return []
 
         # prepare dates etc
-        articles = self._prepare_entries(doc.get('entries'), feed_update)
+        entries = self._get_entries(doc.get('entries'), feed_update)
         # filter old articles
         if min_date_to_load:
-            articles = list(self._filter_by_date(articles, min_date_to_load))
-        _LOG.debug("RssSource: src=%d after filtering:  %d articles",
-                   self.cfg.oid, len(articles))
-        if not articles:
-            self.cfg.add_log('info', "Not found new articles")
-            return []
+            entries = (entry for entry in entries
+                       if entry['_updated'] >= min_date_to_load)
         # cache articles in database
-        art_cache = dict(self._get_existing_articles(session))
+        art_cache = self._get_existing_articles(session)
         # create articles with lookup into cache
         articles = (self._create_article(feed, art_cache, feed_update)
-                    for feed in articles)
+                    for feed in entries)
         # left only new/updated articles
-        articles = filter(None, articles)
-
-        _LOG.debug("RssSource: src=%d loaded %d articles",
-                   self.cfg.oid, len(articles))
-
-        # Limit number articles to load
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("RssSource: src=%d loaded >max_articles - "
-                           "truncating", self.cfg.oid)
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
+        articles = self._limit_articles(articles, max_load)
         return articles
 
     @classmethod
@@ -158,15 +137,12 @@ class RssSource(base.AbstractSource):
         if cntr <= 0:
             raise base.GetArticleException(
                 "Get rss feed error: to many redirections")
-        if not self.cfg.meta:
-            _LOG.warn("No meta in %d", self.cfg.oid)
-            self.cfg.meta = {}
-        etag = self.cfg.meta.get('etag')
-        modified = self.cfg.meta.get('modified')
-        doc = feedparser.parse(url, etag=etag, modified=modified)
+        doc = feedparser.parse(url,
+                               etag=self.cfg.meta.get('etag'),
+                               modified=self.cfg.meta.get('modified'))
         status = doc.get('status') if doc else 400
         if status >= 400:
-            self.cfg.add_log('error', "Error loading RSS feed: %s" % status)
+            self._log_error("Error loading RSS feed: %s" % status)
             _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
                        self.cfg.oid, url, doc, self.cfg)
             raise base.GetArticleException("Get rss feed error: %r" % status)
@@ -179,23 +155,23 @@ class RssSource(base.AbstractSource):
             self.cfg.conf["url"] = doc.href
             _LOG.info("RssSource: src=%s permanent redirects to %s",
                       self.cfg.oid, doc.href)
-            self.cfg.add_log('info',
-                             "Permanent redirect to %s; updating configuration"
-                             % doc.href)
+            self._log_info("Permanent redirect to %s; updating configuration"
+                           % doc.href)
             return self._get_document(doc.href, cntr=cntr-1)
         elif status == 302:  # temporary redirects
             _LOG.info("RssSource: src=%s temporary redirects to %s",
                       self.cfg.oid, doc.href)
-            self.cfg.add_log('info', "Temporary redirect to %s" % doc.href)
+            self._log_info("Temporary redirect to %s" % doc.href)
             return self._get_document(doc.href, cntr=cntr-1)
-
+        elif status != 200:
+            self._log_error("Error loading RSS feed: %s" % status)
+            _LOG.error("RssSource: src=%d error getting items from %s, %r, %r",
+                       self.cfg.oid, url, doc, self.cfg)
+            raise base.GetArticleException("Get rss feed error: %r" % status)
         _LOG.info("RssSource: src=%d get_document done %r", self.cfg.oid, url)
         return doc
 
     def _update_source_cfg(self, doc):
-        if not self.cfg.meta:
-            _LOG.warn("No meta in %d", self.cfg.oid)
-            self.cfg.meta = {}
         self.cfg.meta['etag.old'] = self.cfg.meta.get('etag')
         self.cfg.meta['modified.old'] = self.cfg.meta.get('modified')
         self.cfg.meta['etag'] = doc.get('etag')
@@ -203,6 +179,7 @@ class RssSource(base.AbstractSource):
         if self.cfg.title == "":
             if 'title' in doc.feed:
                 self.cfg.title = doc.feed.title
+                self.mark_conf_updated()
         if not self.cfg.icon_id:
             icon, icon_name = self._get_icon(doc)
             if icon:
@@ -211,28 +188,25 @@ class RssSource(base.AbstractSource):
                 self._resources[icon_name] = icon
             else:
                 self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
 
     # pylint:disable=no-self-use
-    def _prepare_entries(self, entries, feed_updated):
+    def _get_entries(self, entries, feed_updated):
         for entry in entries:
+            entry = entry.copy()
             updated = _ts2datetime(entry.get('updated_parsed'))
             published = _ts2datetime(entry.get('published_parsed'))
             entry['_published'] = published or feed_updated
             entry['_updated'] = updated or published or feed_updated
             yield entry
 
-    def _filter_by_date(self, entries, min_date_to_load):
-        for entry in entries:
-            if entry['_updated'] > min_date_to_load:
-                yield entry
-
     def _create_article(self, entry, art_cache, feed_updated):
         internal_id = entry.get('id') or \
-                DBO.Article.compute_id(
-                    entry.get('link'), entry.get('title'), entry.get('author'),
-                    self.__class__.get_name())
+            DBO.Article.compute_id(
+                entry.get('link'), entry.get('title'), entry.get('author'),
+                self.__class__.get_name())
 
-        content = entry.content[0].value if 'content' in entry \
+        content = entry['content'][0].value if 'content' in entry \
             else entry.get('value')
         art = art_cache.get(internal_id)
         meta = art.meta.copy() if art and art.meta else {}
@@ -253,7 +227,7 @@ class RssSource(base.AbstractSource):
         meta['id'] = repr(entry.get('id'))
         meta['updated'] = repr(entry.get('updated'))
 
-        art = art or DBO.Article(meta={})
+        art = art or DBO.Article()
         art.internal_id = internal_id
         art.content = content
         art.summary = entry.get('summary')
@@ -267,31 +241,12 @@ class RssSource(base.AbstractSource):
         art.meta = meta
         return art
 
-    def _get_min_date_to_load(self, global_max_age, now):
-        min_date_to_load = self.cfg.last_refreshed
-        max_age_to_load = self.cfg.max_age_to_load
-
-        if max_age_to_load == 0:  # use global settings
-            max_age_to_load = global_max_age
-        elif max_age_to_load == -1:  # no limit; use last refresh
-            return min_date_to_load
-
-        if max_age_to_load:  # limit exists
-            limit = now - datetime.timedelta(days=max_age_to_load)
-            if min_date_to_load:
-                min_date_to_load = max(limit, min_date_to_load)
-            else:
-                min_date_to_load = limit
-
-        return min_date_to_load
-
     def _get_existing_articles(self, session):
-        rows = db.get_all(DBO.Article, session=session,
-                          source_id=self.cfg.oid).\
-                options(orm.Load(DBO.Article).  # pylint:disable=no-member
-                        load_only("oid", "internal_id", "updated", "meta"))
-        for row in rows:
-            yield (row.internal_id, row)
+        rows = db.get_all(
+            DBO.Article, session=session, source_id=self.cfg.oid).\
+            options(orm.Load(DBO.Article).  # pylint:disable=no-member
+                    load_only("oid", "internal_id", "updated", "meta"))
+        return dict((row.internal_id, row) for row in rows)
 
     def _get_icon(self, content):
         if 'icon' in content.feed:

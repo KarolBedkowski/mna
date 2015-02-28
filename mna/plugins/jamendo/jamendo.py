@@ -80,6 +80,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         if not self.cfg.icon_id:
             self.cfg.icon_id = self.default_icon
+            self.mark_conf_updated()
 
         artist_id = self.cfg.conf.get('artist_id')
         if not artist_id:
@@ -94,6 +95,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         if not self.cfg.title:
             self.cfg.title = results[0].get('name')
+            self.mark_conf_updated()
         self.cfg.meta['last_min_date'] = max_date
 
         albums = results[0].get('albums')
@@ -106,20 +108,13 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
             _LOG.info(_logtitle + "no new albums")
             return []
 
-        new_last_sid = max(album['id'] for album in albums)
+        self.cfg.meta['last_sid'] = max(album['id'] for album in albums)
         albums = self._prepare_albums(albums)
         albums = self._filter_by_date(albums, max_age_load)
-        articles = [self._create_article(album, self.cfg.title)
-                    for album in albums]
-
-        _LOG.debug(_logtitle + "loaded %d articles", len(articles))
-        if not articles:
-            self.cfg.add_log('info', "Not found new articles")
-            return []
-        self.cfg.add_log('info', "Found %d new articles" % len(articles))
+        articles = (self._create_article(album, self.cfg.title)
+                    for album in albums)
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
-        self.cfg.meta['last_sid'] = new_last_sid
         return articles
 
     @classmethod
@@ -149,8 +144,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         try:
             info, page = websupport.download_page(url)
         except websupport.LoadPageError, err:
-            self.cfg.add_log('error',
-                             "Error loading page: " + str(err))
+            self._log_error("Error loading page: " + str(err))
             raise base.GetArticleException("Get web page error: %s" % err)
 
         if not page:
@@ -209,38 +203,6 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         art.author = artist
         art.meta = {}
         return art
-
-    def _limit_articles(self, articles, max_load):
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("JamendoArtistAlbumsSource: loaded >max_articles "
-                           "- truncating")
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
-        return articles
-
-    def _get_min_date_to_load(self, global_max_age):
-        min_date_to_load = self.cfg.last_refreshed
-        max_age_to_load = self.cfg.max_age_to_load
-
-        if max_age_to_load == 0:  # use global settings
-            max_age_to_load = global_max_age
-        elif max_age_to_load == -1:  # no limit; use last refresh
-            return min_date_to_load
-
-        if max_age_to_load:  # limit exists
-            now = datetime.datetime.now()
-            limit = now - datetime.timedelta(days=max_age_to_load)
-            if min_date_to_load:
-                min_date_to_load = max(limit, min_date_to_load)
-            else:
-                min_date_to_load = limit
-
-        return min_date_to_load
 
     @classmethod
     def update_configuration(cls, source_conf, session=None):

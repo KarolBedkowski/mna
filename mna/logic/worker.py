@@ -50,61 +50,27 @@ class Worker(QtCore.QRunnable):
         _LOG.debug("%s processing %s/%s", self._p_name, source_cfg.name,
                    source_cfg.title)
         now = datetime.datetime.now()
-
         source_cfg.processing = 1
         session.commit()
+        last_conf_updated = source_cfg.conf_updated
 
-        # find pluign
-        source_cls = plugins.SOURCES.get(source_cfg.name)
-        if not source_cls:
-            _LOG.error("%s unknown source: %s in %r", self._p_name,
-                       source_cls, source_cfg)
-            source_cfg.enabled = False
-            _on_error(session, source_cfg, "unknown source")
+        # find plugin
+        source = self._get_source(session, source_cfg)
+        if not source:
             return
+        # load articles
+        cnt = self._load_articles(source, source_cfg, session)
+        if cnt < 0:
+            return
+        # update configuration
+        force_update = bool(source_cfg.last_error) or \
+            last_conf_updated != source_cfg.conf_updated
 
-        source = source_cls(source_cfg)
-        cnt = 0
-        aconf = self.aconf
-        try:
-            articles = source.get_items(
-                session,
-                aconf.get('articles.max_num_load', 0),
-                aconf.get('articles.max_age_load', 0))
-            if source_cfg.conf.get('filter.enabled', True):
-                articles = self._filter_articles(articles, session, source_cfg)
-            cnt = sum(_save_articls(articles, session, source_cfg))
-        except base.GetArticleException, err:
-            # some processing error occurred
-            _LOG.error("%s Load articles from %s/%s error: %r",
-                       self._p_name, source_cfg.name, source_cfg.title,
-                       err)
-            _on_error(session, source_cfg, str(err))
-            return
-        except Exception, err:  # pylint:disable=broad-except
-            _LOG.exception("%s Load articles from %s/%s error: %r",
-                           self._p_name, source_cfg.name, source_cfg.title,
-                           err)
-            _on_error(session, source_cfg, str(err))
-            return
-        else:
-            _LOG.debug("%s Loaded %d from %s/%s", self._p_name, cnt,
-                       source_cfg.name, source_cfg.title)
-
-        # sanity check
-        source_cfg = self._get_and_check_source(session)
-        if not source_cfg or not source_cfg.processing:
-            _LOG.warn("%s finished problem - sanity check failed: %d - %r",
-                      self._p_name, self.source_id, source_cfg)
-            _on_error(session, source_cfg, str(err))
-            return
-
-        interval = source_cfg.interval or aconf.get(
+        interval = source_cfg.interval or self.aconf.get(
             'articles.update_interval', 60)
         source_cfg.next_refresh = now + datetime.timedelta(seconds=interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
-        force_update = bool(source_cfg.last_error)
         source_cfg.last_error = None
         source_cfg.last_error_date = None
 
@@ -120,6 +86,35 @@ class Worker(QtCore.QRunnable):
         _LOG.debug("%s finished", self._p_name)
         return
 
+    def _load_articles(self, source, source_cfg, session):
+        cnt = 0
+        try:
+            articles = source.get_items(
+                session,
+                self.aconf.get('articles.max_num_load', 0),
+                self.aconf.get('articles.max_age_load', 0))
+            if source_cfg.conf.get('filter.enabled', True):
+                articles = self._filter_articles(articles, session, source_cfg)
+            cnt = sum(_save_articls(articles, session, source_cfg))
+            source_cfg.add_log('info', "Found new %d articles" % cnt)
+        except base.GetArticleException, err:
+            # some processing error occurred
+            _LOG.error("%s Load articles from %s/%s error: %r",
+                       self._p_name, source_cfg.name, source_cfg.title,
+                       err)
+            _on_error(session, source_cfg, str(err))
+            return -1
+        except Exception, err:  # pylint:disable=broad-except
+            _LOG.exception("%s Load articles from %s/%s error: %r",
+                           self._p_name, source_cfg.name, source_cfg.title,
+                           err)
+            _on_error(session, source_cfg, str(err))
+            return -1
+        else:
+            _LOG.debug("%s Loaded %d from %s/%s", self._p_name, cnt,
+                       source_cfg.name, source_cfg.title)
+        return cnt
+
     def _get_and_check_source(self, session):
         source_cfg = db.get_one(DBO.Source, session=session,
                                 oid=self.source_id)
@@ -128,6 +123,17 @@ class Worker(QtCore.QRunnable):
             return None
         return source_cfg
 
+    def _get_source(self, session, source_cfg):
+        source_cls = plugins.SOURCES.get(source_cfg.name)
+        if not source_cls:
+            _LOG.error("%s unknown source: %s in %r", self._p_name,
+                       source_cls, source_cfg)
+            source_cfg.enabled = False
+            _on_error(session, source_cfg, "unknown source")
+            return None
+        source = source_cls(source_cfg)
+        return source
+
     def _load_filters(self, source_cfg, session):
         for fltr in source_cfg.get_filters():
             fltr_cls = plugins.FILTERS.get(fltr.name)
@@ -135,7 +141,7 @@ class Worker(QtCore.QRunnable):
                 _LOG.error("%s unknown filter: %s in %r", self._p_name,
                            fltr.name, fltr.oid)
                 _on_error(session, source_cfg, "unknown filter")
-                return
+                continue
             yield fltr_cls(fltr)
 
     def _get_min_score(self, source_cfg):

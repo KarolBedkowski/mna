@@ -186,6 +186,9 @@ class Source(BaseModelMixin, Base):
 
     icon_id = Column(Unicode(64))
 
+    # date of update configuration
+    conf_updated = Column(DateTime)
+
     articles = orm.relationship(
         Article,
         backref=orm.backref("source"),

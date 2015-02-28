@@ -69,6 +69,7 @@ def connect(filename, debug=False, *args, **kwargs):
         for sql in schema:
             engine.execute(sql)
     sqls.add_icon_id(engine)
+    sqls.add_source_conf_updated(engine)
     Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:
@@ -258,3 +259,21 @@ def delete(obj, commit=False, session=None):
         session.delete(obj)
     if commit:
         session.commit()
+
+
+def exists(clazz, session=None, **kwargs):
+    """ Check is objects with given attributes exists.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    _LOG.debug('exists: %r %r', clazz, kwargs)
+    session = session or Session()
+    if hasattr(clazz, "oid"):
+        return session.query(func.count(clazz.oid)).\
+            filter_by(**kwargs).scalar() > 0
+    return session.query(clazz).filter_by(**kwargs).count() > 0

@@ -46,7 +46,9 @@ def mark_source_read(source_ids, read=True):
 
 
 def save_source(source):
+    """ Save source to database; update `conf_updated`."""
     _LOG.info("save_source %r", source)
+    source.conf_updated = datetime.datetime.now()
     db.save(source, True)
     _LOG.info("save_source done")
 

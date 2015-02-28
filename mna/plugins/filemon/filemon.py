@@ -28,10 +28,11 @@ from . import frm_sett_filemon_ui
 _LOG = logging.getLogger(__name__)
 
 
-def get_file_part(content, selector):
+def get_file_parts(content, selector):
     """ Find all elements of `page` by `selector` - regular expression. """
     cselector = re.compile(selector, re.M | re.U | re.L | re.I)
-    return cselector.findall(content)
+    return ((part, create_checksum(part))
+            for part in cselector.findall(content))
 
 
 def create_checksum(data):
@@ -48,11 +49,11 @@ def accept_part(session, source_id, checksum):
     """ Check is given part don't already exists in database for given  part
         `checksum` and `source_id`.
     """
-    return db.count(DBO.Article, session=session, internal_id=checksum,
-                    source_id=source_id) == 0
+    return not db.exists(DBO.Article, session=session,
+                         internal_id=checksum, source_id=source_id)
 
 
-def accept_page(content, source, threshold):
+def accept_file(content, source, threshold):
     """ Check is check similarity ratio if `threshold`  given -
     reject files with similarity ratio > threshold.
     """
@@ -138,6 +139,12 @@ class FileSource(base.AbstractSource):
     name = "Plain File Source"
     conf_panel_class = FrmSettFilemon
 
+    def __init__(self, conf):
+        super(FileSource, self).__init__(conf)
+        if not self.cfg.title:
+            self.cfg.title = os.path.basename(self._filename)
+            self.mark_conf_updated()
+
     @classmethod
     def get_name(cls):
         return 'mna.plugins.filemon.FileSource'
@@ -147,7 +154,7 @@ class FileSource(base.AbstractSource):
         if not filename:
             return []
 
-        _LOG.info("FileSource.get_items from %r - %r", filename, self.cfg.conf)
+        _LOG.debug("FileSource(%r).get_items from %r", self.cfg.conf, filename)
 
         if not os.path.isfile(filename):
             raise base.GetArticleException("Load file error: file not exists")
@@ -156,23 +163,19 @@ class FileSource(base.AbstractSource):
             return []
 
         content = self._get_file_content(filename)
-
-        articles = []
         selector = self.cfg.conf.get('regex')
         if self.cfg.conf.get("mode") == "part" and selector:
-            articles = (self._process_part(part, session)
-                        for part in get_file_part(content, selector))
+            articles = (self._create_article(part, checksum)
+                        for part, checksum
+                        in get_file_parts(content, selector)
+                        if accept_part(session, self.cfg.oid, checksum))
         else:
-            articles = [self._process_page(content)]
+            articles = (
+                [self._create_article(content)]
+                if accept_file(content, self.cfg,
+                               self.cfg.conf.get('similarity') or 1)
+                else [])
 
-        articles = filter(None, articles)
-
-        _LOG.debug("FileSource: loaded %d articles", len(articles))
-        if not articles:
-            self.cfg.add_log('info', "Not found new articles")
-            return []
-        self.cfg.add_log('info',
-                         "Found %d new articles" % len(articles))
         # Limit number articles to load
         articles = self._limit_articles(articles, max_load)
         return articles
@@ -201,21 +204,8 @@ class FileSource(base.AbstractSource):
                              errors="replace") as srcfile:
                 return srcfile.read()
         except IOError, err:
-            self.cfg.add_log('error',
-                             "Error loading file: " + str(err))
+            self._log_error("Error loading file: " + str(err))
             raise base.GetArticleException("Load file error: %s" % err)
-        return None
-
-    def _process_page(self, content):
-        if accept_page(content, self.cfg,
-                       self.cfg.conf.get('similarity') or 1):
-            return self._create_article(content)
-        return None
-
-    def _process_part(self, part, session):
-        checksum = create_checksum(part)
-        if accept_part(session, self.cfg.oid, checksum):
-            return self._create_article(part, checksum)
         return None
 
     def _create_article(self, part, checksum=None):
@@ -233,25 +223,13 @@ class FileSource(base.AbstractSource):
         art.link = None
         return art
 
-    def _limit_articles(self, articles, max_load):
-        if self.cfg.max_articles_to_load > 0 or \
-                (self.cfg.max_articles_to_load == 0 and max_load > 0):
-            max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            if len(articles) > max_articles_to_load:
-                _LOG.debug("FileSource: loaded >max_articles - truncating")
-                articles = articles[-max_articles_to_load:]
-                self.cfg.add_log('info',
-                                 "Loaded only %d articles (limit)." %
-                                 len(articles))
-        return articles
-
     def is_file_updated(self, filename, max_age_load):
         last_refreshed = self.cfg.last_refreshed
         if last_refreshed is None:
             return True
         # if max_age_to_load defined - set limit last_refreshed
-        if self.cfg.max_age_to_load > 0 or (self.cfg.max_age_to_load == 0
-                                            and max_age_load > 0):
+        if self.cfg.max_age_to_load > 0 or \
+                (self.cfg.max_age_to_load == 0 and max_age_load > 0):
             max_age_to_load = self.cfg.max_age_to_load or max_age_load
             offset = datetime.datetime.now() - \
                     datetime.timedelta(days=max_age_to_load)
