@@ -185,7 +185,8 @@ class AbstractSource(object):
         if self.cfg.max_articles_to_load > 0 or \
                 (self.cfg.max_articles_to_load == 0 and max_load > 0):
             max_articles_to_load = self.cfg.max_articles_to_load or max_load
-            return itertools.islice(articles, max_articles_to_load)
+            articles = list(articles)
+            return articles[-max_articles_to_load:]
         return articles
 
     def _get_min_date_to_load(self, global_max_age, now=None):
