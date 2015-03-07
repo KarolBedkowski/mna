@@ -83,9 +83,10 @@ class HNSource(base.AbstractSource):
                 return []
 
         self.cfg.meta['last_sid'] = max(stories_id)
+        stories_id = self._limit_articles(stories_id, max_load)
         stories = (self._get_story(sid) for sid in stories_id)
         # filter broken stories
-        stories = (story for story in stories if story)
+        stories = (story for story in stories if story is not None)
 
         # filter by time
         min_date_to_load = self._get_min_date_to_load(max_age_load)
@@ -94,7 +95,7 @@ class HNSource(base.AbstractSource):
                        if story['time_parsed'] >= min_date_to_load)
 
         articles = (self._create_article(art) for art in stories)
-        articles = self._limit_articles(articles, max_load)
+        articles = (art for art in articles if art is not None)
         return articles
 
     def _get_top_stories(self):
