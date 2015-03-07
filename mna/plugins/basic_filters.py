@@ -32,6 +32,10 @@ class MinLenFilter(base.AbstractFilter):
         conf = self.cfg.conf
         min_length = conf.get('min_length')
         content_len = len(article.content or '') + len(article.summary or '')
+        if not content_len:
+            content_len = len(article.title or '')
+        if not content_len:
+            content_len = len(repr(article.meta))
         if min_length and content_len < min_length:
             article.score += conf.get('score', 0)
             _LOG.debug('MinLenFilter.filter(%r) = %d -> %r finished',
