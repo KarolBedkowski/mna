@@ -30,6 +30,7 @@ from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
 Session = orm.sessionmaker()  # pylint: disable=C0103
+_CURRENT_SCHEMA_VER = 1
 
 
 def text_factory(text):
@@ -139,6 +140,16 @@ def find_db_file(config):
 
 
 def _bootstrap_data(session):
+    if count(DBO.AppMeta, key='schema_version') == 0:
+        # schema version
+        ameta = DBO.AppMeta(key='schema_version')
+        ameta.as_int = _CURRENT_SCHEMA_VER
+        session.add(ameta)
+
+    initialized = get_one(DBO.AppMeta, key='initialized')
+    if initialized and initialized.value:
+        return
+
     if count(DBO.Group) == 0:
         # create default group
         group = DBO.Group()
@@ -184,6 +195,8 @@ def _bootstrap_data(session):
         source.conf = {"url": r'http://linuxtoday.com/backend/biglt.rss'}
         source.group_id = 2
         session.add(source)
+
+    session.add(DBO.AppMeta(key='initialized', value='yes'))
 
 
 def get_one(clazz, session=None, **kwargs):
