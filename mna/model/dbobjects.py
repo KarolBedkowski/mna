@@ -270,3 +270,20 @@ class SourceLog(BaseModelMixin, Base):
         Source,
         backref=orm.backref("source_log", cascade="all, delete-orphan",
                             order_by="SourceLog.date"))
+
+
+class AppMeta(BaseModelMixin, Base):
+    """Application metadata object. """
+
+    __tablename__ = "app_meta"
+
+    key = Column(Unicode, primary_key=True)
+    value = Column(Unicode)
+
+    def _get_as_int(self):
+        return int(self.value)
+
+    def _set_as_int(self, value):
+        self.value = str(value)
+
+    as_int = property(_get_as_int, _set_as_int)
