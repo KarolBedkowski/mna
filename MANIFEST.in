@@ -1,0 +1,8 @@
+include CHANGES.rst
+include MANIFEST.in
+include COPYING
+include README.rst
+include Makefile
+include TODO
+recursive-include mna *.py *.ui
+recursive-include data *
