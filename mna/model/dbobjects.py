@@ -69,13 +69,16 @@ class BaseModelMixin(object):
             self.modified = datetime.datetime.utcnow()  # pylint: disable=W0201
 
     def __repr__(self):
-        info = []
+        return "<" + self.__class__.__name__ + ' ' + \
+            ','.join(key + "=" + repr(val)
+                     for key, val in self.obj_info()) + ">"
+
+    def obj_info(self):
         for prop in orm.object_mapper(self).iterate_properties:
             if isinstance(prop, orm.ColumnProperty) or \
                     (isinstance(prop, orm.RelationshipProperty)
                      and prop.secondary):
-                info.append("%r=%r" % (prop.key, getattr(self, prop.key)))
-        return "<" + self.__class__.__name__ + ' ' + ','.join(info) + ">"
+                yield prop.key, getattr(self, prop.key)
 
 
 class Group(BaseModelMixin, Base):
