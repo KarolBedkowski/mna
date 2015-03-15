@@ -53,7 +53,7 @@ class FrmSettJamendo(QtGui.QFrame):  # pylint: disable=no-member
         return True
 
     def to_window(self, source):
-        self._ui.e_artist.setText(source.conf.get("artist_id") or "")
+        self._ui.e_artist.setText(str(source.conf.get("artist_id") or ""))
 
 
 class JamendoArtistAlbumsSource(base.AbstractSource):
@@ -128,6 +128,8 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         Returns:
             (ok, http_info, response header, response result)
         """
+        _LOG.debug('JamendoArtistAlbumsSource._get_albums(%r %r %r)',
+                   artist_id, min_date, max_date)
         url = 'https://api.jamendo.com/v3.0/artists/albums?'
         query = {
             'client_id': _CLIENT_ID,
@@ -148,6 +150,8 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
             raise base.GetArticleException("Get web page error: %s" % err)
 
         if not page:
+            _LOG.info("JamendoArtistAlbumsSource._get_albums empty page: %r",
+                      info)
             return False, info, None, None
 
         page = json.loads(page.decode('utf-8'))
