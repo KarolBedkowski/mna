@@ -220,7 +220,10 @@ class Source(BaseModelMixin, Base):
         return self.conf.get('filter_minimal_score', 0)
 
     def add_log(self, category, message):
-        self.source_log.append(SourceLog(category=category, message=message))  # pylint:disable=no-member
+        if not __debug__ and category == 'debug':
+            return
+        # pylint:disable=no-member
+        self.source_log.append(SourceLog(category=category, message=message))
 
     def get_last_article(self):
         return self.articles.order_by(Article.updated.desc()).first()
@@ -234,6 +237,11 @@ class Source(BaseModelMixin, Base):
             filter(or_(Filter.source_id == self.oid,
                        Filter.source_id == None))
         return fltrs
+
+    def get_non_debug_log(self):
+        return orm.object_session(self).query(SourceLog).\
+            filter(SourceLog.source_id == self.oid,
+                   SourceLog.category != 'debug')
 
 
 class Filter(BaseModelMixin, Base):

@@ -167,6 +167,11 @@ class AbstractSource(object):
         """ Add error `message` to source log. """
         self.cfg.add_log('error', message)
 
+    def _log_debug(self, message, *args):
+        """ Add debug `message` to source log. """
+        if __debug__:
+            self.cfg.add_log('debug', message % args)
+
     @classmethod
     def update_configuration(cls, source_conf, session=None):
         """ Update `source_conf` with default source parameters.

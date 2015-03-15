@@ -20,6 +20,7 @@ from mna.gui import dlg_source_info_ui
 from mna.model import db
 from mna.model import dbobjects as DBO
 from mna import plugins
+from mna.lib import appconfig
 
 _LOG = logging.getLogger(__name__)
 
@@ -69,7 +70,10 @@ class DlgSourceInfo(QtGui.QDialog):  # pylint:disable=too-few-public-methods,no-
         self._ui.lv_info.resizeColumnToContents(1)
 
     def _create_logs_model(self, source):
-        logs = source.source_log
+        if appconfig.AppConfig().debug:
+            logs = source.source_log
+        else:
+            logs = source.get_non_debug_log()
         model = QtGui.QStandardItemModel(0, 3, self._ui.lv_logs)  # pylint:disable=no-member
         model.setHeaderData(0, QtCore.Qt.Horizontal, self.tr("Date"))  # pylint:disable=no-member
         model.setHeaderData(1, QtCore.Qt.Horizontal, self.tr("Category"))  # pylint:disable=no-member
