@@ -57,6 +57,9 @@ class Worker(QtCore.QRunnable):
         # find plugin
         source = self._get_source(session, source_cfg)
         if not source:
+            _LOG.error("%s source class not found for %r %r",
+                       self._p_name, source_cfg.name, source_cfg.title)
+            source_cfg.add_log("ERROR", "Internal error: source not found")
             return
         # load articles
         cnt = self._load_articles(source, source_cfg, session)

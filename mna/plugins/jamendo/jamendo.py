@@ -100,13 +100,17 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         albums = results[0].get('albums')
         if not albums:
+            self._log_debug("No albums found")
             _LOG.info(_logtitle + "no albums")
             return None
 
+        self._log_debug("Found %d albums", len(albums))
         albums = self._filter_new_albums(albums)
         if not albums:
             _LOG.info(_logtitle + "no new albums")
             return None
+
+        self._log_debug("Found %d new albums", len(albums))
 
         self.cfg.meta['last_sid'] = max(album['id'] for album in albums)
         albums = self._prepare_albums(albums)

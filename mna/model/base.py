@@ -202,6 +202,7 @@ class AbstractSource(object):
         if max_age_to_load == 0:  # use global settings
             max_age_to_load = global_max_age
         elif max_age_to_load == -1:  # no limit; use last refresh
+            self._log_debug("min date to load: %r", min_date_to_load)
             return min_date_to_load
 
         if max_age_to_load:  # limit exists
@@ -211,6 +212,7 @@ class AbstractSource(object):
             else:
                 min_date_to_load = limit
 
+        self._log_debug("min date to load: %r", min_date_to_load)
         return min_date_to_load
 
 

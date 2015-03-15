@@ -51,6 +51,9 @@ def accept_page(article, _session, source, threshold):
                                              content).ratio()
         _LOG.debug("similarity: %r %r", similarity, threshold)
         if similarity > threshold:
+            if __debug__:
+                source.add_log("debug", "similarity %r > %r" %
+                               (similarity, threshold))
             _LOG.debug("Article skipped - similarity %r > %r",
                        similarity, threshold)
             return False
@@ -95,6 +98,7 @@ class WebSource(base.AbstractSource):
         if info['_status'] == 304:  # not modified
             _LOG.info("WebSource.get_items %r from %r - not modified",
                       self.cfg.oid, url)
+            self._log_debug("page not modified")
             return None
 
         self._download_page_info(url, page, info)
@@ -102,6 +106,7 @@ class WebSource(base.AbstractSource):
         if not self.is_page_updated(info, max_age_load):
             _LOG.info("WebSource.get_items src=%r page not updated",
                       self.cfg.oid)
+            self._log_debug("page not updated")
             return None
 
         parts = self._get_articles(info, page)

@@ -80,7 +80,10 @@ class HNSource(base.AbstractSource):
             stories_id = [sid for sid in stories_id if sid > last_sid]
             if not stories_id:
                 # no new stories
+                self._log_debug("no stories with id > %d", last_sid)
                 return None
+            self._log_debug("%d new stories with id > %d", len(stories_id),
+                            last_sid)
 
         self.cfg.meta['last_sid'] = max(stories_id)
         stories_id = self._limit_articles(stories_id, max_load)

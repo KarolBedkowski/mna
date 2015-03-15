@@ -98,6 +98,8 @@ class RssSource(base.AbstractSource):
         min_date_to_load = self._get_min_date_to_load(max_age_load)
         feed_update = _ts2datetime(doc.get('updated_parsed'), self._now)
         if feed_update < min_date_to_load:
+            self._log_debug("feed not updated (%r < %r)",
+                            feed_update, min_date_to_load)
             _LOG.debug("RssSource: src=%d feed not update %r < %r",
                        self.cfg.oid, feed_update, min_date_to_load)
             return None
