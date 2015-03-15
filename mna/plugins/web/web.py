@@ -86,7 +86,7 @@ class WebSource(base.AbstractSource):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
-            return []
+            return None
 
         _LOG.info("WebSource.get_items src=%r from %r - %r", self.cfg.oid,
                   url, self.cfg.conf)
@@ -95,14 +95,14 @@ class WebSource(base.AbstractSource):
         if info['_status'] == 304:  # not modified
             _LOG.info("WebSource.get_items %r from %r - not modified",
                       self.cfg.oid, url)
-            return []
+            return None
 
         self._download_page_info(url, page, info)
 
         if not self.is_page_updated(info, max_age_load):
             _LOG.info("WebSource.get_items src=%r page not updated",
                       self.cfg.oid)
-            return []
+            return None
 
         parts = self._get_articles(info, page)
         articles = (DBO.Article(content=part,

@@ -91,7 +91,7 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
 
         isok, _, _, results = self._get_albums(artist_id, min_date, max_date)
         if not isok or not results:
-            return []
+            return None
 
         if not self.cfg.title:
             self.cfg.title = results[0].get('name')
@@ -101,12 +101,12 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
         albums = results[0].get('albums')
         if not albums:
             _LOG.info(_logtitle + "no albums")
-            return []
+            return None
 
         albums = self._filter_new_albums(albums)
         if not albums:
             _LOG.info(_logtitle + "no new albums")
-            return []
+            return None
 
         self.cfg.meta['last_sid'] = max(album['id'] for album in albums)
         albums = self._prepare_albums(albums)

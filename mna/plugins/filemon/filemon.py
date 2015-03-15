@@ -152,7 +152,7 @@ class FileSource(base.AbstractSource):
     def get_items(self, session=None, max_load=-1, max_age_load=-1):
         filename = self._filename
         if not filename:
-            return []
+            return None
 
         _LOG.debug("FileSource(%r).get_items from %r", self.cfg.conf, filename)
 
@@ -160,7 +160,7 @@ class FileSource(base.AbstractSource):
             raise base.GetArticleException("Load file error: file not exists")
 
         if not self.is_file_updated(filename, max_age_load):
-            return []
+            return None
 
         content = self._get_file_content(filename)
         selector = self.cfg.conf.get('regex')

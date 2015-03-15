@@ -88,11 +88,11 @@ class RssSource(base.AbstractSource):
         _LOG.info("RssSource: src=%d get_items", self.cfg.oid)
         url = self.cfg.conf.get("url") if self.cfg.conf else None
         if not url:
-            return []
+            return None
 
         doc = self._get_document(url)
         if not doc:
-            return []
+            return None
         self._update_source_cfg(doc)
 
         min_date_to_load = self._get_min_date_to_load(max_age_load)
@@ -100,7 +100,7 @@ class RssSource(base.AbstractSource):
         if feed_update < min_date_to_load:
             _LOG.debug("RssSource: src=%d feed not update %r < %r",
                        self.cfg.oid, feed_update, min_date_to_load)
-            return []
+            return None
 
         # prepare dates etc
         entries = self._get_entries(doc.get('entries'), feed_update)

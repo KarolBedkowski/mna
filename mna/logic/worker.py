@@ -93,10 +93,12 @@ class Worker(QtCore.QRunnable):
                 session,
                 self.aconf.get('articles.max_num_load', 0),
                 self.aconf.get('articles.max_age_load', 0))
-            if source_cfg.conf.get('filter.enabled', True):
-                articles = self._filter_articles(articles, session, source_cfg)
-            cnt = sum(_save_articls(articles, session, source_cfg))
-            source_cfg.add_log('info', "Found new %d articles" % cnt)
+            if articles:
+                if source_cfg.conf.get('filter.enabled', True):
+                    articles = self._filter_articles(articles, session,
+                                                     source_cfg)
+                    cnt = sum(_save_articls(articles, session, source_cfg))
+                    source_cfg.add_log('info', "Found new %d articles" % cnt)
         except base.GetArticleException, err:
             # some processing error occurred
             _LOG.error("%s Load articles from %s/%s error: %r",
