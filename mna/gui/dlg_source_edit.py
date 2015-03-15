@@ -20,6 +20,7 @@ except ImportError:
 
 from PyQt4 import QtGui, QtCore
 
+from mna.common import dlg_info
 from mna.gui import resources_rc
 from mna.gui import dlg_source_edit_ui
 from mna.gui import frm_sett_main
@@ -58,6 +59,7 @@ class DlgSourceEdit(QtGui.QDialog):
         if appconfig.AppConfig().debug:
             self._ui.b_dev_save.clicked.connect(self._on_dev_save)
             self._ui.b_dev_load.clicked.connect(self._on_dev_load)
+            self._ui.b_dev_show.clicked.connect(self._on_dev_show)
 
     def _setup(self, source):
         self._frm_sett_main = frm_sett_main.FrmSettMain(self)
@@ -178,6 +180,7 @@ class DlgSourceEdit(QtGui.QDialog):
                                                     indent='  '))
         self._ui.e_dev_meta.setPlainText(json.dumps(source.meta or {},
                                                     indent='  '))
+        self._ui.dte_dev_last_refresh.setDateTime(source.last_refreshed)
 
     def _on_dev_save(self):
         source = self.source
@@ -187,3 +190,11 @@ class DlgSourceEdit(QtGui.QDialog):
         meta = self._ui.e_dev_meta.toPlainText()
         if meta:
             source.meta = json.loads(meta)
+        last_refresh = self._ui.dte_dev_last_refresh.dateTime()
+        source.last_refreshed = last_refresh.toPyDateTime()
+
+    def _on_dev_show(self):
+        info = "\n".join(key + " = " + repr(val)
+                         for key, val in self.source.obj_info())
+        dlg = dlg_info.DlgInfo(self, "Source " + self.source.title, info)
+        dlg.exec_()
