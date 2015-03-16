@@ -9,9 +9,9 @@ __version__ = "2015-01-30"
 
 import logging
 import datetime
+import Queue
+import threading
 import time
-
-from PyQt4 import QtCore
 
 from mna.model import db
 from mna.model import dbobjects as DBO
@@ -28,21 +28,29 @@ _WORKERS = 3  # number of background workers
 
 
 # pylint:disable=no-member,too-few-public-methods
-class Worker(QtCore.QRunnable):
+class Worker(threading.Thread):
     """ Worker - process one source and store result in database.
 
     Arguments:
         source_id: source to process
     """
-    def __init__(self, source_id):
-        QtCore.QRunnable.__init__(self)  # pylint:disable=no-member
-        self.source_id = source_id
+    def __init__(self, update_queue, terminate_event):
+        super(Worker, self).__init__()
+        self.update_queue = update_queue
         self.aconf = appconfig.AppConfig()
-        self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
+        self.terminate_event = terminate_event
+        self._p_name = "Worker: id=%d" % id(self)
 
     def run(self):
+        while not self.terminate_event.is_set():
+            source_id = self.update_queue.get()
+            self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
+            self._run(source_id)
+            self.update_queue.task_done()
+
+    def _run(self, source_id):
         session = db.Session(autoflush=False, autocommit=False)
-        source_cfg = self._get_and_check_source(session)
+        source_cfg = self._get_and_check_source(session, source_id)
         if not source_cfg or source_cfg.processing:
             _LOG.warn("%s not processing %r", self._p_name, source_cfg)
             return
@@ -120,9 +128,9 @@ class Worker(QtCore.QRunnable):
                        source_cfg.name, source_cfg.title)
         return cnt
 
-    def _get_and_check_source(self, session):
+    def _get_and_check_source(self, session, source_id):
         source_cfg = db.get_one(DBO.Source, session=session,
-                                oid=self.source_id)
+                                oid=source_id)
         if not source_cfg or \
                 source_cfg.next_refresh > datetime.datetime.now():
             return None
@@ -215,7 +223,7 @@ def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt,
         messenger.MESSENGER.emit_announce(u"%s updated" % source_title)
 
 
-def _process_sources():
+def _process_sources(update_queue):
     """ Process all sources with `next_refresh` date in past """
     _LOG.debug("MainWorker: start processing")
     session = db.Session()
@@ -227,33 +235,70 @@ def _process_sources():
     sources = [src.oid for src in query]
     session.expunge_all()
     session.close()
-    _LOG.debug("MainWorker: processing %d sources", len(sources))
+    new_sources = []
     if len(sources) > 0:
-        messenger.MESSENGER.emit_announce(u"Starting sources update")
-        messenger.MESSENGER.emit_updating_status(messenger.ST_UPDATE_STARTED,
-                                                 len(sources))
-        pool = QtCore.QThreadPool()  # pylint:disable=no-member
-        pool.setMaxThreadCount(_WORKERS)
-        for source_id in sources:
-            worker = Worker(source_id)
-            pool.start(worker)
-        pool.waitForDone()
-        messenger.MESSENGER.emit_announce(u"Update finished")
-        messenger.MESSENGER.emit_updating_status(messenger.ST_UPDATE_FINISHED)
-    _LOG.debug("MainWorker: processing finished")
-    return 0
+        with update_queue.mutex:
+            for source_id in sources:
+                if source_id not in update_queue.queue:
+                    new_sources.append(source_id)
+        _LOG.debug("MainWorker: processing %d sources", len(new_sources))
+        if new_sources:
+            messenger.MESSENGER.emit_announce(u"Starting sources update")
+            messenger.MESSENGER.emit_updating_status(
+                messenger.ST_UPDATE_STARTED, len(sources))
+            for source_id in new_sources:
+                update_queue.put(source_id)
+    return len(new_sources)
 
 
-# pylint:disable=no-member,no-init,too-few-public-methods
-class MainWorker(QtCore.QThread):
-    def run(self):  # pylint:disable=no-self-use
-        """ Start worker; run _process_sources in loop. """
+class WorkerDbCheck(threading.Thread):
+
+    def __init__(self, update_queue, terminate_event):
+        super(WorkerDbCheck, self).__init__()
+        self.daemon = True
+        self.update_queue = update_queue
+        self.terminate_event = terminate_event
+
+    def run(self):
         _LOG.info("Starting worker")
-        # Random sleep before first processing
-        time.sleep(_SHORT_SLEEP * 2)
-        while True:
-            if not _process_sources():
-                # no source to process
-                time.sleep(_LONG_SLEEP)
-            else:
-                time.sleep(_SHORT_SLEEP)
+        while not self.terminate_event.wait(_LONG_SLEEP):
+            if _process_sources(self.update_queue):
+                self.update_queue.join()
+#                while True:
+#                    with self.update_queue.all_tasks_done:
+#                        if not self.update_queue.unfinished_tasks:
+#                            break
+#                    time.sleep(1)
+                messenger.MESSENGER.emit_announce(u"Update finished")
+                messenger.MESSENGER.emit_updating_status(
+                    messenger.ST_UPDATE_FINISHED)
+
+
+class BgJobs(object):
+    def __init__(self):
+        self.update_queue = Queue.Queue()
+        self.terminate_event = threading.Event()
+        self._workers = []
+        self._db_check_wkr = None
+
+    def start_workers(self):
+        for _idx in xrange(_WORKERS):
+            wkr = Worker(self.update_queue, self.terminate_event)
+            wkr.daemon = True
+            wkr.start()
+            self._workers.append(wkr)
+
+        self._db_check_wkr = WorkerDbCheck(self.update_queue,
+                                           self.terminate_event)
+        self._db_check_wkr.start()
+
+    def stop_workers(self):
+        self.terminate_event.set()
+        self.empty_queue()
+        time.sleep(1)
+        self.update_queue.join()
+
+    def empty_queue(self):
+        while not self.update_queue.empty():
+            self.update_queue.get()
+            self.update_queue.task_done()

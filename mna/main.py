@@ -86,12 +86,12 @@ def run():
     window.show()  # pylint:disable=no-member
 
     from mna.logic import worker
-    main_worker = worker.MainWorker()
-    main_worker.start()  # pylint:disable=no-member
+    bgjobs = worker.BgJobs()
+    bgjobs.start_workers()
 
     app.exec_()
 
-    main_worker.terminate()  # pylint:disable=no-member
+    bgjobs.stop_workers()
 
     # cleanup
     from mna.logic import articles
