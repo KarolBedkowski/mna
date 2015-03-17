@@ -14,7 +14,9 @@ __version__ = "2014-06-14"
 import sys
 import optparse
 import logging
+import socket
 
+socket.setdefaulttimeout(30)
 _LOG = logging.getLogger(__name__)
 
 import sip
