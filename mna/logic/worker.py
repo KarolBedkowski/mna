@@ -48,14 +48,21 @@ class Worker(multiprocessing.Process):
         while not self.terminate_event.is_set():
             source_id = self.update_queue.get()
             self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
-            self._run(source_id)
-            self.update_queue.task_done()
+            _LOG.debug("%s in queue: %d" % (self._p_name,
+                                            self.update_queue.qsize()))
+            try:
+                self._run(source_id)
+            finally:
+                self.update_queue.task_done()
 
     def _run(self, source_id):
         session = db.Session(autoflush=False, autocommit=False)
         source_cfg = self._get_and_check_source(session, source_id)
         if not source_cfg or source_cfg.processing:
             _LOG.warn("%s not processing %r", self._p_name, source_cfg)
+            self.gui_update_queue.put(('source_update_error',
+                                       (source_cfg.oid, source_cfg.group_id,
+                                        source_cfg.title)))
             return
 
         _LOG.debug("%s processing %s/%s", self._p_name, source_cfg.name,
@@ -75,6 +82,9 @@ class Worker(multiprocessing.Process):
         # load articles
         cnt = self._load_articles(source, source_cfg, session)
         if cnt < 0:
+            self.gui_update_queue.put(('source_update_error',
+                                       (source_cfg.oid, source_cfg.group_id,
+                                        source_cfg.title)))
             return
         # update configuration
         force_update = bool(source_cfg.last_error) or \
@@ -131,6 +141,7 @@ class Worker(multiprocessing.Process):
                        source_cfg.name, source_cfg.title)
         return cnt
 
+    # pylint: disable=no-self-use
     def _get_and_check_source(self, session, source_id):
         source_cfg = db.get_one(DBO.Source, session=session,
                                 oid=source_id)
@@ -245,11 +256,12 @@ def _process_sources(update_queue):
                        if source_id not in sources_in_queue]
         _LOG.debug("MainWorker: processing %d sources", len(new_sources))
         if new_sources:
-            messenger.MESSENGER.emit_announce(u"Starting sources update")
-            messenger.MESSENGER.emit_updating_status(
-                messenger.ST_UPDATE_STARTED, len(sources))
             for source_id in new_sources:
                 update_queue.put_nowait(source_id)
+
+            messenger.MESSENGER.emit_announce(u"Starting sources update")
+            messenger.MESSENGER.emit_updating_status(
+                messenger.ST_UPDATE_STARTED, len(new_sources))
     return len(new_sources)
 
 
@@ -303,7 +315,13 @@ class WorkerGuiUpdate(threading.Thread):
                 messenger.MESSENGER.emit_updating_status(
                     messenger.ST_UPDATE_FINISHED)
             elif cmd == 'source_update':
-                _emit_updated(*args)
+                _emit_updated(*args)  # pylint: disable=star-args
+                messenger.MESSENGER.emit_updating_status(
+                    messenger.ST_UPDATE_PING)
+            elif cmd == 'source_update_error':
+                _source_oid, _group_oid, source_title = args
+                messenger.MESSENGER.emit_announce(
+                    u"%s updated - update error" % source_title)
                 messenger.MESSENGER.emit_updating_status(
                     messenger.ST_UPDATE_PING)
         _LOG.debug("WorkerGuiUpdate: exit")
@@ -313,6 +331,7 @@ class MyQueue(queues.JoinableQueue):
 
     def unfinished_tasks(self):
         with self._cond:
+            # pylint: disable=protected-access
             return not self._unfinished_tasks._semlock._is_zero()
 
     def get_queue(self):
@@ -364,9 +383,13 @@ class BgJobsManager(object):
 
     def empty_queue(self):
         _LOG.info("BgJobsManager.empty_queue")
-        while not self._src_update_q.empty():
-            self._src_update_q.get()
-            self._src_update_q.task_done()
+        try:
+            while True:
+                itm = self._src_update_q.get(False)
+                _LOG.debug("empty_queue: found %r", itm)
+                self._src_update_q.task_done()
+        except Queue.Empty:
+            pass
         _LOG.debug("BgJobsManager.empty_queue done")
 
     def is_updating(self):
