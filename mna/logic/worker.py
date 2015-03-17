@@ -247,21 +247,26 @@ def _process_sources(update_queue):
             messenger.MESSENGER.emit_updating_status(
                 messenger.ST_UPDATE_STARTED, len(sources))
             for source_id in new_sources:
-                update_queue.put(source_id)
+                update_queue.put_nowait(source_id)
     return len(new_sources)
 
 
 class WorkerDbCheck(threading.Thread):
 
-    def __init__(self, update_queue, terminate_event):
+    def __init__(self, update_queue, command_queue):
         super(WorkerDbCheck, self).__init__()
         self.daemon = True
         self.update_queue = update_queue
-        self.terminate_event = terminate_event
+        self.command_queue = command_queue
 
     def run(self):
         _LOG.info("Starting worker")
-        while not self.terminate_event.wait(_LONG_SLEEP):
+        while True:
+            cmd = self.command_queue.get(True, _LONG_SLEEP)
+            if cmd == 'exit':
+                self.command_queue.task_done()
+                _LOG.debug("WorkerDbCheck.run exiting")
+                return
             if _process_sources(self.update_queue):
                 self.update_queue.join()
 #                while True:
@@ -272,33 +277,58 @@ class WorkerDbCheck(threading.Thread):
                 messenger.MESSENGER.emit_announce(u"Update finished")
                 messenger.MESSENGER.emit_updating_status(
                     messenger.ST_UPDATE_FINISHED)
+            self.command_queue.task_done()
 
 
-class BgJobs(object):
+class BgJobsManager(object):
     def __init__(self):
         self.update_queue = Queue.Queue()
         self.terminate_event = threading.Event()
         self._workers = []
         self._db_check_wkr = None
+        self._db_check_wrk_cmd_q = Queue.LifoQueue()
 
     def start_workers(self):
-        for _idx in xrange(_WORKERS):
+        _LOG.info("BgJobsManager.start_workers")
+        for _dummy in xrange(_WORKERS):
             wkr = Worker(self.update_queue, self.terminate_event)
             wkr.daemon = True
             wkr.start()
             self._workers.append(wkr)
 
         self._db_check_wkr = WorkerDbCheck(self.update_queue,
-                                           self.terminate_event)
+                                           self._db_check_wrk_cmd_q)
         self._db_check_wkr.start()
+        _LOG.debug("BgJobsManager.start_workers done")
 
     def stop_workers(self):
+        _LOG.info("BgJobsManager.stop_workers")
+        self._db_check_wrk_cmd_q.put('exit')
         self.terminate_event.set()
         self.empty_queue()
         time.sleep(1)
+        _LOG.debug("BgJobsManager.stop_workers joining queue")
         self.update_queue.join()
+        _LOG.debug("BgJobsManager.stop_workers done")
 
     def empty_queue(self):
+        _LOG.info("BgJobsManager.empty_queue")
         while not self.update_queue.empty():
             self.update_queue.get()
             self.update_queue.task_done()
+        _LOG.debug("BgJobsManager.empty_queue done")
+
+    def is_updating(self):
+        with self.update_queue.all_tasks_done:
+            return bool(self.update_queue.unfinished_tasks)
+
+    def wakeup_db_check(self):
+        _LOG.info("BgJobsManager.wakeup_db_check")
+        if self._db_check_wkr.is_alive() and not self.is_updating() and \
+                self._db_check_wrk_cmd_q.empty():
+            self._db_check_wrk_cmd_q.put('start')
+            _LOG.debug("BgJobsManager.wakeup_db_check thread wakeup")
+        _LOG.debug("BgJobsManager.wakeup_db_check done")
+
+
+BG_JOBS_MNGR = BgJobsManager()
