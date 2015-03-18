@@ -401,12 +401,15 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             self._ui.a_update.setIcon(QtGui.QIcon(":main/reload.svg"))
         elif status == messenger.ST_UPDATE_STARTED:
             self._ui.a_update.setIcon(QtGui.QIcon(":icons/icon-error.svg"))
-            self._progress_bar_step = data / 100.
+            self._progress_bar_step = 100. / data
             self._progress_bar_cntr = 0.0
+            _LOG.debug("_on_updating_status: %r -> %r",
+                       self._progress_bar_step, data)
             pbar.show()
             pbar.setRange(0, 100)
         else:
             self._progress_bar_cntr += self._progress_bar_step
+            _LOG.debug("_on_updating_status: %r", self._progress_bar_cntr)
             pbar.setValue(self._progress_bar_cntr)
 
     def _refresh_tree(self):
