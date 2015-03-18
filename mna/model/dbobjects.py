@@ -191,6 +191,10 @@ class Source(BaseModelMixin, Base):
 
     # date of update configuration
     conf_updated = Column(DateTime)
+    # mark source as deleted
+    deleted = Column(DateTime, default=None)
+    # count failed article loading
+    failure_counter = Column(Integer, default=0)
 
     articles = orm.relationship(
         Article,

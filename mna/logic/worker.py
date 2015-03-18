@@ -95,6 +95,7 @@ class Worker(multiprocessing.Process):
         source_cfg.next_refresh = now + datetime.timedelta(minutes=interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
+        source_cfg.failure_counter = 0
         source_cfg.last_error = None
         source_cfg.last_error_date = None
 
@@ -215,11 +216,15 @@ def _on_error(session, source_cfg, error_msg):
     if not source_cfg:
         return
     now = datetime.datetime.now()
+    aconf = appconfig.AppConfig()
     source_cfg.processing = 0
     source_cfg.last_error = error_msg
     source_cfg.last_error_date = now
-    source_cfg.next_refresh = now + datetime.timedelta(
-        seconds=source_cfg.interval)
+    source_cfg.failure_counter += 1
+    max_faulures = aconf.get('sources.max_faulures')
+    if max_faulures and source_cfg.failure_counter == max_faulures:
+        source_cfg.enabled = False
+        source_cfg.add_log('info', "Source disabled due max failures occurred")
     interval = source_cfg.interval or aconf.get('articles.update_interval', 60)
     source_cfg.next_refresh = now + datetime.timedelta(minutes=interval)
     # source_cfg.last_refreshed = now
@@ -246,7 +251,8 @@ def _process_sources(update_queue):
     now = datetime.datetime.now()
     query = session.query(DBO.Source).\
         filter(DBO.Source.enabled == 1,
-               DBO.Source.next_refresh < now).\
+               DBO.Source.next_refresh < now,
+               DBO.Source.deleted == None).\
         order_by(DBO.Source.next_refresh)
     sources = [src.oid for src in query]
     session.expunge_all()
@@ -264,6 +270,7 @@ def _process_sources(update_queue):
             messenger.MESSENGER.emit_announce(u"Starting sources update")
             messenger.MESSENGER.emit_updating_status(
                 messenger.ST_UPDATE_STARTED, len(new_sources))
+    _LOG.debug("MainWorker: end processing")
     return len(new_sources)
 
 
