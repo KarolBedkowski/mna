@@ -92,7 +92,7 @@ class Worker(multiprocessing.Process):
 
         interval = source_cfg.interval or self.aconf.get(
             'articles.update_interval', 60)
-        source_cfg.next_refresh = now + datetime.timedelta(seconds=interval)
+        source_cfg.next_refresh = now + datetime.timedelta(minutes=interval)
         source_cfg.last_refreshed = now
         source_cfg.processing = 0
         source_cfg.last_error = None
@@ -220,6 +220,8 @@ def _on_error(session, source_cfg, error_msg):
     source_cfg.last_error_date = now
     source_cfg.next_refresh = now + datetime.timedelta(
         seconds=source_cfg.interval)
+    interval = source_cfg.interval or aconf.get('articles.update_interval', 60)
+    source_cfg.next_refresh = now + datetime.timedelta(minutes=interval)
     # source_cfg.last_refreshed = now
     source_cfg.add_log("ERROR", error_msg)
     session.commit()

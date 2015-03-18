@@ -219,5 +219,5 @@ class JamendoArtistAlbumsSource(base.AbstractSource):
             'artist_id': org_conf.get('artist_id') or ''
         }
         if not source_conf.interval:
-            source_conf.interval = 60 * 60 * 24  # 1d
+            source_conf.interval = 60 * 24  # 1d
         return source_conf
