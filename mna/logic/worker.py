@@ -269,11 +269,12 @@ def _process_sources(update_queue):
 
 class WorkerDbCheck(threading.Thread):
 
-    def __init__(self, update_queue, command_queue):
+    def __init__(self, update_queue, command_queue, updating_enable_flag):
         super(WorkerDbCheck, self).__init__()
         self.daemon = True
         self.update_queue = update_queue
         self.command_queue = command_queue
+        self.updating_enable_flag = updating_enable_flag
 
     def run(self):
         _LOG.info("Starting worker")
@@ -286,6 +287,9 @@ class WorkerDbCheck(threading.Thread):
                 if cmd == 'exit':
                     _LOG.debug("WorkerDbCheck.run exiting")
                     return
+            if not self.updating_enable_flag.is_set():
+                _LOG.debug('WorkerDbCheck.run updating_enable_flag not set')
+                continue
             while _process_sources(self.update_queue):
                 self.update_queue.join()
 #                while True:
@@ -296,6 +300,7 @@ class WorkerDbCheck(threading.Thread):
                 messenger.MESSENGER.emit_announce(u"Update finished")
                 messenger.MESSENGER.emit_updating_status(
                     messenger.ST_UPDATE_FINISHED)
+            _LOG.debug("WorkerDbCheck.run loop finished")
 
 
 class WorkerGuiUpdate(threading.Thread):
@@ -344,12 +349,14 @@ class MyQueue(queues.JoinableQueue):
 class BgJobsManager(object):
     def __init__(self):
         self._terminate_evt = multiprocessing.Event()
+        self._updating_enable_flag = multiprocessing.Event()
         self._src_update_q = MyQueue()
         self._src_update_wkrs = []
         self._db_check_wkr = None
         self._db_check_wrk_cmd_q = multiprocessing.JoinableQueue()
         self._gui_update_q = multiprocessing.Queue()
         self._gui_update_wkr = None
+        self._updating_enable_flag.set()
 
     def start_workers(self):
         _LOG.info("BgJobsManager.start_workers")
@@ -361,7 +368,8 @@ class BgJobsManager(object):
             self._src_update_wkrs.append(wkr)
 
         self._db_check_wkr = WorkerDbCheck(self._src_update_q,
-                                           self._db_check_wrk_cmd_q)
+                                           self._db_check_wrk_cmd_q,
+                                           self._updating_enable_flag)
         self._db_check_wkr.start()
 
         self._gui_update_wkr = WorkerGuiUpdate(self._gui_update_q)
@@ -396,6 +404,12 @@ class BgJobsManager(object):
 
     def is_updating(self):
         return self._src_update_q.unfinished_tasks()
+
+    def enable_updating(self, enable):
+        if enable:
+            self._updating_enable_flag.set()
+        else:
+            self._updating_enable_flag.clear()
 
     def wakeup_db_check(self):
         _LOG.info("BgJobsManager.wakeup_db_check")

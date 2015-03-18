@@ -544,4 +544,9 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         else:
             group_oid, source_oid = None, sel_subs.oid
         sel_art = self._selected_article
-        tool.run(self, sel_art.oid if sel_art else None, source_oid, group_oid)
+        worker.BG_JOBS_MNGR.enable_updating(False)
+        try:
+            tool.run(self, sel_art.oid if sel_art else None, source_oid,
+                     group_oid)
+        finally:
+            worker.BG_JOBS_MNGR.enable_updating(True)
