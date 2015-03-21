@@ -36,9 +36,9 @@ class Worker(multiprocessing.Process):
     Arguments:
         source_id: source to process
     """
-    def __init__(self, update_queue, terminate_event, gui_update_queue):
+    def __init__(self, update_q, terminate_event, gui_update_queue):
         super(Worker, self).__init__()
-        self.update_queue = update_queue
+        self.update_q = update_q
         self.gui_update_queue = gui_update_queue
         self.aconf = appconfig.AppConfig()
         self.terminate_event = terminate_event
@@ -46,14 +46,13 @@ class Worker(multiprocessing.Process):
 
     def run(self):
         while not self.terminate_event.is_set():
-            source_id = self.update_queue.get()
+            source_id = self.update_q.get()
             self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
-            _LOG.debug("%s in queue: %d" % (self._p_name,
-                                            self.update_queue.qsize()))
+            _LOG.debug("%s in queue: %d", self._p_name, self.update_q.qsize())
             try:
                 self._run(source_id)
             finally:
-                self.update_queue.task_done()
+                self.update_q.task_done()
 
     def _run(self, source_id):
         session = db.Session(autoflush=False, autocommit=False)
@@ -244,7 +243,7 @@ def _emit_updated(source_oid, group_oid, source_title, new_articles_cnt,
         messenger.MESSENGER.emit_announce(u"%s updated" % source_title)
 
 
-def _process_sources(update_queue):
+def _process_sources(update_q):
     """ Process all sources with `next_refresh` date in past """
     _LOG.debug("MainWorker: start processing")
     session = db.Session()
@@ -259,13 +258,13 @@ def _process_sources(update_queue):
     session.close()
     new_sources = []
     if len(sources) > 0:
-        sources_in_queue = update_queue.get_queue()
+        sources_in_queue = update_q.get_queue()
         new_sources = [source_id for source_id in sources
                        if source_id not in sources_in_queue]
         _LOG.debug("MainWorker: processing %d sources", len(new_sources))
         if new_sources:
             for source_id in new_sources:
-                update_queue.put_nowait(source_id)
+                update_q.put_nowait(source_id)
 
             messenger.MESSENGER.emit_announce(u"Starting sources update")
             messenger.MESSENGER.emit_updating_status(
@@ -275,42 +274,48 @@ def _process_sources(update_queue):
 
 
 class WorkerDbCheck(threading.Thread):
+    """ Worker: check sources for updating. """
 
-    def __init__(self, update_queue, command_queue, updating_enable_flag):
+    def __init__(self, update_q):
         super(WorkerDbCheck, self).__init__()
         self.daemon = True
-        self.update_queue = update_queue
-        self.command_queue = command_queue
-        self.updating_enable_flag = updating_enable_flag
+        self.update_q = update_q
+        self.command_q = multiprocessing.JoinableQueue()
+        self._enable_flag = multiprocessing.Event()
 
     def run(self):
         _LOG.info("Starting worker")
         while True:
             try:
-                cmd = self.command_queue.get(True, _LONG_SLEEP)
+                cmd = self.command_q.get(True, _LONG_SLEEP)
             except Queue.Empty:
                 pass
             else:
                 if cmd == 'exit':
                     _LOG.debug("WorkerDbCheck.run exiting")
                     return
-            if not self.updating_enable_flag.is_set():
-                _LOG.debug('WorkerDbCheck.run updating_enable_flag not set')
+            if not self._enable_flag.is_set():
+                _LOG.debug('WorkerDbCheck.run _enable_flag not set')
                 continue
-            while _process_sources(self.update_queue):
-                self.update_queue.join()
-#                while True:
-#                    with self.update_queue.all_tasks_done:
-#                        if not self.update_queue.unfinished_tasks:
-#                            break
-#                    time.sleep(1)
+            while _process_sources(self.update_q):
+                self.update_q.join()
                 messenger.MESSENGER.emit_announce(u"Update finished")
                 messenger.MESSENGER.emit_updating_status(
                     messenger.ST_UPDATE_FINISHED)
             _LOG.debug("WorkerDbCheck.run loop finished")
 
+    def enable_updates(self, enable):
+        """ Enable/disable thread processing """
+        if enable:
+            self._enable_flag.set()
+        else:
+            self._enable_flag.clear()
+
 
 class WorkerGuiUpdate(threading.Thread):
+    """ Worker: periodically check for message queue and generate
+    gui-related events. """
+
     def __init__(self, messages_queue):
         super(WorkerGuiUpdate, self).__init__()
         self.daemon = True
@@ -355,42 +360,45 @@ class MyQueue(queues.JoinableQueue):
 
 class BgJobsManager(object):
     def __init__(self):
-        self._terminate_evt = multiprocessing.Event()
-        self._updating_enable_flag = multiprocessing.Event()
+        # stop all background process
+        self._src_update_wrks_terminate = multiprocessing.Event()
         self._src_update_q = MyQueue()
         self._src_update_wkrs = []
+        # background worker that periodically check database for sources to
+        # update and put its id to _src_update_q
         self._db_check_wkr = None
-        self._db_check_wrk_cmd_q = multiprocessing.JoinableQueue()
+        # queue for updating gui events
         self._gui_update_q = multiprocessing.Queue()
+        # worker that generating events from _gui_update_q queue
         self._gui_update_wkr = None
-        self._updating_enable_flag.set()
 
     def start_workers(self):
         _LOG.info("BgJobsManager.start_workers")
+
+        self._gui_update_wkr = WorkerGuiUpdate(self._gui_update_q)
+        self._gui_update_wkr.start()
+
         for _dummy in xrange(_WORKERS):
-            wkr = Worker(self._src_update_q, self._terminate_evt,
+            wkr = Worker(self._src_update_q, self._src_update_wrks_terminate,
                          self._gui_update_q)
             wkr.daemon = True
             wkr.start()
             self._src_update_wkrs.append(wkr)
 
-        self._db_check_wkr = WorkerDbCheck(self._src_update_q,
-                                           self._db_check_wrk_cmd_q,
-                                           self._updating_enable_flag)
+        self._db_check_wkr = WorkerDbCheck(self._src_update_q)
         self._db_check_wkr.start()
 
-        self._gui_update_wkr = WorkerGuiUpdate(self._gui_update_q)
-        self._gui_update_wkr.start()
+        self._db_check_wkr.enable_updates(True)
         _LOG.debug("BgJobsManager.start_workers done")
 
     def stop_workers(self):
         _LOG.info("BgJobsManager.stop_workers")
-        self._db_check_wrk_cmd_q.put('exit')
+        self._db_check_wkr.command_q.put('exit')
         self._gui_update_q.put(None)
-        self._terminate_evt.set()
+        self._src_update_wrks_terminate.set()
         self.empty_queue()
         self._src_update_q.close()
-        time.sleep(1)
+        time.sleep(3)
         for wkr in self._src_update_wkrs:
             if wkr.is_alive():
                 wkr.terminate()
@@ -413,16 +421,13 @@ class BgJobsManager(object):
         return self._src_update_q.unfinished_tasks()
 
     def enable_updating(self, enable):
-        if enable:
-            self._updating_enable_flag.set()
-        else:
-            self._updating_enable_flag.clear()
+        self._db_check_wkr.enable_updating(enable)
 
     def wakeup_db_check(self):
         _LOG.info("BgJobsManager.wakeup_db_check")
         if self._db_check_wkr.is_alive() and not self.is_updating() and \
-                self._db_check_wrk_cmd_q.empty():
-            self._db_check_wrk_cmd_q.put('start')
+                self._db_check_wkr.command_q.empty():
+            self._db_check_wkr.command_q.put('start')
             _LOG.debug("BgJobsManager.wakeup_db_check thread wakeup")
         _LOG.debug("BgJobsManager.wakeup_db_check done")
 
