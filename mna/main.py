@@ -14,7 +14,9 @@ __version__ = "2014-06-14"
 import sys
 import optparse
 import logging
+import socket
 
+socket.setdefaulttimeout(30)
 _LOG = logging.getLogger(__name__)
 
 import sip
@@ -86,12 +88,11 @@ def run():
     window.show()  # pylint:disable=no-member
 
     from mna.logic import worker
-    main_worker = worker.MainWorker()
-    main_worker.start()  # pylint:disable=no-member
+    worker.BG_JOBS_MNGR.start_workers()
 
     app.exec_()
 
-    main_worker.terminate()  # pylint:disable=no-member
+    worker.BG_JOBS_MNGR.stop_workers()
 
     # cleanup
     from mna.logic import articles

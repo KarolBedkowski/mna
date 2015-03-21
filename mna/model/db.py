@@ -30,7 +30,7 @@ from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
 Session = orm.sessionmaker()  # pylint: disable=C0103
-_CURRENT_SCHEMA_VER = 1
+_CURRENT_SCHEMA_VER = 2
 
 
 def text_factory(text):
@@ -71,6 +71,7 @@ def connect(filename, debug=False, *args, **kwargs):
             engine.execute(sql)
     sqls.add_icon_id(engine)
     sqls.add_source_conf_updated(engine)
+    sqls.update_schema(engine, _CURRENT_SCHEMA_VER)
     Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:

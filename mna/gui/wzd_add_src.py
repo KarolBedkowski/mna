@@ -77,7 +77,7 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
             self._ui.l_src_opt.addWidget(src_opt_frame)
             self._curr_src_frame = src_opt_frame
             # update tab
-            self._ui.e_interval.setValue((self._source.interval or 0) / 60)
+            self._ui.e_interval.setValue(self._source.interval or 0)
 
     def validateCurrentPage(self):  # pylint:disable=invalid-name
         if not self.currentPage().validatePage():  # pylint:disable=no-member
@@ -109,5 +109,5 @@ class WzdAddSrc(QtGui.QWizard):  # pylint:disable=no-member
                                             'from_window'):
             self._curr_src_frame.from_window(source)
         # additional
-        source.interval = self._ui.e_interval.value() * 60
+        source.interval = self._ui.e_interval.value()
         sources.save_source(source)

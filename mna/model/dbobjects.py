@@ -158,7 +158,7 @@ class Source(BaseModelMixin, Base):
     # Displayed source title
     title = Column(Unicode)
     last_refreshed = Column(DateTime)
-    # Refresh interval; default=1h
+    # Refresh interval in minutes; default=app default
     interval = Column(Integer, default=0)
     next_refresh = Column(DateTime, default=datetime.datetime.utcnow,
                           index=True)
@@ -191,6 +191,10 @@ class Source(BaseModelMixin, Base):
 
     # date of update configuration
     conf_updated = Column(DateTime)
+    # mark source as deleted
+    deleted = Column(DateTime, default=None)
+    # count failed article loading
+    failure_counter = Column(Integer, default=0)
 
     articles = orm.relationship(
         Article,

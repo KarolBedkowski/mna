@@ -31,7 +31,7 @@ from mna.gui import dlg_preferences
 from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
 from mna.model import db
-from mna.logic import groups, sources, articles as larts
+from mna.logic import groups, sources, articles as larts, worker
 from mna.common import messenger
 from mna import plugins
 
@@ -212,8 +212,10 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             return
         if isinstance(node, subs_model.SourceTreeNode):
             sources.force_refresh(node.oid)
+            worker.BG_JOBS_MNGR.wakeup_db_check()
         elif isinstance(node, subs_model.GroupTreeNode):
             sources.force_refresh_by_group(node.oid)
+            worker.BG_JOBS_MNGR.wakeup_db_check()
 
     def _on_art_clicked(self, index):
         """ Handle article click -  star/flag articles. """
@@ -254,8 +256,13 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._current_article = article
 
     def _on_action_update(self):  # pylint: disable=no-self-use
-        self._ui.a_update.setDisabled(True)
-        sources.force_refresh_all()
+        #self._ui.a_update.setDisabled(True)
+        if worker.BG_JOBS_MNGR.is_updating():
+            self._ui.a_update.setDisabled(True)
+            worker.BG_JOBS_MNGR.empty_queue()
+        else:
+            sources.force_refresh_all()
+            worker.BG_JOBS_MNGR.wakeup_db_check()
 
     def _on_action_add_group(self):
         dlg = dlg_edit_group.DlgEditGroup(self)
@@ -391,14 +398,18 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         if status == messenger.ST_UPDATE_FINISHED:
             pbar.hide()
             self._ui.a_update.setDisabled(False)
+            self._ui.a_update.setIcon(QtGui.QIcon(":main/reload.svg"))
         elif status == messenger.ST_UPDATE_STARTED:
-            self._ui.a_update.setDisabled(True)
-            self._progress_bar_step = data / 100.
+            self._ui.a_update.setIcon(QtGui.QIcon(":icons/icon-error.svg"))
+            self._progress_bar_step = 100. / data
             self._progress_bar_cntr = 0.0
+            _LOG.debug("_on_updating_status: %r -> %r",
+                       self._progress_bar_step, data)
             pbar.show()
             pbar.setRange(0, 100)
         else:
             self._progress_bar_cntr += self._progress_bar_step
+            _LOG.debug("_on_updating_status: %r", self._progress_bar_cntr)
             pbar.setValue(self._progress_bar_cntr)
 
     def _refresh_tree(self):
@@ -533,4 +544,9 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         else:
             group_oid, source_oid = None, sel_subs.oid
         sel_art = self._selected_article
-        tool.run(self, sel_art.oid if sel_art else None, source_oid, group_oid)
+        worker.BG_JOBS_MNGR.enable_updating(False)
+        try:
+            tool.run(self, sel_art.oid if sel_art else None, source_oid,
+                     group_oid)
+        finally:
+            worker.BG_JOBS_MNGR.enable_updating(True)

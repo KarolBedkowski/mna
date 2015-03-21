@@ -45,6 +45,7 @@ class DlgSourceEdit(QtGui.QDialog):
         QtGui.QDialog.__init__(self, parent)  # pylint:disable=no-member
         self._ui = dlg_source_edit_ui.Ui_DlgSourceEdit()
         self._ui.setupUi(self)
+        self._appconfig = appconfig.AppConfig()
         self._bind()
         source = db.get_one(DBO.Source, oid=source_oid)
         self.source = source
@@ -56,7 +57,7 @@ class DlgSourceEdit(QtGui.QDialog):
         self._ui.b_add_filter.clicked.connect(self._on_add_filter)
         self._ui.b_remove_filter.clicked.connect(self._on_remove_filter)
         self._ui.lv_filters.itemActivated.connect(self._on_filters_act)
-        if appconfig.AppConfig().debug:
+        if self._appconfig.debug:
             self._ui.b_dev_save.clicked.connect(self._on_dev_save)
             self._ui.b_dev_load.clicked.connect(self._on_dev_load)
             self._ui.b_dev_show.clicked.connect(self._on_dev_show)
@@ -72,7 +73,7 @@ class DlgSourceEdit(QtGui.QDialog):
             src_opt_frame = QtGui.QLabel("No options", self)
         self._ui.l_src_opt.addWidget(src_opt_frame)
         self._curr_src_frame = src_opt_frame
-        if not appconfig.AppConfig().debug:
+        if not self._appconfig.debug:
             self._ui.tab_widget.removeTab(4)
 
     def done(self, result):
@@ -89,7 +90,7 @@ class DlgSourceEdit(QtGui.QDialog):
         if self._curr_src_frame and hasattr(self._curr_src_frame, 'to_window'):
             self._curr_src_frame.to_window(source)
         self_ui = self._ui
-        self_ui.e_interval.setValue((source.interval or 3600) / 60)
+        self_ui.e_interval.setValue(source.interval or 0)
         self_ui.sb_art_keep_num.setValue(source.num_articles_to_keep or 0)
         self_ui.sb_art_keep_age.setValue(source.age_articles_to_keep or 0)
         self_ui.gb_delete_art.setChecked(bool(source.delete_old_articles))
@@ -115,7 +116,7 @@ class DlgSourceEdit(QtGui.QDialog):
             if not self._curr_src_frame.from_window(source):
                 return False
         self_ui = self._ui
-        source.interval = self._ui.e_interval.value() * 60
+        source.interval = self._ui.e_interval.value()
         source.num_articles_to_keep = self_ui.sb_art_keep_num.value()
         source.age_articles_to_keep = self_ui.sb_art_keep_age.value()
         source.delete_old_articles = self_ui.gb_delete_art.isChecked()

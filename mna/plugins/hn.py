@@ -125,7 +125,7 @@ class HNSource(base.AbstractSource):
             _LOG.debug('_get_story: sid=%r', story_id)
             info, page = websupport.download_page(_GET_STORY_URL % story_id)
         except websupport.LoadPageError, err:
-            _LOG.error('_get_story %d error %r; %r', story_id, err, info)
+            _LOG.error('_get_story %d error %r', story_id, err)
             self._log_error("Error loading story %d: %s" % (story_id, err))
             return None
         if not page:
