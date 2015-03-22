@@ -115,27 +115,38 @@ class GroupTreeNode(_TreeNode):
 
 
 _ICON_ERROR = ':icons/icon-error.svg'
+_ICON_UPDATING = ':main/reload.svg'
+
 
 class SourceTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, data):
         oid, title, unread, icon, last_error = data
+        self._updating = False
+        self._main_icon = None
         super(SourceTreeNode, self).__init__(
             parent, (title or u"Source %d" % oid), oid, unread)
-        if last_error:
-            self.icon = icons_helper.load_icon(_ICON_ERROR)
-        else:
-            self.icon = icons_helper.load_icon(icon)
+        self._set_icon(icon, last_error)
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
         caption, self.unread, icon, last_error = sources.get_source_info(
             session, self.oid)
         self.caption = caption or u"Source %d" % self.oid
+        self._set_icon(icon, last_error)
+
+    def set_status(self, status):
+        print 'set_status', status
+        if status == 'updating':
+            self.icon = icons_helper.load_icon(_ICON_UPDATING)
+        elif status == 'update_finished':
+            self.icon = self._main_icon
+
+    def _set_icon(self, icon, last_error):
         if last_error:
             self.icon = icons_helper.load_icon(_ICON_ERROR)
         else:
-            self.icon = icons_helper.load_icon(icon)
+            self._main_icon = self.icon = icons_helper.load_icon(icon)
 
 
 SPECIAL_STARRED = -1
@@ -228,6 +239,16 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         source.update(session)
         group.update_unread()
         self.update_specials(session)
+        self.layoutChanged.emit()  # pylint:disable=no-member
+
+    def set_source_status(self, source_id, status):
+        self.layoutAboutToBeChanged.emit()  # pylint:disable=no-member
+
+        for group in self.root.children:
+            for source in group.children:
+                if source.oid == source_id:
+                    source.set_status(status)
+                break
         self.layoutChanged.emit()  # pylint:disable=no-member
 
     def update_specials(self, session):

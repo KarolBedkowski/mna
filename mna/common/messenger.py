@@ -19,6 +19,8 @@ from PyQt4 import QtCore
 ST_UPDATE_STARTED = 0
 ST_UPDATE_FINISHED = 1
 ST_UPDATE_PING = 2
+ST_UPDATE_SOURCE_START = 3
+ST_UPDATE_SOURCE_FINISHED = 4
 
 
 # pylint:disable=no-member

@@ -407,6 +407,10 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
                        self._progress_bar_step, data)
             pbar.show()
             pbar.setRange(0, 100)
+        elif status == messenger.ST_UPDATE_SOURCE_START:
+            self._subs_model.set_source_status(data, 'updating')
+        elif status == messenger.ST_UPDATE_SOURCE_FINISHED:
+            self._subs_model.set_source_status(data, 'update_finished')
         else:
             self._progress_bar_cntr += self._progress_bar_step
             _LOG.debug("_on_updating_status: %r", self._progress_bar_cntr)
