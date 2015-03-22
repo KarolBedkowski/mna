@@ -1,8 +1,3 @@
 ! usuniecie testowych danych z bootstrap
 
-* zatrzymywanie aktualizacji
-
 * podgląd przy wyborze xpath
-* wersjonowanie schemy  @dev
-
-* blokowanie src po kilku błędach
