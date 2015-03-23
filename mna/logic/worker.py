@@ -7,13 +7,12 @@ __author__ = u"Karol Będkowski"
 __copyright__ = u"Copyright (c) Karol Będkowski, 2014-2015"
 __version__ = "2015-01-30"
 
+import os
 import logging
 import datetime
 import threading
 import time
 import Queue
-import multiprocessing
-from multiprocessing import queues
 
 from mna.model import db
 from mna.model import dbobjects as DBO
@@ -26,11 +25,13 @@ from mna.model import repo
 _LOG = logging.getLogger(__name__)
 _LONG_SLEEP = 15  # sleep when no source processed
 _SHORT_SLEEP = 1  # sleep after retrieve articles from source
-_WORKERS = 5  # number of background workers
+_WORKERS = 3  # number of background workers
+_STARTED = Queue.Queue()
+_ENDED = Queue.Queue()
 
 
 # pylint:disable=no-member,too-few-public-methods
-class Worker(multiprocessing.Process):
+class Worker(threading.Thread):
     """ Worker - process one source and store result in database.
 
     Arguments:
@@ -45,17 +46,22 @@ class Worker(multiprocessing.Process):
         self._p_name = "Worker: id=%d" % id(self)
 
     def run(self):
-        while not self.terminate_event.is_set():
+        while True:
             source_id = self.update_q.get()
-            self._p_name = "Worker: id=%d src=%d" % (id(self), source_id)
-            _LOG.debug("%s in queue: %d; unfinished: %d",
-                       self._p_name, self.update_q.qsize(),
-                       self.update_q.unfinished_tasks_cnt())
+            self._p_name = "Worker: id=%d src=%d" % (os.getpid(),
+                                                     source_id or -1)
+            _LOG.debug("%s in queue: %d",
+                       self._p_name, self.update_q.qsize())
+            if source_id is None:
+                self.update_q.task_done()
+                return
+            _STARTED.put(source_id)
             try:
                 self._run(source_id)
             finally:
                 _LOG.debug('%s task done', self._p_name)
                 self.update_q.task_done()
+                _ENDED.put(source_id)
 
     def _run(self, source_id):
         self.gui_update_queue.put(('source_updating_start', source_id))
@@ -266,7 +272,7 @@ def _process_sources(update_q):
     session.close()
     new_sources = []
     if len(sources) > 0:
-        sources_in_queue = update_q.get_queue()
+        sources_in_queue = []  # update_q.get_queue()
         new_sources = [source_id for source_id in sources
                        if source_id not in sources_in_queue]
         _LOG.debug("MainWorker: processing %d sources", len(new_sources))
@@ -278,8 +284,11 @@ def _process_sources(update_q):
             messenger.MESSENGER.emit_announce(u"Starting sources update")
             messenger.MESSENGER.emit_updating_status(
                 messenger.ST_UPDATE_STARTED, len(new_sources))
+
+            with update_q.all_tasks_done:
+                unfinished_tasks_cnt = update_q.unfinished_tasks
             _LOG.info("_process_sources %d, %d", update_q.qsize(),
-                      update_q.unfinished_tasks_cnt())
+                      unfinished_tasks_cnt)
     _LOG.debug("MainWorker: end processing")
     return len(new_sources)
 
@@ -291,8 +300,8 @@ class WorkerDbCheck(threading.Thread):
         super(WorkerDbCheck, self).__init__()
         self.daemon = True
         self.update_q = update_q
-        self.command_q = multiprocessing.JoinableQueue()
-        self._enable_flag = multiprocessing.Event()
+        self.command_q = Queue.Queue()
+        self._enable_flag = threading.Event()
 
     def run(self):
         _LOG.info("Starting worker")
@@ -360,34 +369,33 @@ class WorkerGuiUpdate(threading.Thread):
         _LOG.debug("WorkerGuiUpdate: exit")
 
 
-class MyQueue(queues.JoinableQueue):
+class WorkerStatus(threading.Thread):
+    def __init__(self, messages_queue, workers):
+        super(WorkerStatus, self).__init__()
+        self.messages_queue = messages_queue
+        self.workers = workers
+        self.daemon = True
 
-    def is_unfinished(self):
-        with self._cond:
-            # pylint: disable=protected-access
-            return not self._unfinished_tasks._semlock._is_zero()
-
-    def unfinished_tasks_cnt(self):
-        with self._cond:
-            # pylint: disable=protected-access
-            return self._unfinished_tasks._semlock._get_value()
-
-    def get_queue(self):
-        with self._cond:
-            return list(self._buffer)
+    def run(self):
+        while True:
+            _LOG.info('WorkerStatus: %r, %r, %r, %r',
+                      self.messages_queue.qsize(),
+                      _STARTED.qsize(), _ENDED.qsize(),
+                      [thr.is_alive() for thr in self.workers])
+            time.sleep(5)
 
 
 class BgJobsManager(object):
     def __init__(self):
         # stop all background process
-        self._src_update_wrks_terminate = multiprocessing.Event()
-        self._src_update_q = MyQueue()
+        self._src_update_wrks_terminate = threading.Event()
+        self._src_update_q = Queue.Queue()
         self._src_update_wkrs = []
         # background worker that periodically check database for sources to
         # update and put its id to _src_update_q
         self._db_check_wkr = None
         # queue for updating gui events
-        self._gui_update_q = multiprocessing.Queue()
+        self._gui_update_q = Queue.Queue()
         # worker that generating events from _gui_update_q queue
         self._gui_update_wkr = None
 
@@ -404,6 +412,9 @@ class BgJobsManager(object):
             wkr.start()
             self._src_update_wkrs.append(wkr)
 
+        wkr = WorkerStatus(self._src_update_q, self._src_update_wkrs)
+        wkr.start()
+
         self._db_check_wkr = WorkerDbCheck(self._src_update_q)
         self._db_check_wkr.start()
 
@@ -417,13 +428,28 @@ class BgJobsManager(object):
         self._gui_update_q.put(None)
         self._src_update_wrks_terminate.set()
         self.empty_queue()
-        self._src_update_q.close()
+        for _dummy in xrange(_WORKERS):
+            self._src_update_q.put(None)
+        ended = set()
+        try:
+            while True:
+                ended.add(_ENDED.get(False))
+        except Queue.Empty:
+            pass
+        try:
+            while True:
+                itm = _STARTED.get(False)
+                if itm not in ended:
+                    _LOG.warn('Not ended: %r', itm)
+        except Queue.Empty:
+            pass
+
         time.sleep(3)
         for wkr in self._src_update_wkrs:
             if wkr.is_alive():
                 wkr.terminate()
         _LOG.debug("BgJobsManager.stop_workers joining queue")
-        self._src_update_q.join_thread()
+        self._src_update_q.join()
         _LOG.debug("BgJobsManager.stop_workers done")
 
     def empty_queue(self):
@@ -438,7 +464,8 @@ class BgJobsManager(object):
         _LOG.debug("BgJobsManager.empty_queue done")
 
     def is_updating(self):
-        return self._src_update_q.is_unfinished()
+        with self._src_update_q.all_tasks_done:
+            return bool(self._src_update_q.unfinished_tasks)
 
     def enable_updating(self, enable):
         self._db_check_wkr.enable_updating(enable)
