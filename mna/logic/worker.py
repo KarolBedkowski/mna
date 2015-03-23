@@ -55,13 +55,13 @@ class Worker(threading.Thread):
             if source_id is None:
                 self.update_q.task_done()
                 return
-            _STARTED.put(source_id)
+            # _STARTED.put(source_id)
             try:
                 self._run(source_id)
             finally:
                 _LOG.debug('%s task done', self._p_name)
                 self.update_q.task_done()
-                _ENDED.put(source_id)
+                # _ENDED.put(source_id)
 
     def _run(self, source_id):
         self.gui_update_queue.put(('source_updating_start', source_id))
@@ -272,7 +272,8 @@ def _process_sources(update_q):
     session.close()
     new_sources = []
     if len(sources) > 0:
-        sources_in_queue = []  # update_q.get_queue()
+        with update_q.mutex:
+            sources_in_queue = set(update_q.queue)
         new_sources = [source_id for source_id in sources
                        if source_id not in sources_in_queue]
         _LOG.debug("MainWorker: processing %d sources", len(new_sources))
@@ -385,6 +386,22 @@ class WorkerStatus(threading.Thread):
             time.sleep(5)
 
 
+def _debug_not_ended_src():
+    ended = set()
+    try:
+        while True:
+            ended.add(_ENDED.get(False))
+    except Queue.Empty:
+        pass
+    try:
+        while True:
+            itm = _STARTED.get(False)
+            if itm not in ended:
+                _LOG.warn('Not ended: %r', itm)
+    except Queue.Empty:
+        pass
+
+
 class BgJobsManager(object):
     def __init__(self):
         # stop all background process
@@ -412,8 +429,8 @@ class BgJobsManager(object):
             wkr.start()
             self._src_update_wkrs.append(wkr)
 
-        wkr = WorkerStatus(self._src_update_q, self._src_update_wkrs)
-        wkr.start()
+        # wkr = WorkerStatus(self._src_update_q, self._src_update_wkrs)
+        # wkr.start()
 
         self._db_check_wkr = WorkerDbCheck(self._src_update_q)
         self._db_check_wkr.start()
@@ -430,19 +447,8 @@ class BgJobsManager(object):
         self.empty_queue()
         for _dummy in xrange(_WORKERS):
             self._src_update_q.put(None)
-        ended = set()
-        try:
-            while True:
-                ended.add(_ENDED.get(False))
-        except Queue.Empty:
-            pass
-        try:
-            while True:
-                itm = _STARTED.get(False)
-                if itm not in ended:
-                    _LOG.warn('Not ended: %r', itm)
-        except Queue.Empty:
-            pass
+
+        # _debug_not_ended_src()
 
         time.sleep(3)
         for wkr in self._src_update_wkrs:
