@@ -65,7 +65,7 @@ class Worker(threading.Thread):
 
     def _run(self, source_id):
         self.gui_update_queue.put(('source_updating_start', source_id))
-        session = db.Session(autoflush=False, autocommit=False)
+        session = db.Session()  # autoflush=False, autocommit=False)
         source_cfg = self._get_and_check_source(session, source_id)
         if not source_cfg or source_cfg.processing:
             _LOG.warn("%s not processing %r", self._p_name, source_cfg)
@@ -74,6 +74,7 @@ class Worker(threading.Thread):
                  (source_id,
                   source_cfg.group_id if source_cfg else None,
                   source_cfg.title if source_cfg else str(source_id))))
+            db.Session.remove()
             return
 
         _LOG.debug("%s processing %s/%s", self._p_name, source_cfg.name,
@@ -89,6 +90,7 @@ class Worker(threading.Thread):
             _LOG.error("%s source class not found for %r %r",
                        self._p_name, source_cfg.name, source_cfg.title)
             source_cfg.add_log("ERROR", "Internal error: source not found")
+            db.Session.remove()
             return
         # load articles
         cnt = self._load_articles(source, source_cfg, session)
@@ -96,6 +98,7 @@ class Worker(threading.Thread):
             self.gui_update_queue.put(('source_update_error',
                                        (source_cfg.oid, source_cfg.group_id,
                                         source_cfg.title)))
+            db.Session.remove()
             return
         # update configuration
         force_update = bool(source_cfg.last_error) or \
@@ -120,6 +123,7 @@ class Worker(threading.Thread):
                                    (source_cfg.oid, source_cfg.group_id,
                                     source_cfg.title, cnt, force_update)))
         _LOG.debug("%s finished", self._p_name)
+        db.Session.remove()
         return
 
     def _load_articles(self, source, source_cfg, session):

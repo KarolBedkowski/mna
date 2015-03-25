@@ -29,7 +29,9 @@ from mna.model import sqls
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
-Session = orm.sessionmaker()  # pylint: disable=C0103
+Session = orm.scoped_session(
+    orm.sessionmaker(autocommit=False,
+                     autoflush=False))  # pylint: disable=C0103
 _CURRENT_SCHEMA_VER = 2
 
 
@@ -65,7 +67,9 @@ def connect(filename, debug=False, *args, **kwargs):
                                       echo=False,
                                       connect_args=args,
                                       native_datetime=True,
-                                      isolation_level='SERIALIZABLE')
+                                      isolation_level='SERIALIZABLE',
+                                      strategy='threadlocal',
+                                      )
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
