@@ -69,13 +69,16 @@ class BaseModelMixin(object):
             self.modified = datetime.datetime.utcnow()  # pylint: disable=W0201
 
     def __repr__(self):
-        info = []
+        return "<" + self.__class__.__name__ + ' ' + \
+            ','.join(key + "=" + repr(val)
+                     for key, val in self.obj_info()) + ">"
+
+    def obj_info(self):
         for prop in orm.object_mapper(self).iterate_properties:
             if isinstance(prop, orm.ColumnProperty) or \
                     (isinstance(prop, orm.RelationshipProperty)
                      and prop.secondary):
-                info.append("%r=%r" % (prop.key, getattr(self, prop.key)))
-        return "<" + self.__class__.__name__ + ' ' + ','.join(info) + ">"
+                yield prop.key, getattr(self, prop.key)
 
 
 class Group(BaseModelMixin, Base):
@@ -135,7 +138,7 @@ class Article(BaseModelMixin, Base):
     def compute_id(link, title, author, source_id):
         if link:
             return link
-        return"".join(map(hash, (title, author, source_id)))
+        return"".join(map(str, map(hash, (title, author, source_id))))
 
 
 Index('idx_articles_chs', Article.source_id, Article.internal_id)
@@ -155,8 +158,8 @@ class Source(BaseModelMixin, Base):
     # Displayed source title
     title = Column(Unicode)
     last_refreshed = Column(DateTime)
-    # Refresh interval; default=1h
-    interval = Column(Integer, default=3600)
+    # Refresh interval in minutes; default=app default
+    interval = Column(Integer, default=0)
     next_refresh = Column(DateTime, default=datetime.datetime.utcnow,
                           index=True)
     initial_score = Column(Integer, default=0)
@@ -184,6 +187,15 @@ class Source(BaseModelMixin, Base):
         backref=orm.backref("sources", cascade="all, delete-orphan",
                             order_by="Source.title"))
 
+    icon_id = Column(Unicode(64))
+
+    # date of update configuration
+    conf_updated = Column(DateTime)
+    # mark source as deleted
+    deleted = Column(DateTime, default=None)
+    # count failed article loading
+    failure_counter = Column(Integer, default=0)
+
     articles = orm.relationship(
         Article,
         backref=orm.backref("source"),
@@ -195,9 +207,9 @@ class Source(BaseModelMixin, Base):
 
     @hybrid_property
     def unread(self):
-        return orm.object_session(self).query(Article).\
+        return orm.object_session(self).query(func.count(Article)).\
             filter(Article.source_id == self.oid, Article.read == 0).\
-            count()
+            scalar()
 
     @unread.expression
     def unread(cls):  # pylint:disable=no-self-argument
@@ -212,7 +224,10 @@ class Source(BaseModelMixin, Base):
         return self.conf.get('filter_minimal_score', 0)
 
     def add_log(self, category, message):
-        self.source_log.append(SourceLog(category=category, message=message))  # pylint:disable=no-member
+        if not __debug__ and category == 'debug':
+            return
+        # pylint:disable=no-member
+        self.source_log.append(SourceLog(category=category, message=message))
 
     def get_last_article(self):
         return self.articles.order_by(Article.updated.desc()).first()
@@ -226,6 +241,11 @@ class Source(BaseModelMixin, Base):
             filter(or_(Filter.source_id == self.oid,
                        Filter.source_id == None))
         return fltrs
+
+    def get_non_debug_log(self):
+        return orm.object_session(self).query(SourceLog).\
+            filter(SourceLog.source_id == self.oid,
+                   SourceLog.category != 'debug')
 
 
 class Filter(BaseModelMixin, Base):
@@ -265,3 +285,20 @@ class SourceLog(BaseModelMixin, Base):
         Source,
         backref=orm.backref("source_log", cascade="all, delete-orphan",
                             order_by="SourceLog.date"))
+
+
+class AppMeta(BaseModelMixin, Base):
+    """Application metadata object. """
+
+    __tablename__ = "app_meta"
+
+    key = Column(Unicode, primary_key=True)
+    value = Column(Unicode)
+
+    def _get_as_int(self):
+        return int(self.value)
+
+    def _set_as_int(self, value):
+        self.value = str(value)
+
+    as_int = property(_get_as_int, _set_as_int)

@@ -14,12 +14,12 @@ __version__ = "2015-01-31"
 
 
 import logging
-import weakref
 
 from PyQt4 import QtCore, QtGui
 
 from mna.model import db
 from mna.logic import groups, sources, articles
+from mna.common import icons_helper
 
 _LOG = logging.getLogger(__name__)
 
@@ -30,19 +30,25 @@ ID_ROLE = QtCore.Qt.UserRole + 1  # pylint:disable=no-member
 class _TreeNode(object):
     def __init__(self, parent, caption=None, oid=None, unread=None):
         self.clear()
-        self.parent = weakref.proxy(parent) if parent else None
+        self.parent = parent
         self.caption = caption
         self.oid = oid
         self.unread = unread
+        self.icon = QtCore.QVariant()  # pylint:disable=no-member
 
     def __str__(self):
         if self.unread:
             return self.caption + "  (" + str(self.unread) + ")"
         return self.caption
 
+    def __unicode__(self):
+        if self.unread:
+            return self.caption + "  (" + str(self.unread) + ")"
+        return self.caption
+
     def __repr__(self):
-        return "<%s %s; %r>" % (self.__class__.__name__,
-                                self.caption, self.oid) + \
+        return u"<%s %s; %r>" % (self.__class__.__name__,
+                                 self.caption, self.oid) + \
             "\n".join(" - " + repr(child) for child in self.children) + "</>"
 
     def clear(self):
@@ -97,6 +103,7 @@ class GroupTreeNode(_TreeNode):
     """ Group node """
     def __init__(self, parent, group_oid, group_name):
         super(GroupTreeNode, self).__init__(parent, group_name, group_oid)
+        self.icon = icons_helper.load_icon(':icons/icon-folder.svg')
 
     def update(self, session=None):
         """ Update group caption and unread counter from database. """
@@ -107,31 +114,65 @@ class GroupTreeNode(_TreeNode):
         self.unread = sum(cld.unread for cld in self.children)
 
 
+_ICON_ERROR = ':icons/icon-error.svg'
+_ICON_UPDATING = ':main/reload.svg'
+
+
 class SourceTreeNode(_TreeNode):
     """ Group node """
-    def __init__(self, parent, title, oid, unread):
+    def __init__(self, parent, data):
+        oid, title, unread, icon, last_error = data
+        self._updating = False
+        self._main_icon = None
         super(SourceTreeNode, self).__init__(
             parent, (title or u"Source %d" % oid), oid, unread)
+        self._set_icon(icon, last_error)
 
     def update(self, session=None):
         """ Update source caption and unread counter from database. """
-        caption, self.unread = sources.get_source_info(session, self.oid)
+        caption, self.unread, icon, last_error = sources.get_source_info(
+            session, self.oid)
         self.caption = caption or u"Source %d" % self.oid
+        self._set_icon(icon, last_error)
+
+    def set_status(self, status):
+        print 'set_status', status
+        if status == 'updating':
+            self.icon = icons_helper.load_icon(_ICON_UPDATING)
+        elif status == 'update_finished':
+            self.icon = self._main_icon
+
+    def _set_icon(self, icon, last_error):
+        if last_error:
+            self.icon = icons_helper.load_icon(_ICON_ERROR)
+        else:
+            self._main_icon = self.icon = icons_helper.load_icon(icon)
 
 
 SPECIAL_STARRED = -1
 SPECIAL_ALL = -2
 SPECIAL_SEARCH = -3
 
+_SPECIAL_ICONS = {
+    SPECIAL_SEARCH: ':icons/icon-search.svg',
+    SPECIAL_ALL: ':icons/icon-all.svg',
+    SPECIAL_STARRED: ':icons/icon-starred.svg'
+}
+
 
 class SpecialTreeNode(_TreeNode):
     """Special node (all nodes, stared, etc). """
     def __init__(self, parent, title, sid):
         super(SpecialTreeNode, self).__init__(parent, title, sid)
+        icon = _SPECIAL_ICONS.get(sid)
+        if icon:
+            self.icon = icons_helper.load_icon(icon)
 
     def update(self, session):
         if self.oid == SPECIAL_STARRED:
             self.unread = articles.get_starred_count(session)
+        elif self.oid == SPECIAL_ALL:
+            self.unread = articles.get_unread_count(session)
 
     def get_font(self):
         return QtCore.QVariant()  # pylint:disable=no-member
@@ -175,8 +216,7 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         for (group_oid, group_name), group \
                 in groups.get_group_sources_tree(session):
             obj = GroupTreeNode(self.root, group_oid, group_name)
-            obj.children = [SourceTreeNode(obj, s_title, s_oid, s_unread)
-                            for s_oid, s_title, s_unread in group]
+            obj.children = [SourceTreeNode(obj, data) for data in group]
             obj.update_unread()
             self.root.children.append(obj)
         self.update_specials(session)
@@ -201,6 +241,16 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         self.update_specials(session)
         self.layoutChanged.emit()  # pylint:disable=no-member
 
+    def set_source_status(self, source_id, status):
+        self.layoutAboutToBeChanged.emit()  # pylint:disable=no-member
+
+        for group in self.root.children:
+            for source in group.children:
+                if source.oid == source_id:
+                    source.set_status(status)
+                break
+        self.layoutChanged.emit()  # pylint:disable=no-member
+
     def update_specials(self, session):
         for spec in self._specials.itervalues():
             spec.update(session)
@@ -216,11 +266,13 @@ class TreeModel(QtCore.QAbstractItemModel):  # pylint:disable=no-member
         if not index.isValid():
             return QtCore.QVariant()
         if role == QtCore.Qt.DisplayRole:
-            return QtCore.QVariant(str(self.node_from_index(index)))
+            return QtCore.QVariant(unicode(self.node_from_index(index)))
         elif role == QtCore.Qt.FontRole:
             return self.node_from_index(index).get_font()
         elif role == ID_ROLE:
             return self.node_from_index(index).oid
+        elif role == QtCore.Qt.DecorationRole:
+            return self.node_from_index(index).icon
         return QtCore.QVariant()
 
     # pylint:disable=no-member,no-self-use

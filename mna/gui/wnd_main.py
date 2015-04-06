@@ -17,6 +17,7 @@ import sys
 import logging
 import webbrowser
 import urllib2
+import functools
 
 from PyQt4 import QtGui, QtWebKit, QtCore
 
@@ -30,8 +31,9 @@ from mna.gui import dlg_preferences
 from mna.gui import wzd_add_src
 from mna.lib.appconfig import AppConfig
 from mna.model import db
-from mna.logic import groups, sources, articles as larts
+from mna.logic import groups, sources, articles as larts, worker
 from mna.common import messenger
+from mna import plugins
 
 _LOG = logging.getLogger(__name__)
 
@@ -46,6 +48,8 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         QtGui.QMainWindow.__init__(self, parent)  # pylint: disable=no-member
         self._appconfig = AppConfig()
         self._current_article = None
+        self._progress_bar_step = 0
+        self._progress_bar_cntr = 0.0
         self._ui = wnd_main_ui.Ui_WndMain()
         self._ui.setupUi(self)
         self._setup()
@@ -76,6 +80,12 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._t_search.setPlaceholderText(self.tr("Search"))
         self._t_search.setMaximumWidth(200)
         self._ui.toolbar.addWidget(self._t_search)
+        # menus
+        self._build_tools_menu()
+        # statusbar
+        self._sb_progressbar = QtGui.QProgressBar(self.statusBar())
+        self.statusBar().addPermanentWidget(self._sb_progressbar)
+        self._sb_progressbar.hide()
 
     def _bind(self):
         # actions
@@ -104,6 +114,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         messenger.MESSENGER.source_updated.connect(self._on_source_updated)
         messenger.MESSENGER.group_updated.connect(self._on_group_updated)
         messenger.MESSENGER.announce.connect(self._on_announce)
+        messenger.MESSENGER.updating_status.connect(self._on_updating_status)
 
     @property
     def _selected_subscription(self):
@@ -116,7 +127,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
     def _selected_article(self):
         """ Get current selected article """
         index = self._ui.tv_articles.selectionModel().currentIndex()
-        if index:
+        if index and index.isValid():
             return self._arts_list_model.node_from_index(index)
 
     def closeEvent(self, event):
@@ -140,12 +151,14 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             return
         menu = QtGui.QMenu()
         menu.addAction(self.tr("Edit")).triggered.\
-                connect(self._on_subs_cmenu_edit)
+            connect(self._on_subs_cmenu_edit)
         menu.addAction(self.tr("Delete")).triggered.\
-                connect(self._on_subs_cmenu_del)
+            connect(self._on_subs_cmenu_del)
         if isinstance(selected, subs_model.SourceTreeNode):
             menu.addAction(self.tr("Info")).triggered.\
-                    connect(self._on_subs_cmenu_info)
+                connect(self._on_subs_cmenu_info)
+        menu.addAction(self.tr("Refresh")).triggered.\
+            connect(self._on_subs_cmenu_refresh)
         menu.exec_(self._ui.tv_subs.viewport(). mapToGlobal(position))
 
     def _on_subs_cmenu_edit(self):
@@ -193,6 +206,17 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         dlg = dlg_source_info.DlgSourceInfo(self, node.oid)
         dlg.exec_()
 
+    def _on_subs_cmenu_refresh(self):
+        node = self._selected_subscription
+        if node is None:
+            return
+        if isinstance(node, subs_model.SourceTreeNode):
+            sources.force_refresh(node.oid)
+            worker.BG_JOBS_MNGR.wakeup_db_check()
+        elif isinstance(node, subs_model.GroupTreeNode):
+            sources.force_refresh_by_group(node.oid)
+            worker.BG_JOBS_MNGR.wakeup_db_check()
+
     def _on_art_clicked(self, index):
         """ Handle article click -  star/flag articles. """
         index = self._ui.tv_articles.selectionModel().currentIndex()
@@ -221,7 +245,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         _LOG.debug("_on_art_sel_changed %r", item.oid)
         article, content = larts.get_article_content(
             item.oid, False, session=session)
-        self._ui.article_view.setHtml(content)
+        self._ui.article_view.setHtml(content, QtCore.QUrl(article.link))
         self._subs_model.update_source(
             article.source_id, article.source.group_id)
         if self._current_article:
@@ -232,7 +256,13 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         self._current_article = article
 
     def _on_action_update(self):  # pylint: disable=no-self-use
-        sources.force_refresh_all()
+        #self._ui.a_update.setDisabled(True)
+        if worker.BG_JOBS_MNGR.is_updating():
+            self._ui.a_update.setDisabled(True)
+            worker.BG_JOBS_MNGR.empty_queue()
+        else:
+            sources.force_refresh_all()
+            worker.BG_JOBS_MNGR.wakeup_db_check()
 
     def _on_action_add_group(self):
         dlg = dlg_edit_group.DlgEditGroup(self)
@@ -362,6 +392,30 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         if isinstance(node, subs_model.GroupTreeNode) and group_id == node.oid:
             self._arts_list_model.refresh()
 
+    @QtCore.pyqtSlot(int, int)
+    def _on_updating_status(self, status, data):
+        pbar = self._sb_progressbar
+        if status == messenger.ST_UPDATE_FINISHED:
+            pbar.hide()
+            self._ui.a_update.setDisabled(False)
+            self._ui.a_update.setIcon(QtGui.QIcon(":main/reload.svg"))
+        elif status == messenger.ST_UPDATE_STARTED:
+            self._ui.a_update.setIcon(QtGui.QIcon(":icons/icon-error.svg"))
+            self._progress_bar_step = 100. / data
+            self._progress_bar_cntr = 0.0
+            _LOG.debug("_on_updating_status: %r -> %r",
+                       self._progress_bar_step, data)
+            pbar.show()
+            pbar.setRange(0, 100)
+        elif status == messenger.ST_UPDATE_SOURCE_START:
+            self._subs_model.set_source_status(data, 'updating')
+        elif status == messenger.ST_UPDATE_SOURCE_FINISHED:
+            self._subs_model.set_source_status(data, 'update_finished')
+        else:
+            self._progress_bar_cntr += self._progress_bar_step
+            _LOG.debug("_on_updating_status: %r", self._progress_bar_cntr)
+            pbar.setValue(self._progress_bar_cntr)
+
     def _refresh_tree(self):
         """ Refresh tree; keep expanded nodes """
         self._save_expanded_tree_nodes()
@@ -473,3 +527,30 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
             index = self._subs_model.index(row, 0, None)
             model.setCurrentIndex(
                 index, QtGui.QItemSelectionModel.ClearAndSelect)
+
+    def _build_tools_menu(self):
+        if not plugins.TOOLS:
+            return
+        # TODO: group tools
+        menu = self._ui.menubar
+        smenu = QtGui.QMenu("Tools", menu)
+        for name, clazz in sorted(plugins.TOOLS.iteritems()):
+            smenu.addAction(clazz.name).triggered.connect(
+                functools.partial(self._on_tool_action, name))
+        menu.addAction(smenu.menuAction())
+
+    def _on_tool_action(self, tool_name):
+        tool_clazz = plugins.TOOLS[tool_name]
+        tool = tool_clazz()
+        sel_subs = self._selected_subscription
+        if isinstance(sel_subs, subs_model.GroupTreeNode):
+            group_oid, source_oid = sel_subs.oid, None
+        else:
+            group_oid, source_oid = None, sel_subs.oid
+        sel_art = self._selected_article
+        worker.BG_JOBS_MNGR.enable_updating(False)
+        try:
+            tool.run(self, sel_art.oid if sel_art else None, source_oid,
+                     group_oid)
+        finally:
+            worker.BG_JOBS_MNGR.enable_updating(True)

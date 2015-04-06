@@ -14,7 +14,9 @@ __version__ = "2014-06-14"
 import sys
 import optparse
 import logging
+import socket
 
+socket.setdefaulttimeout(30)
 _LOG = logging.getLogger(__name__)
 
 import sip
@@ -62,6 +64,9 @@ def run():
     from mna.model import db
     db.connect(db.find_db_file(config), options.debug_sql)
 
+    from mna.model import repo
+    repo.Reporitory().setup(config.user_cache_dir)
+
     # load plugins
     from mna import plugins
     plugins.load_plugins()
@@ -77,17 +82,17 @@ def run():
     from PyQt4 import QtGui
     app = QtGui.QApplication(sys.argv)  # pylint:disable=no-member
 
-    from mna.logic import worker
-    main_worker = worker.MainWorker()
-    main_worker.start()  # pylint:disable=no-member
-
     from mna.gui import wnd_main
 
     window = wnd_main.WndMain()
     window.show()  # pylint:disable=no-member
+
+    from mna.logic import worker
+    worker.BG_JOBS_MNGR.start_workers()
+
     app.exec_()
 
-    main_worker.terminate()  # pylint:disable=no-member
+    worker.BG_JOBS_MNGR.stop_workers()
 
     # cleanup
     from mna.logic import articles

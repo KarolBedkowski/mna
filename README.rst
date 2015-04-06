@@ -5,7 +5,7 @@
 :Credits: Copyright (c) Karol Będkowski, 2014-2015
 :Licence: GPLv2+
 :Status: alpha (working, bugs)
-:Tags: news agent, news aggregator, rss
+:Tags: news agent, news aggregator, rss, website monitoring
 
 
 News aggregate & websites changes monitoring application.
@@ -22,13 +22,29 @@ Author shall not be responsible for loss of data under any circumstance.
 Installation
 ============
 
-This application don't require special steps to install.
-Just unpack and run via mna.py
+1. unpack
+2. run: make
+3. launch via: ./mna.py
+
 
 Runtime Requirements
 --------------------
 * Python 2.7.x
 * sqlalchemy 0.7.9+
+* pyqt4 (with webkit)
+
+
+Files
+-----
+
+~/.config/mna/mna.cfg
+   application configuration 
+
+~/.local/share/mna/mna.db
+   sources configuration & articles storage 
+
+~/.cache/mna
+   cache for source specific files (i.e. favicons)
 
 
 Licence

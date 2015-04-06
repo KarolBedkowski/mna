@@ -16,6 +16,7 @@ _LOG = logging.getLogger(__name__)
 MODULES = {}
 SOURCES = {}
 FILTERS = {}
+TOOLS = {}
 
 
 def load_plugins():
@@ -37,8 +38,12 @@ def load_plugins():
 
     SOURCES.update(_load_sources_from_subclass(base.AbstractSource))
     FILTERS.update(_load_sources_from_subclass(base.AbstractFilter))
+    TOOLS.update((name, clazz) for name, clazz
+                 in _load_sources_from_subclass(base.AbstractTool)
+                 if clazz.is_available())
     _LOG.info('Sources: %s', ', '.join(sorted(SOURCES.keys())))
     _LOG.info('Filters: %s', ', '.join(sorted(FILTERS.keys())))
+    _LOG.info('Tools: %s', ', '.join(sorted(TOOLS.keys())))
 
 
 def _load_sources_from_subclass(base_class):

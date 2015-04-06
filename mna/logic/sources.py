@@ -46,7 +46,9 @@ def mark_source_read(source_ids, read=True):
 
 
 def save_source(source):
+    """ Save source to database; update `conf_updated`."""
     _LOG.info("save_source %r", source)
+    source.conf_updated = datetime.datetime.now()
     db.save(source, True)
     _LOG.info("save_source done")
 
@@ -65,13 +67,34 @@ def force_refresh_all():
     """ Force refresh all sources. """
     _LOG.info("Sources.force_refresh_all()")
     session = db.Session()
-    session.query(DBO.Source).update({"next_refresh": datetime.datetime.now()})
+    session.query(DBO.Source).\
+        filter_by(processing=0).\
+        update({"next_refresh": datetime.datetime.now()})
+    session.commit()
+
+
+def force_refresh(source_oid):
+    _LOG.info("Sources.force_refresh(%r)", source_oid)
+    session = db.Session()
+    session.query(DBO.Source).\
+        filter_by(oid=source_oid, processing=0).\
+        update({"next_refresh": datetime.datetime.now(),
+                "enabled": 1})
+    session.commit()
+
+
+def force_refresh_by_group(group_oid):
+    _LOG.info("Sources.force_refresh_by_group(%r)", group_oid)
+    session = db.Session()
+    session.query(DBO.Source).\
+        filter_by(group_id=group_oid, processing=0).\
+        update({"next_refresh": datetime.datetime.now()})
     session.commit()
 
 
 def get_source_info(session, source_oid):
-    """ Get title and unread count for source. """
+    """ Get title, unread count and icon_id for source. """
     session = session or db.Session()
-    title, unread = session.query(DBO.Source.title, DBO.Source.unread).\
+    return session.query(DBO.Source.title, DBO.Source.unread,
+                         DBO.Source.icon_id, DBO.Source.last_error).\
         filter(DBO.Source.oid == source_oid).first()
-    return title, unread

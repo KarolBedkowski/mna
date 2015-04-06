@@ -22,13 +22,17 @@ import datetime
 import sqlalchemy
 from sqlalchemy.engine import Engine
 from sqlalchemy import orm
+from sqlalchemy import func
 # from sqlalchemy.pool import SingletonThreadPool
 
 from mna.model import sqls
 from mna.model import dbobjects as DBO
 
 _LOG = logging.getLogger(__name__)
-Session = orm.sessionmaker()  # pylint: disable=C0103
+Session = orm.scoped_session(
+    orm.sessionmaker(autocommit=False,
+                     autoflush=False))  # pylint: disable=C0103
+_CURRENT_SCHEMA_VER = 2
 
 
 def text_factory(text):
@@ -63,10 +67,15 @@ def connect(filename, debug=False, *args, **kwargs):
                                       echo=False,
                                       connect_args=args,
                                       native_datetime=True,
-                                      isolation_level='SERIALIZABLE')
+                                      isolation_level='SERIALIZABLE',
+                                      strategy='threadlocal',
+                                      )
     for schema in sqls.SCHEMA_DEF:
         for sql in schema:
             engine.execute(sql)
+    sqls.add_icon_id(engine)
+    sqls.add_source_conf_updated(engine)
+    sqls.update_schema(engine, _CURRENT_SCHEMA_VER)
     Session.configure(bind=engine)  # pylint: disable=E1120
 
     if debug:
@@ -136,6 +145,16 @@ def find_db_file(config):
 
 
 def _bootstrap_data(session):
+    if count(DBO.AppMeta, key='schema_version') == 0:
+        # schema version
+        ameta = DBO.AppMeta(key='schema_version')
+        ameta.as_int = _CURRENT_SCHEMA_VER
+        session.add(ameta)
+
+    initialized = get_one(DBO.AppMeta, key='initialized')
+    if initialized and initialized.value:
+        return
+
     if count(DBO.Group) == 0:
         # create default group
         group = DBO.Group()
@@ -182,6 +201,8 @@ def _bootstrap_data(session):
         source.group_id = 2
         session.add(source)
 
+    session.add(DBO.AppMeta(key='initialized', value='yes'))
+
 
 def get_one(clazz, session=None, **kwargs):
     """ Get one object with given attributes.
@@ -226,7 +247,11 @@ def count(clazz, session=None, **kwargs):
         One object.
     """
     _LOG.debug('count: %r %r', clazz, kwargs)
-    return (session or Session()).query(clazz).filter_by(**kwargs).count()
+    session = session or Session()
+    if hasattr(clazz, "oid"):
+        return session.query(func.count(clazz.oid)).\
+            filter_by(**kwargs).scalar()
+    return session.query(clazz).filter_by(**kwargs).count()
 
 
 def save(obj, commit=False, session=None):
@@ -252,3 +277,21 @@ def delete(obj, commit=False, session=None):
         session.delete(obj)
     if commit:
         session.commit()
+
+
+def exists(clazz, session=None, **kwargs):
+    """ Check is objects with given attributes exists.
+
+    Args:
+        session: optional sqlalchemy session
+        kwargs: query filters.
+
+    Return:
+        One object.
+    """
+    _LOG.debug('exists: %r %r', clazz, kwargs)
+    session = session or Session()
+    if hasattr(clazz, "oid"):
+        return session.query(func.count(clazz.oid)).\
+            filter_by(**kwargs).scalar() > 0
+    return session.query(clazz).filter_by(**kwargs).count() > 0

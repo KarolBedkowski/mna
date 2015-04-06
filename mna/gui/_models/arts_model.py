@@ -19,16 +19,18 @@ from PyQt4 import QtCore, QtGui
 
 from mna.logic import articles
 from mna.model import db
+from mna.common import icons_helper
 
 _LOG = logging.getLogger(__name__)
 
 
 class ListItem(object):
-    __slots__ = ('oid', '_cols', 'font', 'color')
+    __slots__ = ('oid', '_cols', 'font', 'color', 'icon')
 
     def __init__(self, src):
         self.oid = src.oid
         self._cols = []
+        self.icon = None
         self.font = QtCore.QVariant()  # pylint: disable=no-member
         self.color = QtCore.QVariant()  # pylint: disable=no-member
         self.update(src)
@@ -50,6 +52,7 @@ class ListItem(object):
             QtCore.QDateTime(src.updated),  # updated
             QtCore.QVariant(src.score)  # score
         ]
+        self.icon = icons_helper.load_icon(src.source.icon_id)
 
     def __str__(self):
         return self.title
@@ -146,7 +149,7 @@ class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
             return QtCore.QVariant(self._HEADERS[col])
         return QtCore.QVariant()
 
-    # pylint: disable=no-member
+    # pylint: disable=no-member,too-many-return-statements
     def data(self, index, role):
         if not index.isValid():
             return QtCore.QVariant()
@@ -159,6 +162,9 @@ class ListModel(QtCore.QAbstractTableModel):  # pylint: disable=no-member
         elif role == QtCore.Qt.TextAlignmentRole:
             if index.column() < 2:
                 return QtCore.Qt.AlignHCenter
+        elif role == QtCore.Qt.DecorationRole:
+            if index.column() == 2:
+                return self.items[index.row()].icon
         return QtCore.QVariant()
 
     def node_from_index(self, index):

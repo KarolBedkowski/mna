@@ -7,4 +7,20 @@
     <file>reload.svg</file>
     <file>mark_read.svg</file>
   </qresource>
+  <qresource prefix="icons">
+    <file>unknown-icon.svg</file>
+    <file>icon-search.svg</file>
+    <file>web-icon.svg</file>
+    <file>icon-all.svg</file>
+    <file>icon-starred.svg</file>
+    <file>icon-folder.svg</file>
+    <file>feed-icon.svg</file>
+    <file>icon-error.svg</file>
+  </qresource>
+  <qresource prefix="plugins-hn">
+    <file>hn-icon.png</file>
+  </qresource>
+  <qresource prefix="plugins-jamendo">
+    <file>jamendo-icon.png</file>
+  </qresource>
 </RCC>

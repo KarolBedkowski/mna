@@ -54,6 +54,8 @@ class AppConfig(Singleton):
         self.config_path = self._get_config_path(app_name)
         self.data_dir = self._get_data_dir()
         self._filename = os.path.join(self.config_path, filename)
+        self.cache_dir = self.user_cache_dir
+        dir_create_if_not_exits(self.user_cache_dir)
         _LOG.debug('AppConfig.__init__: frozen=%(main_is_frozen)r, '
                    'main_dir=%(main_dir)s, config=%(_filename)s, '
                    'data=%(data_dir)s', self.__dict__)
@@ -109,6 +111,14 @@ class AppConfig(Singleton):
         Default: ~/.local/share/<app_name>/
         """
         return os.path.join(self._user_home, '.local', 'share', self.app_name)
+
+    @property
+    def user_cache_dir(self):
+        """ Get path to app cache directory.
+
+        Default: ~/.cache/<app_name>/
+        """
+        return os.path.join(self._user_home, '.cache', self.app_name)
 
     def clear(self):
         """ Clear all data in object. """
@@ -168,6 +178,21 @@ class AppConfig(Singleton):
         _LOG.warn('AppConfig.get_data_file(%s) not found', filename)
         return None
 
+    def get_cache_file(self, filename):
+        """ Get full path to file in cache directory.
+
+        Args:
+            filename: file name to find
+
+        Returns:
+            Full path or None if file not exists.
+        """
+        path = os.path.join(self.cache_dir, filename)
+        if os.path.exists(path):
+            return path
+        _LOG.warn('AppConfig.get_cache_file(%s) not found', filename)
+        return None
+
     def _get_main_dir(self):
         """ Find main application directory. """
         if self.main_is_frozen:
@@ -204,6 +229,16 @@ class AppConfig(Singleton):
     def _before_save(self, config):
         """ Action to take before save configuration. """
         pass
+
+
+def dir_create_if_not_exits(path):
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except IOError:
+            _LOG.exception('Error creating config directory: %s', path)
+            return False
+    return True
 
 
 def is_frozen():
