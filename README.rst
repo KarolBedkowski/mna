@@ -32,6 +32,7 @@ Runtime Requirements
 * Python 2.7.x
 * sqlalchemy 0.7.9+
 * pyqt4 (with webkit)
+* python-request https://pypi.python.org/pypi/requests/
 
 
 Files
