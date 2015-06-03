@@ -141,11 +141,15 @@ function getXPath(element) {
         return element.tagName;
     var ix = 0;
     var siblings = element.parentNode.childNodes;
-    for (var i= 0; i < siblings.length; i++) {
+    for (var i = 0; i < siblings.length; i++) {
         var sibling = siblings[i];
-        if (sibling===element) {
-            return getPathTo(element.parentNode) + '/' + \
-                element.tagName + '[' + (ix + 1) + ']';
+        if (sibling === element) {
+            var tagname = element.localName;
+            if (tagname != "tbody" && tagname != "tfoot") {
+                return getXPath(element.parentNode) + '/' + tagname + '[' + (ix + 1) + ']';
+            } else {
+                return getXPath(element.parentNode);
+            }
         }
         if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
             ix++;
