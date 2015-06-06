@@ -12,12 +12,12 @@ __author__ = u"Karol Będkowski"
 __copyright__ = u"Copyright (c) Karol Będkowski, 2014-2015"
 __version__ = "2015-01-30"
 
-import os
 import sys
 import logging
 import webbrowser
 import urllib2
 import functools
+import subprocess
 
 from PyQt4 import QtGui, QtWebKit, QtCore
 
@@ -347,7 +347,7 @@ class WndMain(QtGui.QMainWindow):  # pylint: disable=no-member
         if art_url:
             url = urllib2.urlparse.urljoin(art_url, url)
         if sys.platform.startswith('linux'):
-            os.popen('xdg-open "%s"' % url)
+            subprocess.Popen(['xdg-open', url])
         else:
             webbrowser.open(url)
 

@@ -17,9 +17,9 @@ _ = gettext.gettext
 
 SHORTNAME = "mna"
 NAME = _("mna")
-VERSION = "0.2.0"
-VERSION_INFO = (0, 2, 0, "alpha", 1)
-RELEASE = "2015-04-06"
+VERSION = "0.2.1"
+VERSION_INFO = (0, 2, 1, "alpha", 1)
+RELEASE = "2015-06-06"
 DESCRIPTION = _("""mna""")
 DEVELOPERS = u"""Karol Będkowski"""
 TRANSLATORS = u"""Karol Będkowski"""

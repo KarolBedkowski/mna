@@ -1,3 +1,7 @@
+mna 0.2.1 2015-06-06
+ * bugfix: fix opening links in background
+ * bugfix: fix selecting xpath elements
+
 mna 0.2 2015-04-06
 
  * new features & bugfixes
